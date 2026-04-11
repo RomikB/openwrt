@@ -37,12 +37,19 @@ menuconfig TARGET_OPTIONS
 
 		  Most people will answer N.
 
+config BUILD_LLVM_BPF
+	bool "Build LLVM toolchain for eBPF" if DEVEL
+	help
+	  If enabled, a LLVM toolchain for building eBPF binaries will be built.
+	  If this is not enabled, eBPF packages can only be built if the host
+	  has a suitable toolchain
+
 
 menuconfig EXTERNAL_TOOLCHAIN
 	bool
 	prompt "Use external toolchain"  if DEVEL
 	help
-	  If enabled, LEDE will compile using an existing toolchain instead of
+	  If enabled, the buildroot will compile using an existing toolchain instead of
 	  compiling one.
 
 	config NATIVE_TOOLCHAIN
@@ -51,7 +58,7 @@ menuconfig EXTERNAL_TOOLCHAIN
 		depends on EXTERNAL_TOOLCHAIN
 		select NO_STRIP
 		help
-		  If enabled, LEDE will compile using the native toolchain for your
+		  If enabled, the buildroot will compile using the native toolchain for your
 		  host instead of compiling one.
 
 	config TARGET_NAME
@@ -224,13 +231,13 @@ comment "Compiler"
 
 source "toolchain/gcc/Config.in"
 
-config YASM
+config NASM
 	bool
 	depends on ( i386 || x86_64 )
-	prompt "Build yasm" if TOOLCHAINOPTS
+	prompt "Build nasm" if TOOLCHAINOPTS
 	default y
 	help
-	  Enable if you want to build yasm
+	  Enable if you want to build nasm
 
 comment "C Library"
 	depends on TOOLCHAINOPTS
@@ -262,6 +269,7 @@ choice
 endchoice
 
 source "toolchain/uClibc/Config.in"
+source "toolchain/musl/Config.in"
 
 comment "Debuggers"
 	depends on TOOLCHAINOPTS
