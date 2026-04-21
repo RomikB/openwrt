@@ -1,0 +1,69 @@
+From fa35bbf537290b86bd4d37c4cfd46f5efae038cf Mon Sep 17 00:00:00 2001
+From: Sri Vidya Gunturi <quic_sgunturi@quicinc.com>
+Date: Fri, 28 Jul 2023 11:49:21 +0530
+Subject: [PATCH] Added EHT Operation Information
+
+Signed-off-by: Sri Vidya Gunturi <quic_sgunturi@quicinc.com>
+---
+ scan.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/scan.c b/scan.c
+index 8cd6d1f..f50e251 100644
+--- a/scan.c
++++ b/scan.c
+@@ -1556,6 +1556,43 @@ static void print_vht_oper(const uint8_t type, uint8_t len, const uint8_t *data,
+ 	printf("\t\t * VHT basic MCS set: 0x%.2x%.2x\n", data[4], data[3]);
+ }
+ 
++static void print_eht_oper(const uint8_t type, uint8_t len, const uint8_t *data,
++			   const struct print_ies_data *ie_buffer)
++{
++	uint8_t channel_width = 0;
++	const char *chandwidths[] = {
++		[0] = "20 MHz",
++		[1] = "40 MHz",
++		[2] = "80 MHz",
++		[3] = "160 MHz",
++		[4] = "320 MHz",
++	};
++
++	printf("\n");
++	printf("\t\t * Basic EHT-MCS And Nss Set: 0x%.2x%.2x%.2x%.2x\n",
++			data[4], data[3], data[2], data[1]);
++	/* Channel Width and CCFS Information is only available
++	 * for 320 MHz EHT Mode in the beacon frame.
++	 * For Other Channel Widths, Only "MCS and Nss set" information is
++	 * available in the beacon.
++	 */
++	if ((len >= 8) && (len <=10))
++	{
++		channel_width = (data[5] & 0x07);
++		printf("\t\t * channel width: %d (%s)\n", channel_width,
++				channel_width < ARRAY_SIZE(chandwidths) ? chandwidths[channel_width] : "unknown");
++		printf("\t\t * center freq segment 1: %d\n", data[6]);
++		printf("\t\t * center freq segment 2: %d\n", data[7]);
++	}
++
++	if (len == 10)
++	{
++		printf("\t\t * Disabled Subchannel Bitmap: 0x%.2x%.2x\n",
++				data[9], data[8]);
++	}
++}
++
++
+ #ifdef IW_FULL
+ static void print_supp_op_classes(const uint8_t type, uint8_t len,
+ 				  const uint8_t *data,
+@@ -2332,6 +2369,7 @@ static void print_eht_capa(const uint8_t type, uint8_t len, const uint8_t *data,
+ static const struct ie_print ext_printers[] = {
+ 	[35] = { "HE capabilities", print_he_capa, 21, 54, BIT(PRINT_SCAN), },
+ 	[108] = { "EHT capabilities", print_eht_capa, 13, 62, BIT(PRINT_SCAN), },
++	[106] = { "EHT Operation", print_eht_oper, 5, 11, BIT(PRINT_SCAN), },
+ };
+ 
+ static void print_extension(unsigned char len, unsigned char *ie,
+-- 
+2.17.1
+

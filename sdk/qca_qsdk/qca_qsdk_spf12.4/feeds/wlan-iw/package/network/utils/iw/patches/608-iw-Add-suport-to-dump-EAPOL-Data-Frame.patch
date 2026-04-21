@@ -1,0 +1,168 @@
+From 0bbd628e943a89712ab8bd743a7c5752b6bb234e Mon Sep 17 00:00:00 2001
+From: Hari <quic_hag@quicinc.com>
+Date: Tue, 26 Sep 2023 23:47:21 +0530
+Subject: [PATCH] iw: Extract the eapol type appropriately during eapol dump
+
+Identify the eapol type in a  generic manner which is
+based on the bits in eapol key info
+
+Usage: iw event -fe
+
+Signed-off-by: Hari <quic_hag@quicinc.com>
+---
+ event.c   | 46 ++++++++++++++++++++++++++++++++++++++++------
+ iw.h      | 15 ++++++++++++++-
+ nl80211.h |  2 +-
+ 3 files changed, 55 insertions(+), 8 deletions(-)
+
+diff --git a/event.c b/event.c
+index c1cd05c..4f67311 100644
+--- a/event.c
++++ b/event.c
+@@ -43,9 +43,9 @@ static int parse_beacon_hint_chan(struct nlattr *tb,
+ 	return 0;
+ }
+ 
+-#ifdef IW_FULL
+ static void print_frame(struct print_event_args *args, struct nlattr *attr)
+ {
++	uint16_t eapol_key_info=0xffff;
+ 	uint8_t *frame;
+ 	size_t len;
+ 	unsigned int i;
+@@ -93,9 +93,31 @@ static void print_frame(struct print_event_args *args, struct nlattr *attr)
+ 		break;
+ 	}
+ 
+-	if (!args->frame)
++	if (!args->frame && !args->eapol_frame)
+ 		return;
+ 
++	/*
++	 * We can diffrentiate M1/M3 from M2/M4 by the ack bit in the keyinfo field.
++	 * Then, we can segregate  M1 from M3 and M2 from M4 by following.
++	 * M1 vs M3: by the mic bit in the keyinfo field
++	 * M2 vs M4: by keyDataLength being 0 for M4
++	*/
++
++	if (args->eapol_frame) {
++		eapol_key_info = ((frame[EAPOL_KEY_INFO_FIRST_BYTE_OFFSET] << 8) + frame[EAPOL_KEY_INFO_SECOND_BYTE_OFFSET]);
++		if ((EAPOL_KEY_INFO_ACK_BIT) & eapol_key_info) {
++			if ((EAPOL_KEY_INFO_MIC_BIT) & eapol_key_info)
++				printf("\n%s\n", EAPOL_M3_DUMP);
++			else
++				printf("\n%s\n", EAPOL_M1_DUMP);
++		} else  {
++			if ((frame[EAPOL_KEY_DATA_LENGTH_FIRST_BYTE_OFFSET] == 0 ) && (frame[EAPOL_KEY_DATA_LENGTH_SECOND_BYTE_OFFSET] == 0))
++				printf("\n%s\n", EAPOL_M4_DUMP);
++			else
++				printf("\n%s\n", EAPOL_M2_DUMP);
++		}
++	}
++
+ 	printf(" [frame:");
+ 
+  print_frame:
+@@ -103,7 +125,7 @@ static void print_frame(struct print_event_args *args, struct nlattr *attr)
+ 		printf(" %.02x", frame[i]);
+ 	printf("]");
+ }
+-
++#ifdef IW_FULL
+ static void parse_cqm_event(struct nlattr **attrs)
+ {
+ 	static struct nla_policy cqm_policy[NL80211_ATTR_CQM_MAX + 1] = {
+@@ -1193,11 +1215,20 @@ static int print_event(struct nl_msg *msg, void *arg)
+ 			(unsigned long long)nla_get_u64(tb[NL80211_ATTR_COOKIE]),
+ 			tb[NL80211_ATTR_ACK] ? "acked" : "no ack");
+ 		break;
++#endif
+ 	case NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS:
++		if (tb[NL80211_ATTR_FRAME] && args->eapol_frame)
++		    print_frame(args, tb[NL80211_ATTR_FRAME]);
++		else if (tb[NL80211_ATTR_TIMED_OUT])
++		    printf(": timed out");
++		else
++		    printf(": unknown event");
++		printf("\n");
+ 		printf("ctrl. port TX status (cookie %llx): %s\n",
+ 			(unsigned long long)nla_get_u64(tb[NL80211_ATTR_COOKIE]),
+ 			tb[NL80211_ATTR_ACK] ? "acked" : "no ack");
+ 		break;
++#ifdef IW_FULL
+ 	case NL80211_CMD_PMKSA_CANDIDATE:
+ 		printf("PMKSA candidate found\n");
+ 		break;
+@@ -1440,7 +1471,9 @@ static int print_events(struct nl80211_state *state,
+ 	while (argc > 0) {
+ 		if (strcmp(argv[0], "-f") == 0)
+ 			args.frame = true;
+-		else if (strcmp(argv[0], "-t") == 0) {
++		else if (strcmp(argv[0], "-fe") == 0) {
++			args.eapol_frame = true;
++		} else if (strcmp(argv[0], "-t") == 0) {
+ 			num_time_formats++;
+ 			args.time = true;
+ 		} else if (strcmp(argv[0], "-T") == 0) {
+@@ -1467,9 +1500,10 @@ static int print_events(struct nl80211_state *state,
+ 
+ 	return __do_listen_events(state, 0, NULL, 0, NULL, &args);
+ }
+-TOPLEVEL(event, "[-t|-T|-r] [-f]", 0, 0, CIB_NONE, print_events,
++TOPLEVEL(event, "[-t|-T|-r] [-f|-fe]", 0, 0, CIB_NONE, print_events,
+ 	"Monitor events from the kernel.\n"
+ 	"-t - print timestamp\n"
+ 	"-T - print absolute, human-readable timestamp\n"
+ 	"-r - print relative timestamp\n"
+-	"-f - print full frame for auth/assoc etc.");
++	"-f - print full frame for auth/assoc etc.\n"
++	"-fe - print the EAPOL data frames");
+diff --git a/iw.h b/iw.h
+index ce74dec..9b8623a 100644
+--- a/iw.h
++++ b/iw.h
+@@ -47,6 +47,19 @@ enum nlmsgerr_attrs {
+ #  define nl_sock nl_handle
+ #endif
+ 
++#define EAPOL_M1_DUMP "Dumping M1 Frame"
++#define EAPOL_M2_DUMP "Dumping M2 Frame"
++#define EAPOL_M3_DUMP "Dumping M3 Frame"
++#define EAPOL_M4_DUMP "Dumping M4 Frame"
++#define EAPOL_UNDEFINED "EAPOL DATA UNDEFINED"
++
++#define EAPOL_KEY_INFO_ACK_BIT 1 << 7
++#define EAPOL_KEY_INFO_MIC_BIT 1 << 8
++#define EAPOL_KEY_INFO_FIRST_BYTE_OFFSET 19
++#define EAPOL_KEY_INFO_SECOND_BYTE_OFFSET 20
++#define EAPOL_KEY_DATA_LENGTH_FIRST_BYTE_OFFSET 111
++#define EAPOL_KEY_DATA_LENGTH_SECOND_BYTE_OFFSET 112
++
+ struct nl80211_state {
+ 	struct nl_sock *nl_sock;
+ 	int nl80211_id;
+@@ -200,7 +213,7 @@ int handle_cmd(struct nl80211_state *state, enum id_input idby,
+ struct print_event_args {
+ 	struct timeval ts; /* internal */
+ 	bool have_ts; /* must be set false */
+-	bool frame, time, reltime, ctime;
++	bool frame, time, reltime, ctime, eapol_frame;
+ };
+ 
+ __u32 listen_events(struct nl80211_state *state,
+diff --git a/nl80211.h b/nl80211.h
+index f14796a..760bd61 100644
+--- a/nl80211.h
++++ b/nl80211.h
+@@ -1461,7 +1461,7 @@ enum nl80211_commands {
+ 
+ 	NL80211_CMD_UNPROT_BEACON,
+ 
+-	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS,
++	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS = 140,
+ 
+ 	NL80211_CMD_SET_SAR_SPECS,
+ 
+-- 
+2.17.1
+

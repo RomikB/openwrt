@@ -1,0 +1,91 @@
+From 5d99d79c1272c2d297aa5357184828e5b1425d80 Mon Sep 17 00:00:00 2001
+From: Sri Vidya Gunturi <quic_sgunturi@quicinc.com>
+Date: Thu, 10 Aug 2023 12:29:50 +0530
+Subject: [PATCH] Added Qbssload and Regulatory Power information
+
+Signed-off-by: Sri Vidya Gunturi <quic_sgunturi@quicinc.com>
+---
+ scan.c | 36 +++++++++++++++++++++++++++++++++---
+ 1 file changed, 33 insertions(+), 3 deletions(-)
+
+diff --git a/scan.c b/scan.c
+index f084414..4603d29 100644
+--- a/scan.c
++++ b/scan.c
+@@ -1666,16 +1666,16 @@ static void print_secchan_offs(const uint8_t type, uint8_t len,
+ 		printf(" %d\n", data[0]);
+ }
+ 
+-#ifdef IW_FULL
+ static void print_bss_load(const uint8_t type, uint8_t len, const uint8_t *data,
+ 			   const struct print_ies_data *ie_buffer)
+ {
+ 	printf("\n");
+ 	printf("\t\t * station count: %d\n", (data[1] << 8) | data[0]);
+-	printf("\t\t * channel utilisation: %d/255\n", data[2]);
++	printf("\t\t * channel utilisation: %d/255 (%d%%)\n", data[2], (data[2]/255)*100);
+ 	printf("\t\t * available admission capacity: %d [*32us]\n", (data[4] << 8) | data[3]);
+ }
+ 
++#ifdef IW_FULL
+ static void print_mesh_conf(const uint8_t type, uint8_t len,
+ 			    const uint8_t *data,
+ 			    const struct print_ies_data *ie_buffer)
+@@ -1753,6 +1753,7 @@ static void print_ie(const struct ie_print *p, const uint8_t type, uint8_t len,
+ 
+ static const struct ie_print ieprinters[] = {
+ 	[0] = { "SSID", print_ssid, 0, 32, BIT(PRINT_SCAN) | BIT(PRINT_LINK), },
++	[11] = { "BSS Load", print_bss_load, 5, 5, BIT(PRINT_SCAN), },
+ 	[45] = { "HT capabilities", print_ht_capa, 26, 26, BIT(PRINT_SCAN), },
+ 	[48] = { "RSN", print_rsn, 2, 255, BIT(PRINT_SCAN), },
+ 	[61] = { "HT operation", print_ht_op, 22, 22, BIT(PRINT_SCAN), },
+@@ -1765,7 +1766,6 @@ static const struct ie_print ieprinters[] = {
+ 	[5] = { "TIM", print_tim, 4, 255, BIT(PRINT_SCAN), },
+ 	[6] = { "IBSS ATIM window", print_ibssatim, 2, 2, BIT(PRINT_SCAN), },
+ 	[7] = { "Country", print_country, 3, 255, BIT(PRINT_SCAN), },
+-	[11] = { "BSS Load", print_bss_load, 5, 5, BIT(PRINT_SCAN), },
+ 	[32] = { "Power constraint", print_powerconstraint, 1, 1, BIT(PRINT_SCAN), },
+ 	[35] = { "TPC report", print_tpcreport, 2, 2, BIT(PRINT_SCAN), },
+ 	[42] = { "ERP", print_erp, 1, 255, BIT(PRINT_SCAN), },
+@@ -2329,8 +2329,38 @@ static void print_eht_capa(const uint8_t type, uint8_t len, const uint8_t *data,
+ 	print_eht_capability(data, len);
+ }
+ 
++static void print_he_oper(const uint8_t type, uint8_t len, const uint8_t *data,
++			   const struct print_ies_data *ie_buffer)
++{
++	uint8_t  reg_ap_pwr_type= 0;
++	const char *reginfo_name[] = {
++		[0] = "Indoor Access Point",
++		[1] = "Standard Power Access Point",
++		[2 ... 7] = "Reserved",
++	};
++
++	/*
++	* According to the 11ax 2021 standard:
++	* The regulatory power element is present in the 6GHz Operation Information.
++	* This 6GHz Operation Information is 5 bytes long and is the last element in
++	* the HE Operation IE. The Regulatory Power element is in the 2nd byte of 6GHz
++	* Operation Information element. So we perform (len-1)-5+2 = len-4.
++	*/
++
++	if(len >= 11)
++	{
++		reg_ap_pwr_type = (data[len-4] & 0x38);
++		printf("\n");
++		printf("\t\t * regulatory info: %s (0x%.2x)\n",
++			reg_ap_pwr_type < ARRAY_SIZE(reginfo_name) ? reginfo_name[reg_ap_pwr_type] : "unknown",
++			reg_ap_pwr_type);
++	}
++}
++
++
+ static const struct ie_print ext_printers[] = {
+ 	[35] = { "HE capabilities", print_he_capa, 21, 54, BIT(PRINT_SCAN), },
++	[36] = { "HE Operation", print_he_oper, 6, 15, BIT(PRINT_SCAN), },
+ 	[108] = { "EHT capabilities", print_eht_capa, 13, 62, BIT(PRINT_SCAN), },
+ };
+ 
+-- 
+2.17.1
+
