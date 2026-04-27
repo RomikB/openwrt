@@ -1,0 +1,60 @@
+diff --git a/src/config.c b/src/config.c
+index 71b786c..cbe16ce 100644
+--- a/src/config.c
++++ b/src/config.c
+@@ -7,6 +7,7 @@
+ #include <net/if.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <errno.h>
+ #include <syslog.h>
+ 
+ #include <uci.h>
+@@ -22,6 +23,38 @@
+ static struct blob_buf b;
+ static int reload_pipe[2] = { -1, -1 };
+ 
++/*
++ * Compatibility helper: old libubox versions used by some OpenWrt trees
++ * do not provide mkdir_p() in <libubox/utils.h>.
++ */
++static int mkdir_p_compat(char *dir, mode_t mask)
++{
++	char *l;
++	int ret;
++
++	ret = mkdir(dir, mask);
++	if (!ret || errno == EEXIST)
++		return 0;
++
++	if (errno != ENOENT)
++		return -1;
++
++	l = strrchr(dir, '/');
++	if (!l || l == dir)
++		return -1;
++
++	*l = '\0';
++	if (mkdir_p_compat(dir, mask))
++		return -1;
++	*l = '/';
++
++	ret = mkdir(dir, mask);
++	if (!ret || errno == EEXIST)
++		return 0;
++
++	return -1;
++}
++
+ static int lease_cmp(const void *k1, const void *k2, void *ptr);
+ static void lease_update(struct vlist_tree *tree, struct vlist_node *node_new,
+ 			 struct vlist_node *node_old);
+@@ -1122,7 +1155,7 @@ void odhcpd_reload(void)
+ 	if (config.dhcp_statefile) {
+ 		char *path = strdup(config.dhcp_statefile);
+ 
+-		mkdir_p(dirname(path), 0755);
++		mkdir_p_compat(dirname(path), 0755);
+ 		free(path);
+ 	}
+ 
