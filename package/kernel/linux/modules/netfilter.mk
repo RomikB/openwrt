@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 2006-2010 OpenWrt.org
 #
@@ -152,7 +151,7 @@ define KernelPackage/nf-flow
 	CONFIG_NETFILTER_INGRESS=y \
 	CONFIG_NF_FLOW_TABLE \
 	CONFIG_NF_FLOW_TABLE_HW
-  DEPENDS:=+kmod-nf-conntrack @!LINUX_3_18 @!LINUX_4_4 @!LINUX_4_9
+  DEPENDS:=+kmod-nf-conntrack @!LINUX_4_9
   FILES:= \
 	$(LINUX_DIR)/net/netfilter/nf_flow_table.ko \
 	$(LINUX_DIR)/net/netfilter/nf_flow_table_hw.ko
@@ -968,7 +967,7 @@ $(eval $(call KernelPackage,ipt-rpfilter))
 define KernelPackage/nft-core
   SUBMENU:=$(NF_MENU)
   TITLE:=Netfilter nf_tables support
-  DEPENDS:=+kmod-nfnetlink +kmod-nf-reject +kmod-nf-reject6 +kmod-nf-conntrack6
+  DEPENDS:=+kmod-nfnetlink +kmod-nf-reject +kmod-nf-reject6 +kmod-nf-conntrack6 +kmod-nf-nat
   FILES:=$(foreach mod,$(NFT_CORE-m),$(LINUX_DIR)/net/$(mod).ko)
   AUTOLOAD:=$(call AutoProbe,$(notdir $(NFT_CORE-m)))
   KCONFIG:= \
@@ -1064,7 +1063,7 @@ define KernelPackage/nft-netdev
 	CONFIG_NFT_DUP_NETDEV \
 	CONFIG_NFT_FWD_NETDEV
   FILES:= \
-	$(LINUX_DIR)/net/netfilter/nf_tables_netdev.ko \
+	$(LINUX_DIR)/net/netfilter/nf_tables_netdev.ko@lt4.17 \
 	$(LINUX_DIR)/net/netfilter/nf_dup_netdev.ko \
 	$(LINUX_DIR)/net/netfilter/nft_dup_netdev.ko \
 	$(LINUX_DIR)/net/netfilter/nft_fwd_netdev.ko
