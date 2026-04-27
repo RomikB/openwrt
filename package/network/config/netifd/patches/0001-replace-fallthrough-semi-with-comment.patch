@@ -1,0 +1,57 @@
+diff --git a/bridge.c b/bridge.c
+index 7acfb81..72d5f8b 100644
+--- a/bridge.c
++++ b/bridge.c
+@@ -533,7 +533,7 @@ bridge_member_cb(struct device_user *dep, enum device_event ev)
+ 
+ 		if (bst->n_present == 1)
+ 			device_set_present(&bst->dev, true);
+-		fallthrough;
++		/* fallthrough */
+ 	case DEV_EVENT_AUTH_UP:
+ 		if (!bst->dev.active)
+ 			break;
+diff --git a/interface.c b/interface.c
+index 2391e12..b0d35bf 100644
+--- a/interface.c
++++ b/interface.c
+@@ -258,7 +258,7 @@ interface_event(struct interface *iface, enum interface_event ev)
+ 	case IFEV_UP:
+ 		interface_error_flush(iface);
+ 		adev = iface->l3_dev.dev;
+-		fallthrough;
++		/* fallthrough */
+ 	case IFEV_DOWN:
+ 	case IFEV_UP_FAILED:
+ 		alias_notify_device(iface->name, adev);
+diff --git a/proto-shell.c b/proto-shell.c
+index e20d539..2487018 100644
+--- a/proto-shell.c
++++ b/proto-shell.c
+@@ -208,7 +208,7 @@ proto_shell_handler(struct interface_proto_state *proto,
+ 				return 0;
+ 			}
+ 		/* if no script task is running */
+-		fallthrough;
++		/* fallthrough */
+ 		case S_IDLE:
+ 			action = "teardown";
+ 			state->renew_pending = false;
+@@ -292,7 +292,7 @@ proto_shell_task_finish(struct proto_shell_state *state,
+ 	case S_IDLE:
+ 		if (task == &state->proto_task)
+ 			state->proto.proto_event(&state->proto, IFPEV_LINK_LOST);
+-		fallthrough;
++		/* fallthrough */
+ 	case S_SETUP:
+ 		if (task == &state->proto_task)
+ 			proto_shell_handler(&state->proto, PROTO_CMD_TEARDOWN,
+@@ -764,7 +764,7 @@ proto_shell_setup_failed(struct proto_shell_state *state)
+ 	switch (state->sm) {
+ 	case S_IDLE:
+ 		state->proto.proto_event(&state->proto, IFPEV_LINK_LOST);
+-		fallthrough;
++		/* fallthrough */
+ 	case S_SETUP:
+ 		proto_shell_handler(&state->proto, PROTO_CMD_TEARDOWN, false);
+ 		break;
