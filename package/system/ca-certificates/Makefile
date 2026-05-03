@@ -7,23 +7,29 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ca-certificates
-PKG_VERSION:=20190110
+PKG_VERSION:=20240203
 PKG_RELEASE:=1
 PKG_MAINTAINER:=
 
-PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION).tar.xz
-PKG_SOURCE_URL:=http://ftp.debian.org/debian/pool/main/c/ca-certificates
-PKG_HASH:=ee4bf0f4c6398005f5b5ca4e0b87b82837ac5c3b0280a1cb3a63c47555c3a675
+PKG_LICENSE:=GPL-2.0-or-later MPL-2.0
+PKG_LICENSE_FILES:=debian/copyright
 
+PKG_SOURCE:=$(PKG_NAME)_$(PKG_VERSION).tar.xz
+PKG_SOURCE_URL:=@DEBIAN/pool/main/c/ca-certificates
+PKG_HASH:=3286d3fc42c4d11b7086711a85f865b44065ce05cf1fb5376b2abed07622a9c6
 PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
+
+TAR_OPTIONS+= --strip-components 1
+TAR_CMD=$(HOST_TAR) -C $(1) $(TAR_OPTIONS)
 
 define Package/ca-certificates
   SECTION:=base
   CATEGORY:=Base system
   TITLE:=System CA certificates
   PKGARCH:=all
+  PROVIDES:=ca-certs
 endef
 
 define Package/ca-bundle
@@ -31,6 +37,7 @@ define Package/ca-bundle
   CATEGORY:=Base system
   TITLE:=System CA certificates as a bundle
   PKGARCH:=all
+  PROVIDES:=ca-certs
 endef
 
 define Build/Install
@@ -59,5 +66,5 @@ define Package/ca-bundle/install
 	cat $(PKG_INSTALL_DIR)/usr/share/ca-certificates/*/*.crt >$(1)/etc/ssl/certs/ca-certificates.crt
 	$(LN) /etc/ssl/certs/ca-certificates.crt $(1)/etc/ssl/cert.pem
 endef
-$(eval $(call BuildPackage,ca-certificates))
 $(eval $(call BuildPackage,ca-bundle))
+$(eval $(call BuildPackage,ca-certificates))
