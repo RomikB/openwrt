@@ -13,7 +13,7 @@ define KernelPackage/leds-gpio
   DEPENDS:= @GPIO_SUPPORT
   KCONFIG:=CONFIG_LEDS_GPIO
   FILES:=$(LINUX_DIR)/drivers/leds/leds-gpio.ko
-  AUTOLOAD:=$(call AutoLoad,60,leds-gpio,1)
+  AUTOLOAD:=$(call AutoLoad,60,leds-gpio)
 endef
 
 define KernelPackage/leds-gpio/description
@@ -58,7 +58,7 @@ define KernelPackage/ledtrig-netdev
   SUBMENU:=$(LEDS_MENU)
   TITLE:=LED NETDEV Trigger
   KCONFIG:=CONFIG_LEDS_TRIGGER_NETDEV
-  FILES:=$(LINUX_DIR)/drivers/leds/ledtrig-netdev.ko
+  FILES:=$(LINUX_DIR)/drivers/leds/trigger/ledtrig-netdev.ko
   AUTOLOAD:=$(call AutoLoad,50,ledtrig-netdev)
 endef
 

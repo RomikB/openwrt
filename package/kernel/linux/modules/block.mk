@@ -47,7 +47,7 @@ define KernelPackage/ata-ahci
   KCONFIG:=CONFIG_SATA_AHCI
   FILES:= \
     $(LINUX_DIR)/drivers/ata/ahci.ko
-  AUTOLOAD:=$(call AutoLoad,41,libahci ahci,1)
+  AUTOLOAD:=$(call AutoLoad,91,libahci ahci)
   $(call AddDepends/ata)
 endef
 
@@ -209,7 +209,6 @@ $(eval $(call KernelPackage,block2mtd))
 define KernelPackage/dax
   SUBMENU:=$(BLOCK_MENU)
   TITLE:=DAX: direct access to differentiated memory
-  DEPENDS:=@LINUX_4_14
   KCONFIG:=CONFIG_DAX
   FILES:=$(LINUX_DIR)/drivers/dax/dax.ko
 endef
@@ -220,7 +219,7 @@ $(eval $(call KernelPackage,dax))
 define KernelPackage/dm
   SUBMENU:=$(BLOCK_MENU)
   TITLE:=Device Mapper
-  DEPENDS:=+kmod-crypto-manager +LINUX_4_14:kmod-dax
+  DEPENDS:=+kmod-crypto-manager
   # All the "=n" are unnecessary, they're only there
   # to stop the config from asking the question.
   # MIRROR is M because I've needed it for pvmove.
@@ -235,8 +234,10 @@ define KernelPackage/dm
 	CONFIG_DM_ZERO=n \
 	CONFIG_DM_SNAPSHOT=n \
 	CONFIG_DM_LOG_USERSPACE=n \
+	CONFIG_DM_MQ_DEFAULT=n \
+	CONFIG_DM_LOG_WRITES=n \
 	CONFIG_MD=y \
-	CONFIG_BLK_DEV_DM \
+	CONFIG_BLK_DEV_DM=y \
 	CONFIG_DM_CRYPT \
 	CONFIG_DM_MIRROR
   FILES:=$(LINUX_DIR)/drivers/md/dm-*.ko
@@ -337,7 +338,7 @@ $(eval $(call KernelPackage,md-raid10))
 
 
 define KernelPackage/md-raid456
-$(call KernelPackage/md/Depends,+kmod-lib-raid6 +kmod-lib-xor +!LINUX_3_18:kmod-lib-crc32c)
+$(call KernelPackage/md/Depends,+kmod-lib-raid6 +kmod-lib-xor +kmod-lib-crc32c)
   TITLE:=RAID Level 456 Driver
   KCONFIG:= \
        CONFIG_ASYNC_CORE \
@@ -471,7 +472,7 @@ define KernelPackage/scsi-core
   FILES:= \
 	$(LINUX_DIR)/drivers/scsi/scsi_mod.ko \
 	$(LINUX_DIR)/drivers/scsi/sd_mod.ko
-  AUTOLOAD:=$(call AutoLoad,40,scsi_mod sd_mod,1)
+  AUTOLOAD:=$(call AutoLoad,90,scsi_mod sd_mod)
 endef
 
 $(eval $(call KernelPackage,scsi-core))
