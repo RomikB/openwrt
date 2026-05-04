@@ -65,8 +65,10 @@ $(curdir)/install: $(TMP_DIR)/.build $(curdir)/merge $(if $(CONFIG_TARGET_PER_DE
 	- find $(STAGING_DIR_ROOT) -type d | $(XARGS) chmod 0755
 	rm -rf $(TARGET_DIR) $(TARGET_DIR_ORIG)
 	mkdir -p $(TARGET_DIR)/tmp
-	$(call opkg,$(TARGET_DIR)) install \
-		$(call opkg_package_files,$(shell cat $(PACKAGE_INSTALL_FILES) 2>/dev/null))
+	$(file >$(TMP_DIR)/opkg_install_list,\
+	  $(call opkg_package_files,\
+	    $(foreach pkg,$(shell cat $(PACKAGE_INSTALL_FILES) 2>/dev/null),$(pkg)$(call GetABISuffix,$(pkg)))))
+	$(call opkg,$(TARGET_DIR)) install $$(cat $(TMP_DIR)/opkg_install_list)
 	@for file in $(PACKAGE_INSTALL_FILES); do \
 		[ -s $$file.flags ] || continue; \
 		for flag in `cat $$file.flags`; do \
@@ -84,9 +86,19 @@ $(curdir)/index: FORCE
 		mkdir -p $$d; \
 		cd $$d || continue; \
 		$(SCRIPT_DIR)/ipkg-make-index.sh . 2>&1 > Packages.manifest; \
-		grep -vE '^(Maintainer|LicenseFiles|Source|Require)' Packages.manifest > Packages && \
-			gzip -9nc Packages > Packages.gz; \
+		grep -vE '^(Maintainer|LicenseFiles|Source|SourceName|Require)' Packages.manifest > Packages; \
+		case "$$(((64 + $$(stat -L -c%s Packages)) % 128))" in 110|111) \
+			$(call ERROR_MESSAGE,WARNING: Applying padding in $$d/Packages to workaround usign SHA-512 bug!); \
+			{ echo ""; echo ""; } >> Packages;; \
+		esac; \
+		gzip -9nc Packages > Packages.gz; \
 	); done
+ifdef CONFIG_FOSSID_SCAN
+	@echo Generating FOSSID report for this build
+	[[ -f "$(TOPDIR)/scripts/fossid.sh" ]] && \
+	$(TOPDIR)/scripts/fossid.sh --scan_complete "$(BOARD)" "$(SUBTARGET)" "$(BUILD_DIR)" || \
+	echo "$(TOPDIR)/scripts/fossid.sh is missing"
+endif
 ifdef CONFIG_SIGNED_PACKAGES
 	@echo Signing package index...
 	@for d in $(PACKAGE_SUBDIRS); do ( \
