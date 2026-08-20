@@ -48,7 +48,7 @@ endef
 define Package/xtables-legacy
 $(call Package/iptables/Default)
   TITLE:=IP firewall administration tool
-  DEPENDS+= +kmod-ipt-core +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables
+  DEPENDS+= +kmod-ipt-core-vendor +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables
 endef
 
 define Package/iptables-zz-legacy
@@ -513,6 +513,7 @@ $(call Package/iptables/Default)
   CATEGORY:=Libraries
   TITLE:=IPv4 firewall - shared libiptc library
   ABI_VERSION:=2
+  DEPENDS:=+libgcc
 endef
 
 define Package/libip6tc
@@ -521,6 +522,7 @@ $(call Package/iptables/Default)
   CATEGORY:=Libraries
   TITLE:=IPv6 firewall - shared libiptc library
   ABI_VERSION:=2
+  DEPENDS:=+libgcc
 endef
 
 define Package/libiptext
@@ -529,7 +531,7 @@ define Package/libiptext
  CATEGORY:=Libraries
  TITLE:=IPv4 firewall - shared libiptext library
  ABI_VERSION:=0
- DEPENDS:=+libxtables
+ DEPENDS:=+libgcc +libxtables
 endef
 
 define Package/libiptext6
@@ -538,7 +540,7 @@ define Package/libiptext6
  CATEGORY:=Libraries
  TITLE:=IPv6 firewall - shared libiptext library
  ABI_VERSION:=0
- DEPENDS:=+libxtables
+ DEPENDS:=+libgcc +libxtables
 endef
 
 define Package/libiptext-nft
@@ -547,7 +549,7 @@ define Package/libiptext-nft
  CATEGORY:=Libraries
  TITLE:=IPv4/IPv6 firewall - shared libiptext nft library
  ABI_VERSION:=0
- DEPENDS:=+libxtables
+ DEPENDS:=+libgcc +libxtables
 endef
 
 define Package/libxtables
@@ -557,7 +559,7 @@ define Package/libxtables
  TITLE:=IPv4/IPv6 firewall - shared xtables library
  MENU:=1
  ABI_VERSION:=12
- DEPENDS:=+IPTABLES_CONNLABEL:libnetfilter-conntrack
+ DEPENDS:=+libgcc +IPTABLES_CONNLABEL:libnetfilter-conntrack
 endef
 
 define Package/libxtables/config

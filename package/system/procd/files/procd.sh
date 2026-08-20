@@ -184,6 +184,7 @@ _procd_close_validate() {
 }
 
 _procd_add_jail() {
+	[ -x /sbin/ujail ] || return 0
 	json_add_object "jail"
 	json_add_string name "$1"
 

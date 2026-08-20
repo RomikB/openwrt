@@ -1,0 +1,21 @@
+#!/bin/sh
+
+logger -t button "MESH/WPS button $ACTION (held for ${SEEN:-0}s)"
+echo "MESH/WPS button $ACTION (held for ${SEEN:-0}s)" > /dev/console
+
+case "$ACTION" in
+pressed)
+	# Trigger quick blue flash feedback
+	if [ -x /sbin/xqled ]; then
+		/sbin/xqled blink_blue
+	fi
+	;;
+released)
+	# Restore solid blue
+	if [ -x /sbin/xqled ]; then
+		/sbin/xqled blue
+	fi
+	;;
+esac
+
+return 0

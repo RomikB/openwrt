@@ -23,9 +23,9 @@ boot() {
 	mkdir -p /tmp/.uci
 	chmod 0700 /tmp/.uci
 	touch /var/log/wtmp
-	touch /var/log/lastlog
-	touch /tmp/resolv.conf.auto
-	ln -sf /tmp/resolv.conf.auto /tmp/resolv.conf
+	mkdir -p /tmp/resolv.conf.d
+	touch /tmp/resolv.conf.d/resolv.conf.auto
+	ln -sf /tmp/resolv.conf.d/resolv.conf.auto /tmp/resolv.conf
 	grep -q debugfs /proc/filesystems && /bin/mount -o noatime -t debugfs debugfs /sys/kernel/debug
 	[ -d /sys/fs/bpf ] && grep -q bpf /proc/filesystems && /bin/mount -o nosuid,nodev,noexec,noatime,mode=0700 -t bpf bpffs /sys/fs/bpf
 	[ -d /sys/fs/pstore ] && grep -q pstore /proc/filesystems && /bin/mount -o noatime -t pstore pstore /sys/fs/pstore
@@ -44,8 +44,9 @@ boot() {
 		echo "wifi detect normal" > /dev/console
 
 		/sbin/kmodloader
-
 	fi
+
+	[ -f /etc/diag.sh ] && { . /etc/diag.sh; set_state booting; }
 
 	# temporary hack until configd exists
 	/sbin/reload_config

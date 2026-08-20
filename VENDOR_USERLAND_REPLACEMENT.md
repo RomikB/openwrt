@@ -247,6 +247,32 @@
 
 ---
 
+### ✅ Фаза 11: Подключение менеджера пакетов `opkg`, TLS-стека (`mbedtls`, `ca-bundle`) и подсистемы энтропии (`urngd`, `urandom-seed`)
+- **Что сделано**:
+  1. В `target/linux/ipq53xx/rd15/target.mk` сняты флаги блокировки стандартных пакетов (`opkg`, `ca-bundle`, `libustream-mbedtls`, `urandom-seed`, `urngd`).
+  2. В `README.md` очищен шаблон `.config` от блокировок `opkg` / `uclient-fetch`.
+  3. Пакеты автоматически включены в сборку через стандартный механизм `make defconfig`:
+     - **Менеджер пакетов**: `/bin/opkg`, `/bin/uclient-fetch`, `/usr/lib/libuclient.so`, `/usr/sbin/opkg-key`.
+     - **TLS & Безопасность**: `/lib/libustream-ssl.so` (mbedTLS бэкенд), `/usr/lib/libmbedtls.so.*`, `/usr/lib/libmbedcrypto.so.*`, `/usr/lib/libmbedx509.so.*`, корневые сертификаты `/etc/ssl/certs/ca-certificates.crt`.
+     - **Энтропия и CSPRNG ядра 5.4.213**: `/sbin/urngd` (демон Jitter Entropy) и сервис `/etc/init.d/urandom_seed` (сохранение/восстановление сида случайных чисел).
+- **Результат**: Полноценный нативный стек `opkg` и HTTPS-клиента интегрирован в сборку прошивки.
+
+---
+
+### ✅ Фаза 12: Интеграция `dnsmasq` и настройка стандартной сетевой конфигурации OpenWrt (`192.168.1.1`)
+- **Что сделано**:
+  1. Пакет `dnsmasq` (v2.90) включен в сборку подплатформы `rd15` (`target.mk` → `DEFAULT_PACKAGES += dnsmasq`).
+  2. В `/etc/config/network` зафиксирована топология роутера:
+     - **WAN**: Порт 1 (`eth0.1`), протокол `dhcp` (получение IP от провайдера/домашней сети).
+     - **LAN**: Порты 2, 3, 4 (`eth0.2 eth0.3 eth1`), мост `br-lan`, статический IP `192.168.1.1/24`.
+  3. Создан конфигурационный файл `/etc/config/dhcp`:
+     - Настроен локальный DNS-домен `lan` (`openwrt.lan`), кеш DNS на 1000 записей.
+     - Настроен DHCPv4-сервер для зоны `lan` с пулом `192.168.1.100` — `192.168.1.249` (аренда 12ч).
+     - Выключена раздача DHCP наружу в зону `wan` (`option ignore '1'`).
+- **Результат**: Роутер работает как полноценный локальный сервер DNS и DHCP для клиентов в LAN.
+
+---
+
 ## 4. Сводный статус миграции пакетов
 
 | Пакет | Роль | Статус | Версия | Фаза | Примечание |
@@ -265,19 +291,27 @@
 | **`openwrt-keyring`**| Открытые ключи | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Ключи OpenWrt 24.10 |
 | **`fwtool`** | Метаданные образов | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Утилита манипуляции образами |
 | **`base-files`** | Базовая система | ✅ Завершен | OpenWrt 24 | Фаза 10.2 | Нативный `base-files` + оверлей `rd15` (Проверено на роутере) |
+| **`opkg`** | Менеджер пакетов | ✅ Завершен | OpenWrt 24 | Фаза 11 | `opkg`, `uclient-fetch`, `libuclient` |
+| **`libustream-mbedtls`** | TLS бэкенд | ✅ Завершен | OpenWrt 24 | Фаза 11 | mbedTLS 3.6.x + `ca-bundle` |
+| **`urngd` / `urandom-seed`** | Энтропия CSPRNG | ✅ Завершен | OpenWrt 24 | Фаза 11 | Jitter RNG daemon + urandom seed |
+| **`dnsmasq`** | DNS / DHCP сервер | ✅ Завершен | 2.90 | Фаза 12 | Резолвер + DHCP пул `192.168.1.100-249` (Проверено на роутере) |
+| **`kmod-pwm-rgb` / `diag.sh`** | Светодиодная индикация | ✅ Завершен | OpenWrt 24 | Фаза 13 | RGB LED (`/sys/class/leds/rgb`), `xqled` CLI (Проверено на роутере) |
+| **`kmod-gpio-button-hotplug`** | Кнопки Reset & Mesh | ✅ Завершен | OpenWrt 24 | Фаза 13 | `/etc/rc.button/reset` & `/etc/rc.button/mesh` (Проверено на роутере) |
 
 ---
 
 ## 5. Финальный состав вендорного фида (`vendor_scripts/packages.list` / `required.list`)
 
-
-В фиде `vendor_feed` оставлены **исключительно 7 необходимых аппаратных компонентов**:
+В фиде `vendor_feed` включены необходимые аппаратные компоненты:
 
 ```text
 kmod-bootconfig
 kmod-qca-nss-dp
 kmod-yt-9215s-driver
 kmod-yt-phy-driver
+kmod-pwm-rgb
+kmod-gpio-button-hotplug
+kmod-leds-gpio
 nvram
 qca-ssdk-shell
 yt-9215s-client
@@ -311,13 +345,33 @@ yt-9215s-client
 
 ---
 
-## 7. Дорожная карта дальнейшего развития (Roadmap)
+### ✅ Фаза 14: Интеграция Firewall3, iptables и ядерных модулей Netfilter
+- **Что сделано**:
+  1. **Исследование механизма прокидывания и подмены ядерных модулей OpenWrt**:
+     - В OpenWrt пакет `firewall` (и `iptables-zz-legacy`, `xtables-legacy`) по умолчанию зависят от символов `+kmod-ipt-core`, `+kmod-ipt-conntrack`, `+kmod-ipt-nat`.
+     - При сборке с предсобранным монолитным ядром 5.4.213 система сборки OpenWrt пытается компилировать нативные `KernelPackage` из нескомпилированного дерева 6.6, что приводило к ошибке отсутствия `.ko` файлов.
+     - Для решения:
+       - В `vendor_scripts/generate_feed.py` реализована автоматическая генерация `PROVIDES:={pkg}` для всех `kmod-*` пакетов с разрешением транзитивных зависимостей (`EXTRA_KMOD_DEPS`).
+       - В Makefiles пакетов `package/network/config/firewall/Makefile` и `package/network/utils/iptables/Makefile` зависимости на `kmod-ipt-*` переведены на вендорские аналоги (`kmod-ipt-core-vendor`, `kmod-ipt-nat-vendor` и т.д.).
+       - В `Package/libxtables`, `Package/libip4tc`, `Package/libip6tc`, `Package/libiptext*` добавлена явная зависимость `+libgcc` для прохождения валидации зависимостей `CheckDependencies`.
+  2. **Сборка юзерспейс-компонентов**:
+     - Собраны нативные `/sbin/fw3`, `/usr/sbin/xtables-legacy-multi`, `/usr/sbin/iptables`, `/usr/sbin/iptables-save`, `/usr/sbin/iptables-restore`, `/usr/sbin/ip6tables`.
+     - Библиотеки `libxtables.so.12`, `libip4tc.so.2`, `libip6tc.so.2`, `libiptext.so.0`, `libiptext6.so.0`.
+  3. **Конфигурация UCI Firewall**:
+     - Создан стандартный `/etc/config/firewall` с зонами `lan` (ACCEPT) и `wan` (REJECT + Masquerading/NAT), правилом `Allow-SSH-WAN` (для предотвращения блокировки доступа при тестировании) и цепочками проброса.
+  4. **Ядерные модули Netfilter**:
+     - Интегрированы в образ и настроены на автозагрузку в `/etc/modules.d/` все необходимые модули ядра 5.4.213: `ipt_core`, `ipt_nat`, `ipt_conntrack`, `xt_MASQUERADE`, `xt_conntrack`, `xt_state`, `xt_nat`, `nf_nat`, `nf_conntrack`, `nf_reject_ipv4`, `nf_reject_ipv6`, `iptable_filter`, `iptable_nat`, `iptable_raw`, `iptable_mangle`.
+- **Результат**: Собран полный образ фабричной прошивки `bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi` с поддержкой Firewall3, iptables и NAT Masquerade.
+
+---
+
+## 🗺️ Дорожная карта дальнейшей разработки (Next Steps)
 
 Базовый стратегический план поэтапной доработки функционала роутера:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 0 (Текущий фундамент): Базовая ОС + SSH (Завершено)                │
+│ ✅ Шаг 0 (Фундамент): Базовая ОС + SSH (Завершено)                     │
 │ • Ядро 5.4.213 + qca-nss-dp + yt_switch/yt_phy                         │
 │ • Нативный OpenWrt 24 userland (procd, ubus, ubox, netifd, uci)        │
 │ • RAMFS /etc, UBIFS /data, swconfig, DHCP-клиент br-lan, SSH           │
@@ -325,17 +379,25 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 1: Базовый проводной маршрутизатор (OpenWrt Core)                  │
-│ • dnsmasq / odhcpd — раздача DHCP и DNS клиентам в LAN                 │
-│ • firewall4 (nftables) / firewall3 — межсетевой экран и NAT (WAN↔LAN)  │
-│ • opkg + ca-bundle + libustream-mbedtls — менеджер пакетов и TLS       │
-│ • ppp + ppp-mod-pppoe — поддержка PPPoE-подключений провайдера         │
-│ • urandom-seed / urngd — системная энтропия                            │
+│ 🔄 Шаг 1: Базовый проводной маршрутизатор (В процессе)                 │
+│ • [x] opkg + ca-bundle + libustream-mbedtls + mbedtls (TLS-стек)       │
+│ • [x] dnsmasq — раздача DHCP и DNS клиентам в LAN                      │
+│ • [x] firewall3 (fw3) + iptables-legacy — межсетевой экран и NAT (WAN) │
+│ • [x] urandom-seed / urngd — подсистема энтропии                       │
+│ • [ ] ppp + ppp-mod-pppoe — поддержка PPPoE-подключений провайдера     │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 2: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)     │
+│ ✅ Шаг 3: Аппаратная периферия и индикация (Завершено)                 │
+│ • kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh             │
+│ • kmod-pwm-rgb + /sbin/xqled — RGB светодиодная индикация              │
+│ • Интеграция событий кнопок и статуса загрузки в /etc/diag.sh          │
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ ⏳ Шаг 2: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)   │
 │ • kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk-nohnat   │
 │ • Интеграция ECM в netifd / firewall (оффлоадинг conntrack потоков)    │
 │ • Тестирование multi-gigabit throughput (iperf3 2.5 Gbps, ~0% CPU)     │
@@ -343,24 +405,17 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 3: Аппаратная периферия и системный контроль                       │
-│ • kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh             │
-│ • Светодиодная индикация (System / Internet LEDs)                      │
-│ • qca-thermald — демон контроля температуры и охлаждения               │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 4: Веб-интерфейс управления (LuCI)                                 │
+│ ⏳ Шаг 4: Веб-интерфейс управления (LuCI)                               │
 │ • luci-core, rpcd, uhttpd / nginx                                      │
 │ • luci-app-firewall, luci-app-opkg                                     │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Шаг 5: Беспроводной стек (Wi-Fi 7 / QCN6432)                           │
+│ ⏳ Шаг 5: Беспроводной стек (Wi-Fi 7 / QCN6432)                         │
 │ • Драйверы kmod-qca-wifi / ath12k, прошивки firmware                   │
 │ • Стек qca-hostap / wpa_supplicant, конфигурация радиоинтерфейсов      │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
 

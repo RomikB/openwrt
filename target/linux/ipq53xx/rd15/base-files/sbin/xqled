@@ -1,0 +1,64 @@
+#!/bin/sh
+# xqled CLI utility for Xiaomi Router BE3600 (RD15)
+# Direct control of front RGB LED
+
+LED_SYSFS="/sys/class/leds/rgb"
+COLOR_OFF=0
+COLOR_BLUE=1207959552
+COLOR_ORANGE=4718592
+COLOR_PURPLE=573767680
+
+if [ ! -d "$LED_SYSFS" ]; then
+	echo "Error: LED sysfs interface $LED_SYSFS not found (is kmod-pwm-rgb loaded?)" >&2
+	exit 1
+fi
+
+set_rgb() {
+	local color="$1"
+	local trigger="${2:-none}"
+	local delay_on="${3:-200}"
+	local delay_off="${4:-200}"
+
+	echo "$trigger" > "$LED_SYSFS/trigger" 2>/dev/null || true
+	echo "$color" > "$LED_SYSFS/brightness" 2>/dev/null || true
+
+	if [ "$trigger" = "timer" ]; then
+		echo "$delay_on" > "$LED_SYSFS/delay_on" 2>/dev/null || true
+		echo "$delay_off" > "$LED_SYSFS/delay_off" 2>/dev/null || true
+	fi
+}
+
+case "$1" in
+blue)
+	set_rgb "$COLOR_BLUE" none
+	echo "LED set to Blue"
+	;;
+orange)
+	set_rgb "$COLOR_ORANGE" none
+	echo "LED set to Orange"
+	;;
+purple)
+	set_rgb "$COLOR_PURPLE" none
+	echo "LED set to Purple"
+	;;
+off)
+	set_rgb "$COLOR_OFF" none
+	echo "LED turned OFF"
+	;;
+blink_blue)
+	set_rgb "$COLOR_BLUE" timer 250 250
+	echo "LED blinking Blue"
+	;;
+blink_orange)
+	set_rgb "$COLOR_ORANGE" timer 250 250
+	echo "LED blinking Orange"
+	;;
+status)
+	echo "Trigger: $(cat "$LED_SYSFS/trigger")"
+	echo "Brightness: $(cat "$LED_SYSFS/brightness")"
+	;;
+*)
+	echo "Usage: $0 {blue|orange|purple|off|blink_blue|blink_orange|status}"
+	exit 1
+	;;
+esac

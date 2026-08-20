@@ -7,11 +7,16 @@ CPU_TYPE:=cortex-a7
 DEVICE_TYPE:=basic
 
 DEFAULT_PACKAGES += \
-	-opkg -urandom-seed -urngd -procd-ujail \
-	-ca-bundle -libustream-mbedtls \
-	base-files libc libgcc bridge ethtool ip-full nand-utils dropbear mtd uci swconfig busybox ubus ubusd ubox getrandom logd fstools block-mount ubi-utils procd netifd jsonfilter usign openwrt-keyring fwtool \
+	-procd-ujail \
+	dnsmasq firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
 	kmod-bootconfig-vendor kmod-qca-nss-dp-vendor \
 	kmod-yt-9215s-driver-vendor kmod-yt-phy-driver-vendor \
+	kmod-pwm-rgb-vendor kmod-gpio-button-hotplug-vendor \
+	kmod-ipt-core-vendor kmod-ipt-nat-vendor kmod-ipt-conntrack-vendor \
+	kmod-ipt-conntrack-extra-vendor kmod-ipt-raw-vendor kmod-ipt-ipopt-vendor \
+	kmod-ipt-offload-vendor kmod-ipt-filter-vendor kmod-ipt-extra-vendor \
+	kmod-ipt-nat6-vendor kmod-nf-conntrack-vendor kmod-nf-conntrack6-vendor \
+	kmod-nf-nat-vendor kmod-nf-nat6-vendor kmod-nf-reject-vendor kmod-nf-reject6-vendor \
 	nvram-vendor qca-ssdk-shell-vendor \
 	yt-9215s-client-vendor
 

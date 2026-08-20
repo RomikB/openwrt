@@ -44,6 +44,15 @@ for pkg in pkg_info:
             cfs = [l.strip() for l in cf if l.strip()]
             pkg_info[pkg]['conffiles'] = cfs
 
+# Extra kernel module dependencies not fully captured in opkg status
+EXTRA_KMOD_DEPS = {
+    'kmod-ipt-core': ['kmod-nf-reject', 'kmod-nf-ipt'],
+    'kmod-ipt-nat': ['kmod-nf-nat', 'kmod-ipt-conntrack', 'kmod-ipt-core'],
+    'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
+    'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
+    'kmod-nf-conntrack6': ['kmod-nf-conntrack', 'kmod-nf-ipt6'],
+}
+
 # Resolve target package list and transitive dependencies
 visited = set()
 to_visit = list(add_pkgs)
@@ -54,7 +63,10 @@ while to_visit:
         continue
     visited.add(pkg)
     resolved.append(pkg)
-    deps = pkg_info.get(pkg, {}).get('depends', [])
+    deps = list(pkg_info.get(pkg, {}).get('depends', []))
+    for extra in EXTRA_KMOD_DEPS.get(pkg, []):
+        if extra not in deps:
+            deps.append(extra)
     for dep in deps:
         if dep not in ignore_pkgs and dep not in visited:
             to_visit.append(dep)
@@ -99,8 +111,18 @@ for pkg in resolved:
         pkg_version = full_version
         pkg_release = '1'
 
+    EXTRA_KMOD_DEPS = {
+        'kmod-ipt-core': ['kmod-nf-reject', 'kmod-nf-ipt'],
+        'kmod-ipt-nat': ['kmod-nf-nat', 'kmod-ipt-conntrack', 'kmod-ipt-core'],
+        'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
+        'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
+        'kmod-nf-conntrack6': ['kmod-nf-conntrack', 'kmod-nf-ipt6'],
+    }
     raw_deps = pkg_info.get(pkg, {}).get('depends', [])
     filtered_deps = [d for d in raw_deps if d not in ignore_pkgs]
+    for extra_dep in EXTRA_KMOD_DEPS.get(pkg, []):
+        if extra_dep not in filtered_deps and extra_dep not in ignore_pkgs:
+            filtered_deps.append(extra_dep)
     depends_str = ' '.join(f"+{d}-vendor" for d in filtered_deps)
 
     conffiles = pkg_info.get(pkg, {}).get('conffiles', [])
@@ -109,6 +131,7 @@ for pkg in resolved:
         cf_lines = '\n'.join(conffiles)
         conffiles_block = f"define Package/{pkg_vendor}/conffiles\n{cf_lines}\nendef\n\n"
 
+    provides_line = f"  PROVIDES:={pkg}\n" if pkg.startswith('kmod-') else ""
     depends_line = f"  DEPENDS:={depends_str}\n" if depends_str else ""
 
     makefile_content = f"""include $(TOPDIR)/rules.mk
@@ -123,7 +146,7 @@ define Package/{pkg_vendor}
   SECTION:=vendor
   CATEGORY:=Vendor Prebuilt
   TITLE:=Prebuilt {pkg} package
-{depends_line}endef
+{provides_line}{depends_line}endef
 
 define Package/{pkg_vendor}/description
   Prebuilt {pkg} package extracted from vendor firmware.
