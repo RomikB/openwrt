@@ -49,18 +49,39 @@ make4.1+ perl python3.7+ rsync subversion unzip which
 
 ### Quickstart
 
-1. Run `./scripts/feeds update -a` to obtain all the latest package definitions
+1. Place the stock firmware image `miwifi_rd15_firmware_*.bin` in the root directory.
+
+2. Run `./vendor_scripts/prepare_feed.sh` to extract vendor kernel drivers, prebuilt kernel image, patch library dependencies, and generate `vendor_feed`.
+
+3. Run `./scripts/feeds update -a` to obtain all the latest package definitions
    defined in feeds.conf / feeds.conf.default
 
-2. Run `./scripts/feeds install -a` to install symlinks for all obtained
+4. Run `./scripts/feeds install -a` to install symlinks for all obtained
    packages into package/feeds/
 
-3. Run `make menuconfig` to select your preferred configuration for the
+5. Configure target system and apply `defconfig`:
+   ```bash
+   cat << 'EOF' > .config
+   CONFIG_TARGET_ipq53xx=y
+   CONFIG_TARGET_ipq53xx_rd15=y
+   CONFIG_TARGET_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild=y
+   # CONFIG_PACKAGE_opkg is not set
+   # CONFIG_PACKAGE_uclient-fetch is not set
+   # CONFIG_PACKAGE_libuclient is not set
+   # CONFIG_PACKAGE_knot-resolver_dnstap is not set
+   EOF
+   make defconfig
+   ```
+
+6. Run `make menuconfig` to select your preferred configuration for the
    toolchain, target system & firmware packages.
 
-4. Run `make` to build your firmware. This will download all sources, build the
+7. Run `make` to build your firmware. This will download all sources, build the
    cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
    applications for your target system.
+
+   The resulting UBI image will be generated at:
+   `bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi`
 
 ### Related Repositories
 
