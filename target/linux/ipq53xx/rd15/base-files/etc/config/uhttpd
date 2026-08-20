@@ -1,0 +1,62 @@
+# Server configuration
+config uhttpd main
+
+	# HTTP listen addresses, multiple allowed
+	list listen_http	0.0.0.0:80
+	list listen_http	[::]:80
+
+	# HTTPS listen addresses, multiple allowed
+	list listen_https	0.0.0.0:443
+	list listen_https	[::]:443
+
+	# Redirect HTTP requests to HTTPS if possible
+	option redirect_https	0
+
+	# Server document root
+	option home		/www
+
+	# Reject requests from RFC1918 IP addresses
+	# Disabled to allow web management from private upstream networks
+	option rfc1918_filter	0
+
+	# Maximum number of concurrent requests.
+	option max_requests	3
+
+	# Maximum number of concurrent connections.
+	option max_connections	100
+
+	# Certificate and private key for HTTPS.
+	option cert		/etc/uhttpd.crt
+	option key		/etc/uhttpd.key
+
+	# CGI url prefix, will be searched in docroot.
+	option cgi_prefix	/cgi-bin
+
+	# List of prefix->ucode handler mappings.
+	list ucode_prefix	"/cgi-bin/luci=/usr/share/ucode/luci/uhttpd.uc"
+
+	# Specify the ubus-rpc prefix and socket path.
+	option ubus_prefix	/ubus
+
+	# CGI/Lua timeout
+	option script_timeout	60
+
+	# Network timeout
+	option network_timeout	30
+
+	# HTTP Keep-Alive
+	option http_keepalive	20
+
+	# TCP Keep-Alive
+	option tcp_keepalive	1
+
+# Defaults for automatic certificate and key generation
+config cert defaults
+	option days		397
+	option key_type		ec
+	option bits		2048
+	option ec_curve		P-256
+	option country		ZZ
+	option state		Somewhere
+	option location		Unknown
+	option commonname	'%D'

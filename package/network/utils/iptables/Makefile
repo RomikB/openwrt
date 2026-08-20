@@ -457,7 +457,7 @@ endef
 
 define Package/ip6tables-zz-legacy
 $(call Package/iptables/Default)
-  DEPENDS:=@IPV6 +kmod-ip6tables +xtables-legacy
+  DEPENDS:=@IPV6 +kmod-ip6tables-vendor +xtables-legacy
   CATEGORY:=Network
   TITLE:=IPv6 firewall administration tool
   PROVIDES:=ip6tables ip6tables-legacy

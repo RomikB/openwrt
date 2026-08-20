@@ -300,6 +300,9 @@
 | **`firewall` / `iptables`** | Firewall3 / NAT | ✅ Завершен | OpenWrt 24 | Фаза 14 | `fw3`, `iptables-legacy`, `xtables`, 15 Netfilter kmods |
 | **`ppp` / `ppp-mod-pppoe`** | PPPoE WAN-клиент | ✅ Завершен | 2.5.1 | Фаза 15 | `pppd`, `rp-pppoe.so`, `kmod-ppp*` модули 5.4.213 |
 | **`odhcp6c` / `odhcpd`** | IPv6 клиент / сервер | ✅ Завершен | OpenWrt 24 | Фаза 15 | `odhcp6c` (WAN), `odhcpd-ipv6only` (LAN RA/DHCPv6) |
+| **`luci`** | Веб-интерфейс UI | ✅ Завершен | OpenWrt 24 | Фаза 16 | LuCI ucode stack, Bootstrap UI, WAN+LAN доступ |
+| **`uhttpd` / `uhttpd-mod-ubus`** | Веб-сервер | ✅ Завершен | OpenWrt 24 | Фаза 16 | Порты 80/443, JSON-RPC proxy `/ubus`, rfc1918 off |
+| **`rpcd`** | IPC JSON-RPC демон | ✅ Завершен | OpenWrt 24 | Фаза 16 | `rpcd-mod-file`, `luci`, `ucode`, `iwinfo`, `rrdns` |
 
 ---
 
@@ -385,6 +388,29 @@ yt-9215s-client
 
 ---
 
+### ✅ Фаза 16: Интеграция веб-интерфейса LuCI и WAN-доступа к панели управления
+- **Что сделано**:
+  1. **Интеграция метапакета `luci` в целевую подплатформу**:
+     - В `target/linux/ipq53xx/rd15/target.mk` метапакет `luci` включен в `DEFAULT_PACKAGES`.
+     - В образ автоматически вошел современный стек LuCI OpenWrt 24 на базе `ucode` и клиентского JavaScript:
+       - **Веб-интерфейс**: `luci`, `luci-light`, `luci-base`, `luci-mod-admin-full`, `luci-mod-status`, `luci-mod-system`, `luci-mod-network`, тема `luci-theme-bootstrap`.
+       - **Приложения**: `luci-app-firewall`, `luci-app-package-manager` (веб-управление пакетами opkg), `luci-proto-ppp`, `luci-proto-ipv6`.
+       - **Веб-сервер и демоны**: `/usr/sbin/uhttpd`, `/usr/lib/uhttpd_ubus.so`, `/sbin/rpcd`, плагины `rpcd-mod-file`, `rpcd-mod-luci`, `rpcd-mod-ucode`, `rpcd-mod-iwinfo`, `rpcd-mod-rrdns`, `/usr/libexec/cgi-io`.
+  2. **Автоматизация патчинга внешних системных фидов (`vendor_scripts/patch_feeds.py`)**:
+     - Создан скрипт `vendor_scripts/patch_feeds.py`, идемпотентно накладывающий необходимые правки совместимости на внешние репозитории без ручной правки их рабочего дерева.
+     - Для `feeds/luci/contrib/package/lucihttp/Makefile` автоматически добавляется явная зависимость `DEPENDS:=+libgcc` для удовлетворения проверок `CheckDependencies` при сборке ARM shared-библиотек.
+     - Добавлен вызов скрипта в Quickstart инструкции `README.md`.
+  3. **Исправление зависимостей `ip6tables-zz-legacy`**:
+     - В `package/network/utils/iptables/Makefile` зависимость пакета `ip6tables-zz-legacy` перенаправлена со стандартного ядра 6.6 (`kmod-ip6tables`) на вендорный модуль ядра 5.4.213 (`kmod-ip6tables-vendor`).
+  4. **Конфигурация сетевого доступа (LAN + WAN доступ к UI)**:
+     - В `/etc/config/firewall` добавлены правила входящего доступа из зоны WAN:
+       - `Allow-HTTP-WAN` (TCP/80 -> ACCEPT)
+       - `Allow-HTTPS-WAN` (TCP/443 -> ACCEPT)
+     - В `/etc/config/uhttpd` отключен фильтр RFC1918 (`option rfc1918_filter '0'`), разрешающий веб-доступ со стороны приватных IP-адресов вышестоящей локальной сети.
+- **Результат**: Собран полный образ прошивки `factory.ubi` (7.2 МБ) с полноценным веб-интерфейсом LuCI, доступным как со стороны локальной сети (`192.168.1.1`), так и через WAN-интерфейс.
+
+---
+
 ## 🗺️ Дорожная карта дальнейшей разработки (Next Steps)
 
 Базовый стратегический план поэтапной доработки функционала роутера:
@@ -410,6 +436,15 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
+│ ✅ Шаг 2: Веб-интерфейс управления LuCI (Завершено)                   │
+│ • [x] luci-core, rpcd, uhttpd + uhttpd-mod-ubus (JSON-RPC)             │
+│ • [x] luci-app-firewall, luci-app-package-manager                      │
+│ • [x] Доступ к веб-панели управления через LAN (80) и WAN (80/443)     │
+│ • [x] Идемпотентный скрипт патчинга фидов vendor_scripts/patch_feeds.py│
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
 │ ✅ Шаг 3: Аппаратная периферия и индикация (Завершено)                 │
 │ • kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh             │
 │ • kmod-pwm-rgb + /sbin/xqled — RGB светодиодная индикация              │
@@ -418,17 +453,10 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ⏳ Шаг 2: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)   │
+│ ⏳ Шаг 4: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)   │
 │ • kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk-nohnat   │
 │ • Интеграция ECM в netifd / firewall (оффлоадинг conntrack потоков)    │
 │ • Тестирование multi-gigabit throughput (iperf3 2.5 Gbps, ~0% CPU)     │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ ⏳ Шаг 4: Веб-интерфейс управления (LuCI)                               │
-│ • luci-core, rpcd, uhttpd / nginx                                      │
-│ • luci-app-firewall, luci-app-opkg                                     │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼

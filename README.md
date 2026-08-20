@@ -56,10 +56,12 @@ make4.1+ perl python3.7+ rsync subversion unzip which
 3. Run `./scripts/feeds update -a` to obtain all the latest package definitions
    defined in feeds.conf / feeds.conf.default
 
-4. Run `./scripts/feeds install -a` to install symlinks for all obtained
+4. Run `python3 ./vendor_scripts/patch_feeds.py` to apply compatibility patches to system feeds.
+
+5. Run `./scripts/feeds install -a` to install symlinks for all obtained
    packages into package/feeds/
 
-5. Configure target system and apply `defconfig`:
+6. Configure target system and apply `defconfig`:
    ```bash
    cat << 'EOF' > .config
    CONFIG_TARGET_ipq53xx=y
@@ -70,10 +72,10 @@ make4.1+ perl python3.7+ rsync subversion unzip which
    make defconfig
    ```
 
-6. Run `make menuconfig` to select your preferred configuration for the
+7. Run `make menuconfig` to select your preferred configuration for the
    toolchain, target system & firmware packages.
 
-7. Run `make` to build your firmware. This will download all sources, build the
+8. Run `make` to build your firmware. This will download all sources, build the
    cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
    applications for your target system.
 
