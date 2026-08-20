@@ -303,6 +303,8 @@
 | **`luci`** | Веб-интерфейс UI | ✅ Завершен | OpenWrt 24 | Фаза 16 | LuCI ucode stack, Bootstrap UI, WAN+LAN доступ |
 | **`uhttpd` / `uhttpd-mod-ubus`** | Веб-сервер | ✅ Завершен | OpenWrt 24 | Фаза 16 | Порты 80/443, JSON-RPC proxy `/ubus`, rfc1918 off |
 | **`rpcd`** | IPC JSON-RPC демон | ✅ Завершен | OpenWrt 24 | Фаза 16 | `rpcd-mod-file`, `luci`, `ucode`, `iwinfo`, `rrdns` |
+| **`iperf3`** | Сетевой бенчмарк | ✅ Завершен | 3.17.1 | Фаза 17 | Тестирование пропускной способности LAN/WAN (1G/2.5G) |
+| **`htop`** | Монитор ресурсов | ✅ Завершен | 3.4.1 | Фаза 17 | Per-core мониторинг CPU / SoftIRQ при нагрузке |
 
 ---
 
@@ -408,6 +410,21 @@ yt-9215s-client
        - `Allow-HTTPS-WAN` (TCP/443 -> ACCEPT)
      - В `/etc/config/uhttpd` отключен фильтр RFC1918 (`option rfc1918_filter '0'`), разрешающий веб-доступ со стороны приватных IP-адресов вышестоящей локальной сети.
 - **Результат**: Собран полный образ прошивки `factory.ubi` (7.2 МБ) с полноценным веб-интерфейсом LuCI, доступным как со стороны локальной сети (`192.168.1.1`), так и через WAN-интерфейс.
+
+---
+
+### ✅ Фаза 17: Интеграция сетевого бенчмарка (`iperf3`) и монитора ресурсов (`htop`)
+- **Что сделано**:
+  1. **Интеграция пакетов в сборку**:
+     - В `target/linux/ipq53xx/rd15/target.mk` добавлены `iperf3` и `htop` в `DEFAULT_PACKAGES`.
+     - Скомпилированы нативные `/usr/bin/iperf3`, библиотека `/usr/lib/libiperf.so.*`, `/usr/bin/htop` и `/lib/libatomic.so.*`.
+  2. **Автоматизация патчинга зависимостей фидов**:
+     - В `vendor_scripts/patch_feeds.py` добавлена функция `patch_iperf3_makefile`, гарантирующая установку зависимостей `DEPENDS:=+libatomic +libgcc` для `Package/libiperf3`.
+     - В `package/libs/ncurses/Makefile` добавлена зависимость `+libgcc` для `Package/libncurses`.
+  3. **Подготовка к замеру производительности (Baseline Soft-Routing vs PPE/ECM)**:
+     - Обеспечена возможность запуска `iperf3` сервера (`iperf3 -s -D`) на роутере.
+     - Обеспечен интерактивный per-core мониторинг CPU и SoftIRQ через `htop` в SSH-сессии во время стресс-тестов на скоростях 1 Gbps / 2.5 Gbps.
+- **Результат**: Собран полный образ прошивки `factory.ubi` (7.4 МБ) со встроенным инструментарием сетевого и системного профилирования.
 
 ---
 
