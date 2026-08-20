@@ -51,6 +51,9 @@ EXTRA_KMOD_DEPS = {
     'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
     'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
     'kmod-nf-conntrack6': ['kmod-nf-conntrack', 'kmod-nf-ipt6'],
+    'kmod-pppoe': ['kmod-ppp', 'kmod-pppox'],
+    'kmod-pppox': ['kmod-ppp'],
+    'kmod-ppp': ['kmod-slhc', 'kmod-lib-crc-ccitt'],
 }
 
 # Resolve target package list and transitive dependencies
@@ -111,13 +114,6 @@ for pkg in resolved:
         pkg_version = full_version
         pkg_release = '1'
 
-    EXTRA_KMOD_DEPS = {
-        'kmod-ipt-core': ['kmod-nf-reject', 'kmod-nf-ipt'],
-        'kmod-ipt-nat': ['kmod-nf-nat', 'kmod-ipt-conntrack', 'kmod-ipt-core'],
-        'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
-        'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
-        'kmod-nf-conntrack6': ['kmod-nf-conntrack', 'kmod-nf-ipt6'],
-    }
     raw_deps = pkg_info.get(pkg, {}).get('depends', [])
     filtered_deps = [d for d in raw_deps if d not in ignore_pkgs]
     for extra_dep in EXTRA_KMOD_DEPS.get(pkg, []):
@@ -131,7 +127,6 @@ for pkg in resolved:
         cf_lines = '\n'.join(conffiles)
         conffiles_block = f"define Package/{pkg_vendor}/conffiles\n{cf_lines}\nendef\n\n"
 
-    provides_line = f"  PROVIDES:={pkg}\n" if pkg.startswith('kmod-') else ""
     depends_line = f"  DEPENDS:={depends_str}\n" if depends_str else ""
 
     makefile_content = f"""include $(TOPDIR)/rules.mk
@@ -146,7 +141,7 @@ define Package/{pkg_vendor}
   SECTION:=vendor
   CATEGORY:=Vendor Prebuilt
   TITLE:=Prebuilt {pkg} package
-{provides_line}{depends_line}endef
+{depends_line}endef
 
 define Package/{pkg_vendor}/description
   Prebuilt {pkg} package extracted from vendor firmware.

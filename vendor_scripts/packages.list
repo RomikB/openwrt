@@ -19,4 +19,9 @@ kmod-ipt-offload
 kmod-ipt-filter
 kmod-ipt-extra
 kmod-ipt-nat6
-
+kmod-ppp
+kmod-pppoe
+kmod-pppox
+kmod-slhc
+kmod-lib-crc-ccitt
+kmod-ipv6

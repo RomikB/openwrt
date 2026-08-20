@@ -49,6 +49,10 @@ config interface 'wan'
 	option wantype 'eth'
 	option macaddr '90:fb:5d:1b:58:f2'
 
+config interface 'wan6'
+	option ifname 'eth0.1'
+	option proto 'dhcpv6'
+
 config switch_vlan 'vlan1'
 	option device 'switch1'
 	option ports '3 5t'

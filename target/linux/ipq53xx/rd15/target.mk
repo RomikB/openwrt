@@ -4,11 +4,10 @@ SUBTARGET:=rd15
 BOARDNAME:=Xiaomi Router BE3600
 FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
-DEVICE_TYPE:=basic
-
 DEFAULT_PACKAGES += \
 	-procd-ujail \
-	dnsmasq firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
+	-firewall4 -nftables -kmod-nft-offload \
+	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
 	kmod-bootconfig-vendor kmod-qca-nss-dp-vendor \
 	kmod-yt-9215s-driver-vendor kmod-yt-phy-driver-vendor \
 	kmod-pwm-rgb-vendor kmod-gpio-button-hotplug-vendor \
@@ -17,6 +16,7 @@ DEFAULT_PACKAGES += \
 	kmod-ipt-offload-vendor kmod-ipt-filter-vendor kmod-ipt-extra-vendor \
 	kmod-ipt-nat6-vendor kmod-nf-conntrack-vendor kmod-nf-conntrack6-vendor \
 	kmod-nf-nat-vendor kmod-nf-nat6-vendor kmod-nf-reject-vendor kmod-nf-reject6-vendor \
+	kmod-ppp-vendor kmod-pppoe-vendor kmod-pppox-vendor kmod-slhc-vendor kmod-lib-crc-ccitt-vendor kmod-ipv6-vendor \
 	nvram-vendor qca-ssdk-shell-vendor \
 	yt-9215s-client-vendor
 

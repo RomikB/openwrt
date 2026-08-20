@@ -297,6 +297,9 @@
 | **`dnsmasq`** | DNS / DHCP сервер | ✅ Завершен | 2.90 | Фаза 12 | Резолвер + DHCP пул `192.168.1.100-249` (Проверено на роутере) |
 | **`kmod-pwm-rgb` / `diag.sh`** | Светодиодная индикация | ✅ Завершен | OpenWrt 24 | Фаза 13 | RGB LED (`/sys/class/leds/rgb`), `xqled` CLI (Проверено на роутере) |
 | **`kmod-gpio-button-hotplug`** | Кнопки Reset & Mesh | ✅ Завершен | OpenWrt 24 | Фаза 13 | `/etc/rc.button/reset` & `/etc/rc.button/mesh` (Проверено на роутере) |
+| **`firewall` / `iptables`** | Firewall3 / NAT | ✅ Завершен | OpenWrt 24 | Фаза 14 | `fw3`, `iptables-legacy`, `xtables`, 15 Netfilter kmods |
+| **`ppp` / `ppp-mod-pppoe`** | PPPoE WAN-клиент | ✅ Завершен | 2.5.1 | Фаза 15 | `pppd`, `rp-pppoe.so`, `kmod-ppp*` модули 5.4.213 |
+| **`odhcp6c` / `odhcpd`** | IPv6 клиент / сервер | ✅ Завершен | OpenWrt 24 | Фаза 15 | `odhcp6c` (WAN), `odhcpd-ipv6only` (LAN RA/DHCPv6) |
 
 ---
 
@@ -351,7 +354,7 @@ yt-9215s-client
      - В OpenWrt пакет `firewall` (и `iptables-zz-legacy`, `xtables-legacy`) по умолчанию зависят от символов `+kmod-ipt-core`, `+kmod-ipt-conntrack`, `+kmod-ipt-nat`.
      - При сборке с предсобранным монолитным ядром 5.4.213 система сборки OpenWrt пытается компилировать нативные `KernelPackage` из нескомпилированного дерева 6.6, что приводило к ошибке отсутствия `.ko` файлов.
      - Для решения:
-       - В `vendor_scripts/generate_feed.py` реализована автоматическая генерация `PROVIDES:={pkg}` для всех `kmod-*` пакетов с разрешением транзитивных зависимостей (`EXTRA_KMOD_DEPS`).
+       - В `vendor_scripts/generate_feed.py` реализована автоматическая генерация вендорных пакетов `kmod-*-vendor` с разрешением транзитивных зависимостей (`EXTRA_KMOD_DEPS`).
        - В Makefiles пакетов `package/network/config/firewall/Makefile` и `package/network/utils/iptables/Makefile` зависимости на `kmod-ipt-*` переведены на вендорские аналоги (`kmod-ipt-core-vendor`, `kmod-ipt-nat-vendor` и т.д.).
        - В `Package/libxtables`, `Package/libip4tc`, `Package/libip6tc`, `Package/libiptext*` добавлена явная зависимость `+libgcc` для прохождения валидации зависимостей `CheckDependencies`.
   2. **Сборка юзерспейс-компонентов**:
@@ -362,6 +365,23 @@ yt-9215s-client
   4. **Ядерные модули Netfilter**:
      - Интегрированы в образ и настроены на автозагрузку в `/etc/modules.d/` все необходимые модули ядра 5.4.213: `ipt_core`, `ipt_nat`, `ipt_conntrack`, `xt_MASQUERADE`, `xt_conntrack`, `xt_state`, `xt_nat`, `nf_nat`, `nf_conntrack`, `nf_reject_ipv4`, `nf_reject_ipv6`, `iptable_filter`, `iptable_nat`, `iptable_raw`, `iptable_mangle`.
 - **Результат**: Собран полный образ фабричной прошивки `bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi` с поддержкой Firewall3, iptables и NAT Masquerade.
+
+---
+
+### ✅ Фаза 15: Интеграция PPPoE (`ppp`, `ppp-mod-pppoe`) и IPv6 стека (`odhcp6c`, `odhcpd-ipv6only`)
+- **Что сделано**:
+  1. **Ядерные модули PPP и IPv6**:
+     - В `vendor_scripts/packages.list` и `vendor_scripts/generate_feed.py` добавлены модули ядра 5.4.213: `kmod-ppp`, `kmod-pppoe`, `kmod-pppox`, `kmod-slhc`, `kmod-lib-crc-ccitt`, `kmod-ipv6`.
+     - Настроены связи `EXTRA_KMOD_DEPS` для автогенерации транзитивных зависимостей в вендорном фиде.
+  2. **Адаптация нативного пакета `ppp` (OpenWrt 24, v2.5.1)**:
+     - В `package/network/services/ppp/Makefile` зависимости на ядро перенаправлены на вендорные модули (`+kmod-ppp-vendor`, `+kmod-pppoe-vendor`) и добавлен `+libgcc` для удовлетворения проверок `CheckDependencies`.
+     - Собраны нативные `/usr/sbin/pppd`, плагин `/usr/lib/pppd/2.5.1/rp-pppoe.so` и протокольные скрипты `netifd` (`/lib/netifd/proto/ppp.sh`, `ppp-up`, `ppp-down`, `ppp6-up`).
+  3. **IPv6 клиент и сервер (`odhcp6c`, `odhcpd-ipv6only`)**:
+     - Скомпилированы нативные `/usr/sbin/odhcp6c` и `/usr/sbin/odhcpd` со связкой `libubox`, `libuci`, `libubus`, `libjson-c`, `libnl-tiny`.
+  4. **Конфигурация сети (`/etc/config/network` и `/etc/config/dhcp`)**:
+     - В `/etc/config/network` добавлен логический интерфейс `wan6` (`proto 'dhcpv6'`).
+     - В `/etc/config/dhcp` настроен сервер `odhcpd` и включены параметры анонсирования маршрутизатора (`ra 'server'`, `dhcpv6 'server'`, `ra_slaac '1'`) для зоны `lan`.
+- **Результат**: Собран полный образ прошивки `factory.ubi` со стандартной поддержкой провайдерских PPPoE-подключений и полного стека IPv6 в LAN/WAN.
 
 ---
 
@@ -379,12 +399,13 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 🔄 Шаг 1: Базовый проводной маршрутизатор (В процессе)                 │
+│ ✅ Шаг 1: Базовый проводной маршрутизатор (Завершено)                  │
 │ • [x] opkg + ca-bundle + libustream-mbedtls + mbedtls (TLS-стек)       │
 │ • [x] dnsmasq — раздача DHCP и DNS клиентам в LAN                      │
 │ • [x] firewall3 (fw3) + iptables-legacy — межсетевой экран и NAT (WAN) │
 │ • [x] urandom-seed / urngd — подсистема энтропии                       │
-│ • [ ] ppp + ppp-mod-pppoe — поддержка PPPoE-подключений провайдера     │
+│ • [x] ppp + ppp-mod-pppoe — поддержка PPPoE-подключений провайдера     │
+│ • [x] odhcp6c + odhcpd-ipv6only — стек IPv6 (WAN клиент + LAN сервер)   │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
