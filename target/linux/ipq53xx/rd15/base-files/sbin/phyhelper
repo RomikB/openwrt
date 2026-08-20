@@ -1,0 +1,246 @@
+#! /bin/sh
+
+. /lib/functions.sh
+. /lib/miwifi/lib_phy.sh
+
+OPT=""
+PORTS=""
+PMUCI="port_map"
+
+
+phyhelper_usage () {
+    cat <<-EOF
+		restart  ""/lan/<port>                          - repower multiple phys
+		start    ""/lan/<port>                          - power on multiple phys
+		stop     ""/lan/<port>                          - power off multiple phys
+
+		link     ""/service/iface/class/type/port <key> - show multiple phys' link status
+
+		mode     set <port> <speed>                     - set single phy neg speed
+		                                                  * return 0: mode set success, and phy restart
+		                                                  * return 1: phy's link mode is current, don't need restart
+
+		mode     get <port> <speed>                     - get single phy neg speed
+
+
+		speed    iface/port <key>                       - get single phy link speed
+
+		duplex   port <key>                             - get single phy link duplex
+
+		mib      <port> rx_bytes/tx_bytex
+		                /rx_drop/tx_drop                - get single phy mib info
+
+		fdb      port <port>                            - get port device's mac
+		         mac  <mac>                             - get the mac in which wired port
+		         dump                                   - dump fdb info
+
+		dump                                            - show all phys' info
+	EOF
+    return
+}
+
+phyhelper_power_control() {
+    local target="$1"   # ""/<ports>/"lan"
+
+    PORTS="$target"                                             # target=<ports>
+    [ -z "$target" ] && PORTS=$(port_map port)                  # target="" (default is all ports)
+    [ "$target" = "lan" ] && PORTS=$(port_map port class lan)   # target="lan"
+
+    power_control() {
+        local port="$1"
+        local type=""  # "cpe"/"eth"
+
+        list_contains PORTS "$port" || return
+
+        config_get type "$port" type "eth"
+        eval phy_port_"$OPT" "$type" "$port"
+        return
+    }
+
+    config_load "$PMUCI"
+    config_foreach power_control port
+    return
+}
+
+phyhelper_link_status() {
+    local target="$1" # ""/service/iface/port
+    local key="$2"
+
+    if [ "$target" = "port" ]; then
+        PORTS="$key"
+    else
+        PORTS=$(port_map port "$target" "$key")
+    fi
+    [ -z "$PORTS" ] && return
+
+    link_status() {
+        local port="$1"
+        local type service
+
+        list_contains PORTS "$port" || return
+
+        config_get type "$port" type "eth"
+        config_get service "$port" service
+
+        status=$(phy_port_link_status "$type" "$port")
+        [ -n "$status" ] && echo "port:${port} link:${status} ${service}"
+        return
+    }
+
+    config_load "$PMUCI"
+    config_foreach link_status port
+    return
+}
+
+phyhelper_mode_control() {
+    local action="$1"   # set/get
+    local port="$2"
+    local mode="$3"
+    local type current_mode
+
+    [ -z "$port" ] && return 1
+    type=$(port_map config get "$port" type)
+    [ -z "$type" ] && return 1
+
+    case "$action" in
+        "set")
+            [ -z "$mode" ] && return 1
+            port_map config set "$port" link_mode "$mode"
+            current_mode=$(phy_port_mode_get "$type" "$port")
+            [ "$current_mode" != "$mode" ] && phy_port_mode_set "$type" "$port" "$mode"
+            ;;
+        "get")
+            mode=$(phy_port_mode_get "$type" "$port")
+            [ -n "$mode" ] && echo -n "$mode"
+            ;;
+        *)
+            ;;
+    esac
+    return
+}
+
+phyhelper_link_speed() {
+    local target="$1"   # iface/port
+    local key="$2"
+    local port speed type
+
+    [ -z "$target" ] || [ -z "$key" ] && return
+
+    [ "$target" = "port" ] && port="$key"
+    [ "$target" = "iface" ] && port=$(port_map port iface "$key")
+    [ -z "$port" ] && return
+
+    type=$(port_map config get "$port" type)
+    [ -z "$type" ] && return
+
+    speed=$(phy_port_link_speed "$type" "$port")
+    [ -n "$speed" ] && echo -n "$speed"
+    return
+}
+
+phyhelper_link_duplex() {
+    local target="$1"   # port
+    local port="$2"
+    local duplex type
+
+    [ -z "$target" ] || [ -z "$port" ] && return
+
+    type=$(port_map config get "$port" type)
+    [ -z "$type" ] && return
+
+    duplex=$(phy_port_link_duplex "$type" "$port")
+    [ -n "$duplex" ] && echo -n "$duplex"
+    return
+}
+
+phyhelper_dump_info() {
+    dump_info() {
+        local port="$1"
+        local service type ifname link speed mode
+
+        config_get service "$port" service
+        config_get type "$port" type
+        config_get ifname "$port" ifname
+
+        [ -z "$type" ] && return
+        link=$(phy_port_link_status "$type" "$port")
+        speed=$(phy_port_link_speed "$type" "$port")
+        mode=$(phy_port_mode_get "$type" "$port")
+        printf "LAN%s:  Link:%-6s  Mode:%-6s  Speed:%-6s  Type:%-6s  IFace:%-6s  %-6s\n" "$port" "$link" "$mode" "$speed" "$type" "$ifname" "$service"
+        return
+    }
+
+    config_load "$PMUCI"
+    config_foreach dump_info port
+    return
+}
+
+phyhelper_mib_info() {
+    local port="$1"
+    local que="$2"
+    local res type
+
+    type=$(port_map config get "$port" type)
+    [ -z "$type" ] && return
+
+    res=$(phy_port_mib_info "$type" "$port" "$que")
+    [ -n "$res" ] && echo -n "$res"
+    return
+}
+
+phyhelper_fdb_info() {
+    local action="$1"
+    local val="$2"
+    local type="eth"
+    local res
+
+    case "$action" in
+        dump)
+            phy_port_fdb_dump "$type"
+            ;;
+        port)
+            type=$(port_map config get "$val" type)
+            [ -z "$type" ] && return
+            phy_port_fdb_port "$type" "$val"
+            ;;
+        mac)
+            res=$(phy_port_fdb_mac "$type" "$val")
+            [ -n "$res" ] && echo -n "$res"
+            ;;
+    esac
+}
+
+# main
+OPT="$1"
+shift
+case "$OPT" in
+    restart|start|stop)
+        phyhelper_power_control "$@"
+        ;;
+    link)
+        phyhelper_link_status "$@"
+        ;;
+    mode)
+        phyhelper_mode_control "$@"
+        ;;
+    speed)
+        phyhelper_link_speed "$@"
+        ;;
+    duplex)
+        phyhelper_link_duplex "$@"
+        ;;
+    dump)
+        phyhelper_dump_info
+        ;;
+    mib)
+        phyhelper_mib_info "$@"
+        ;;
+    fdb)
+        phyhelper_fdb_info "$@"
+        ;;
+    *)
+        phyhelper_usage >&2
+        exit 1
+        ;;
+esac
+exit "$?"

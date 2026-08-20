@@ -35,3 +35,6 @@ git-src
 .cproject
 .ccache
 .vscode*
+/vendor_feed
+/target/linux/ipq53xx/rd15/kernel
+miwifi_rd15_firmware_*.bin

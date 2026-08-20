@@ -1,0 +1,13 @@
+#!/bin/sh
+
+ft_mode=$(cat /proc/xiaoqiang/ft_mode)
+[ "$BUTTON" = "mesh" ] && {
+	echo -e "BUTTON:$BUTTON ACTION:$ACTION SEEN:$SEEN\n" | tee /dev/console /dev/pts/* /tmp/button_test_"$BUTTON".log
+	[ "1" = "$ft_mode" ] && {
+		exit 0
+	}
+
+	[ "$ACTION" = "pressed" ] && {
+		ubus call miwifi-discovery start_mesh
+	}
+}

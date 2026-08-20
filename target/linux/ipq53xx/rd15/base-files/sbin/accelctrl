@@ -1,0 +1,36 @@
+#! /bin/sh
+
+. /lib/miwifi/miwifi_core_libs.sh
+
+usage() {
+    cat <<-EOF
+        control hardware or software acceleration
+            1. core control:
+                restart                        -- restart accel module
+                start                          -- start accel module
+                stop                           -- stop accel module
+                flush                          -- flush accel table
+
+            2. event control:
+                mipctl            [ start | stop  ]
+                qos               [ start | stop  ]
+                vpn               [ pre_start | start | stop | post_stop ]
+                ipv6_nat          [ start | stop  ]
+                ipv6_passthrough  [ start | stop  ]
+                lanap             [ open  | close ]
+                wifiap            [ open  | close ]
+                whc_re            [ open  | close | setup ]
+	EOF
+}
+
+
+# main
+case "$1" in
+"help")
+    usage >&2
+    ;;
+*)
+    network_accel_hook "$@"
+    ;;
+esac
+exit 0

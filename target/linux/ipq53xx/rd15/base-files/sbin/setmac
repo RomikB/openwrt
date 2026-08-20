@@ -1,0 +1,265 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/system.sh
+
+GETMAC="getmac"
+art_mtd="0:ART"
+eth0adr=""
+eth1adr=""
+eth2adr=""
+
+usage() {
+	echo "setmac <lan|wan|wan2|eth0|eth1|eth2|wl0|wl1|wl2> <mac>"
+	echo "setmac <peer1|peer2> <lan|wan|wl0|wl1|wl2|all> <mac>"
+	echo "setmac <peer1|peer2> <clean>"
+	echo "example: setmac lan 00:11:22:33:44:55"
+}
+
+get_eth0_mac_from_art()
+{
+	eth0adr="`${GETMAC} eth0`"
+}
+
+get_eth1_mac_from_art()
+{
+	eth1adr="`${GETMAC} eth1`"
+}
+
+get_eth2_mac_from_art()
+{
+	eth2adr="`${GETMAC} eth2`"
+}
+
+set_mac()
+{
+	for NUM in 0 1 2;do
+		A="`eval echo '${eth'$NUM'adr:0:2}'`"
+		B="`eval echo '${eth'$NUM'adr:3:2}'`"
+		C="`eval echo '${eth'$NUM'adr:6:2}'`"
+		D="`eval echo '${eth'$NUM'adr:9:2}'`"
+		E="`eval echo '${eth'$NUM'adr:12:2}'`"
+		F="`eval echo '${eth'$NUM'adr:15:2}'`"
+		str="${str}\x$A\x$B\x$C\x$D\x$E\x$F"
+	done
+
+	A="`eval echo '${btadr:0:2}'`"
+	B="`eval echo '${btadr:3:2}'`"
+	C="`eval echo '${btadr:6:2}'`"
+	D="`eval echo '${btadr:9:2}'`"
+	E="`eval echo '${btadr:12:2}'`"
+	F="`eval echo '${btadr:15:2}'`"
+	str="${str}\x$A\x$B\x$C\x$D\x$E\x$F"
+
+	# pad 0xff to /tmp/macaddr
+	for i in `seq 25 64`; do
+		str="${str}\xff"
+	done
+
+	echo -n -e ${str} > /tmp/macaddr
+	# hexdump -C /tmp/macaddr
+
+	art_partition=$(find_mtd_part $art_mtd)
+	[ -z "$art_partition" ] && art_partition=$(find_mmc_part 0:ART)
+
+	# Find the partition and set the MAC addresses in the flash
+	dd if=/tmp/macaddr of=$art_partition bs=64 conv=sync 2>/dev/null
+	rm -f /tmp/macaddr
+}
+
+raw_art_read() {
+    local mtdblock=$(find_mtd_part 0:ART)
+
+    if [ -z "$mtdblock" ]; then
+        #read from mmc
+        mtdblock=$(find_mmc_part 0:ART)
+    fi
+
+    [ -n "$mtdblock" ] || return
+
+    local apmp="/tmp"
+
+    dd if=${mtdblock} of=${apmp}/mi_virtual_art.bin
+    echo "Copy ART caldata from ${mtdblock} to /tmp/mi_virtual_art.bin" > /dev/console
+}
+
+setmac_wifi() {
+	. /lib/read_caldata_to_fs.sh;
+	. /lib/functions.sh;
+
+	case $1 in
+		wl1|wifi0)
+			artoff=$((4096))
+			macoff=$((22))
+			nvmacflag=$((66))
+			;;	 #start at offset 4096
+		wl0|wifi1)
+			artoff=$((75776))
+			macoff=$((22))
+			nvmacflag=$((66))
+			;; #start at offset 75776
+	*) return;;
+	esac;
+
+	raw_art_read
+
+	artdev="/tmp/mi_virtual_art.bin"
+	art_index=$(find_mtd_index 0:ART)
+	art_mtd=${art_index:+/dev/mtd$art_index}
+
+	backcsum=0
+	i=0
+	for data in `hexdump -v -e '/2 "%02X\n"' -n $((0x100)) -s $artoff -v $artdev`
+	do
+		backcsum=$((backcsum^0x$data))
+	done
+	backcsum=$((backcsum^0xffff))
+	
+	str='';
+	for octet in $(echo $2 | sed 's/:/ /g'); do
+		str="$str\x$octet";
+	done;
+
+	echo -n -e "$str" | dd of=$artdev bs=1 seek=$((artoff+macoff)) conv=notrunc 2>/dev/null
+	#set nvMacflag to set wifi mac
+	echo -n -e "\x01\x00" | dd of=$artdev bs=1 seek=$((artoff+nvmacflag)) conv=notrunc 2>/dev/null
+
+	#csum=$(csum=0; u16=0; hexdump -e '1/2 "%u\n"' -n $((0x20000)) -s $artoff -v $artdev | while read line; do [ $((u16++)) -eq 5 ] && line=$((0xffff)); csum=$((csum^line)); [ $u16 -eq $((0x20000/2)) ] && printf '%x\n' $csum; done);
+	csum=0
+	i=0
+	csum_pos=12
+
+	for data in `hexdump -v -e '/2 "%02X\n"' -n $((0x100)) -s $artoff -v $artdev`
+	do
+		if [ $i = $csum_pos ];then
+			csum=$((csum^0xffff))
+		else
+			csum=$((csum^0x$data))
+		fi		
+		i=$((i+2))
+	done
+	csum=$((csum^$backcsum))
+
+	echo -ne $(printf '\x%x\x%x' $(($csum&0xff)) $((($csum&0xff00)>>8))) | dd of=$artdev bs=1 seek=$((artoff+${csum_pos})) conv=notrunc 2>/dev/null
+
+	mtd write $artdev $art_mtd
+
+	#do_load_ipq4019_board_bin 2>/dev/null
+	#uci -q commit wireless;
+}
+
+set_mac_bdata()
+{
+	local name="$1"
+	local mac="$2"
+
+	[ -z "$name" -o -z "$mac" ] && usage && exit 0
+
+	bdata set "$name"="$mac"
+	bdata commit
+}
+
+set_peer_macs()
+{
+	local peer="$1"
+	local macs="$2"
+	local lan_mac=""
+	local wan_mac=""
+	local wl0_mac=""
+	local wl1_mac=""
+	local wl2_mac=""
+
+	lan_mac=$(echo "$macs" | cut -d ',' -f 1)
+	wan_mac=$(echo "$macs" | cut -d ',' -f 2)
+	wl0_mac=$(echo "$macs" | cut -d ',' -f 3)
+	wl1_mac=$(echo "$macs" | cut -d ',' -f 4)
+	wl2_mac=$(echo "$macs" | cut -d ',' -f 5)
+
+	set_mac_bdata "${peer}_lan" "$lan_mac"
+	set_mac_bdata "${peer}_wan" "$wan_mac"
+	set_mac_bdata "${peer}_wl0" "$wl0_mac"
+	set_mac_bdata "${peer}_wl1" "$wl1_mac"
+	set_mac_bdata "${peer}_wl2" "$wl2_mac"
+}
+
+clean_peer_macs()
+{
+	local peer="$1"
+
+	[ -z "$peer" ] && usage && exit 0
+
+	bdata unset "${peer}_lan"
+	bdata unset "${peer}_wan"
+	bdata unset "${peer}_wl0"
+	bdata unset "${peer}_wl1"
+	bdata unset "${peer}_wl2"
+	bdata commit
+}
+
+param="$1"
+
+case $param in
+	wan|eth0)
+		[ ! $# -eq 2 ] && usage && exit 0
+		eth0adr=$2
+		get_eth1_mac_from_art
+		get_eth2_mac_from_art
+		set_mac
+	;;
+	lan|eth1)
+		[ ! $# -eq 2 ] && usage && exit 0
+		get_eth0_mac_from_art
+		get_eth2_mac_from_art
+		eth1adr=$2
+		set_mac
+	;;
+	wan2|eth2)
+		[ ! $# -eq 2 ] && usage && exit 0
+		get_eth0_mac_from_art
+		get_eth1_mac_from_art
+		eth2adr=$2
+		set_mac
+	;;
+	wl1|wifi0)
+		[ ! $# -eq 2 ] && usage && exit 0
+		setmac_wifi wl1 "$2"
+	;;
+	wl0|wifi1)
+		[ ! $# -eq 2 ] && usage && exit 0
+		setmac_wifi wl0 "$2"
+	;;
+	wl2|wifi2)
+		[ ! $# -eq 2 ] && usage && exit 0
+		setmac_wifi wl2 "$2"
+	;;
+	peer1|peer2)
+		[ $# -lt 2 ] && usage && exit 0
+		opt="$2"
+
+		case "$opt" in
+		"lan"|"wan"|"wl0"|"wl1"|"wl2")
+			[ ! $# -eq 3 ] && usage && exit 0
+			val="$3"
+			set_mac_bdata "${param}"_"${opt}" "$val"
+		;;
+
+		"clean")
+			clean_peer_macs "$param"
+		;;
+
+		"all")
+			[ ! $# -eq 3 ] && usage && exit 0
+			val="$3"
+			set_peer_macs "$param" "$val"
+		;;
+
+		*)
+			usage
+		;;
+		esac
+	;;
+
+	*)
+		usage
+	;;
+esac

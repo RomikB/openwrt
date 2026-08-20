@@ -3,41 +3,81 @@
 
 . /lib/functions.sh
 . /lib/netifd/netifd-proto.sh
+[ -f /lib/miwifi/miwifi_core_libs.sh ] && . /lib/miwifi/miwifi_core_libs.sh
 
 set_classless_routes() {
 	local max=128
 	while [ -n "$1" -a -n "$2" -a $max -gt 0 ]; do
 		proto_add_ipv4_route "${1%%/*}" "${1##*/}" "$2" "$ip"
-		max=$(($max-1))
+		max=$(($max - 1))
 		shift 2
 	done
 }
 
-setup_interface () {
+setup_mesh_cab() {
+	gateway_ip=$1
+	ip=$2
+	[ -z "$gateway_ip" -o -z "$ip" ] && return 0
+
+	INITED=$(uci -q get xiaoqiang.common.INITTED)
+	[ "$INITED" = "YES" ] && return 0
+
+	#write ip to file for cab_meshd to read
+	cab_mesh_file="/tmp/cab_meshd_gw_ip"
+	echo "$gateway_ip" >$cab_mesh_file
+	echo "$ip" >>$cab_mesh_file
+
+	pid_cab_meshd=$(pidof cab_meshd)
+	if [ -z  "$pid_cab_meshd" ]; then
+		[ -x /etc/init.d/cab_meshd ] && /etc/init.d/cab_meshd start
+	else
+		#send sig to cab_meshd
+		kill -USR1 $pid_cab_meshd
+	fi
+}
+
+set_static_routes() {
+    local max=128
+    local target=
+    local oldstr=
+    local newstr=
+    local mask=
+
+    while [ -n "$1" -a $max -gt 0 ]; do
+        target=${1%%/*}
+        mask=32
+        oldstr=$target
+        while [ $mask -ge 0 ]; do
+            newstr=${oldstr%%.0}
+            if [ "X$newstr" != "X$oldstr" ]; then
+                mask=$((mask - 8))
+                oldstr=$newstr
+            else
+                break
+            fi
+        done
+
+        echo "staticroutes: proto_add_ipv4_route $target $mask ${1##*/}" >/dev/console
+        proto_add_ipv4_route "$target" $mask "${1##*/}"
+        max=$(($max - 1))
+        shift 1
+    done
+}
+
+setup_interface() {
 	proto_init_update "*" 1
 	proto_add_ipv4_address "$ip" "${subnet:-255.255.255.0}"
 	# TODO: apply $broadcast
 
-	local ip_net IP PREFIX NETWORK NETMASK BROADCAST
-	ipcalc "$ip/$mask" && ip_net="$NETWORK"
-
 	local i
-	for i in $router; do
-		local gw_net
-		ipcalc "$i/$mask" && gw_net="$NETWORK"
-
-		[ "$ip_net" != "$gw_net" ] && proto_add_ipv4_route "$i" 32 "" "$ip"
-		proto_add_ipv4_route 0.0.0.0 0 "$i" "$ip"
-
-		local r
-		for r in $CUSTOMROUTES; do
-			proto_add_ipv4_route "${r%%/*}" "${r##*/}" "$i" "$ip"
-		done
-	done
-
-	# CIDR STATIC ROUTES (rfc3442)
-	[ -n "$staticroutes" ] && set_classless_routes $staticroutes
-	[ -n "$msstaticroutes" ] && set_classless_routes $msstaticroutes
+	local gateway_ip
+	local ip_net
+	if [ -f "/bin/ipcalc.sh" ]; then
+		eval "$(ipcalc.sh "$ip/$mask" 2>/dev/null)"
+	elif type ipcalc >/dev/null 2>&1; then
+		eval "$(ipcalc "$ip/$mask" 2>/dev/null)"
+	fi
+	ip_net="$NETWORK"
 
 	for i in $dns; do
 		proto_add_dns_server "$i"
@@ -46,27 +86,58 @@ setup_interface () {
 		proto_add_dns_search "$i"
 	done
 
-	# TODO: Deprecate timesvr in favor of timesrv
-	if [ -n "$timesvr" -a -z "$timesrv" ]; then
-		timesrv="$timesvr"
-		echo "Environment variable 'timesvr' will be deprecated; use 'timesrv' instead."
+	[ -f /lib/miwifi/miwifi_functions.sh ] && . /lib/miwifi/miwifi_functions.sh
+	local dedicated=0
+	type util_network_dedicated_get >/dev/null 2>&1 && dedicated=$(util_network_dedicated_get $INTERFACE "ipv4")
+	if [ "$dedicated" != "1" ]; then
+		for i in $router; do
+			local gw_net
+			if [ -f "/bin/ipcalc.sh" ]; then
+				eval "$(ipcalc.sh "$i/$mask" 2>/dev/null)"
+			elif type ipcalc >/dev/null 2>&1; then
+				eval "$(ipcalc "$i/$mask" 2>/dev/null)"
+			fi
+			gw_net="$NETWORK"
+
+			[ -n "$ip_net" -a -n "$gw_net" -a "$ip_net" != "$gw_net" ] && proto_add_ipv4_route "$i" 32 "" "$ip"
+			proto_add_ipv4_route 0.0.0.0 0 "$i" "$ip"
+
+			local r
+			for r in $CUSTOMROUTES; do
+				proto_add_ipv4_route "${r%%/*}" "${r##*/}" "$i" "$ip"
+			done
+			gateway_ip=$i
+		done
+	else
+		local dns_list=${dns// /,}
+		type util_network_dedicated_set >/dev/null 2>&1 && util_network_dedicated_set $dns_list
 	fi
+
+	# option 33
+	[ -n "$routes" ] && set_static_routes $routes
+
+	# CIDR STATIC ROUTES (rfc3442)
+	[ -n "$staticroutes" ] && set_classless_routes $staticroutes
+	[ -n "$msstaticroutes" ] && set_classless_routes $msstaticroutes
 
 	proto_add_data
 	[ -n "$ZONE" ]     && json_add_string zone "$ZONE"
 	[ -n "$ntpsrv" ]   && json_add_string ntpserver "$ntpsrv"
-	[ -n "$timesrv" ]  && json_add_string timeserver "$timesrv"
+	[ -n "$timesvr" ]  && json_add_string timeserver "$timesvr"
 	[ -n "$hostname" ] && json_add_string hostname "$hostname"
 	[ -n "$message" ]  && json_add_string message "$message"
 	[ -n "$timezone" ] && json_add_int timezone "$timezone"
 	[ -n "$lease" ]    && json_add_int leasetime "$lease"
-	[ -n "$serverid" ] && json_add_string dhcpserver "$serverid"
 	proto_close_data
 
 	proto_send_update "$INTERFACE"
 
+	# setup cable mesh connect
+	if [ -n "$gateway_ip" -a -n "$ip" ]; then
+		setup_mesh_cab $gateway_ip $ip
+	fi
 
-	if [ "$IFACE6RD" != 0 -a -n "$ip6rd" ]; then
+	if [ -n "$IFACE6RD" -a "${IFACE6RD:0:4}" = "wan6" -a -n "$ip6rd" ]; then
 		local v4mask="${ip6rd%% *}"
 		ip6rd="${ip6rd#* }"
 		local ip6rdprefixlen="${ip6rd%% *}"
@@ -87,6 +158,17 @@ setup_interface () {
 		json_add_string ip6prefix "$ip6rdprefix"
 		json_add_int ip6prefixlen "$ip6rdprefixlen"
 		json_add_string tunlink "$INTERFACE"
+		local peerdns=$(uci -q get network.$IFACE6RD.peerdns)
+		[ -z "$peerdns" ] && peerdns=1
+		json_add_boolean peerdns "$peerdns"
+		if [ "$peerdns" = "0" ]; then
+			proto_init_dns_server_ex
+			dns_list=$(uci -q get network.$IFACE6RD.dns)
+			for dns in "$dns_list"; do
+				proto_add_dns_server_ex "$dns"
+			done
+			proto_update_dns_server_ex
+		fi
 		[ -n "$IFACE6RD_DELEGATE" ] && json_add_boolean delegate "$IFACE6RD_DELEGATE"
 		[ -n "$ZONE6RD" ] || ZONE6RD=$ZONE
 		[ -n "$ZONE6RD" ] && json_add_string zone "$ZONE6RD"
@@ -102,12 +184,98 @@ deconfig_interface() {
 	proto_send_update "$INTERFACE"
 }
 
+# Mesh RE renew/bound dhcp-IP
+setup_for_mesh_re() {
+    is_new_ip=$1
+    [ -z "$is_new_ip" ] && is_new_ip=1
+    # reset lan config
+    [ -z "$ip" ] && exit 1
+    netmask="${subnet:-255.255.255.0}"
+    mtu="${mtu:-1500}"
+    dns="${dns:-$router}"
+
+    ap_hostname_tmp=${vendorinfo:7}
+    ap_hostname_tmp=${ap_hostname_tmp%%-*}
+    ap_hostname=MiWiFi-${ap_hostname_tmp}-srv
+    old_ip=$(uci -q get network.lan.ipaddr)
+    old_netmask=$(uci -q get network.lan.netmask)
+    old_gateway=$(uci -q get network.lan.gateway)
+
+    if [ "$old_ip" = "$ip" -a "$old_gateway" = "$router" ]; then
+        logger -p warn -t udhcpc " ============ mesh re ip and gateway not changed, return"
+        return
+    fi
+
+    logger -p warn -t udhcpc " ============ mesh re set ip=$ip gw=$router."
+
+    old_vendorinfo=$(uci -q get xiaoqiang.common.vendorinfo)
+    [ -z "$old_vendorinfo" ] && {
+        uci set xiaoqiang.common.vendorinfo="$vendorinfo"
+        uci commit xiaoqiang
+    }
+
+    uci -q batch <<EOF >/dev/null
+        set xiaoqiang.common.ap_hostname=$ap_hostname
+        commit xiaoqiang
+        set network.lan=interface
+        set network.lan.type=bridge
+        set network.lan.proto=dhcp
+        set network.lan.ipaddr=$ip
+        set network.lan.netmask=$netmask
+        set network.lan.gateway=$router
+        set network.lan.mtu=$mtu
+        del network.lan.dns
+        del network.vpn
+EOF
+    for d in $dns
+    do
+        uci -q add_list network.lan.dns=$d
+    done
+    uci commit network
+    # restart service
+    [ -x /sbin/ifdown ] && ifdown vpn
+    [ -f /usr/sbin/vasinfo_fw.sh ] && /usr/sbin/vasinfo_fw.sh off
+    [ "$is_new_ip" = "1" ] && [ -x /usr/sbin/ip_changed.sh ] && /usr/sbin/ip_changed.sh lan "$old_ip" "$old_netmask" "$ip" "$netmask"
+
+    # accelleration hook event
+    type network_accel_hook >/dev/null 2>&1 && network_accel_hook "whc_re" "setup"
+
+    if [ "$(uci -q get xiaoqiang.common.INITTED)" = "YES" ]; then
+        ubus call network reload
+    fi
+
+    bh_type=$(cat /var/run/topomon/bh_type 2>/dev/null)
+    if [ "$bh_type" = "wireless" -a "$is_new_ip" = "1" ]; then
+        logger -p warn -t udhcpc "bh is wireless and newip, phyhelper restart lan"
+        [ -x /sbin/phyhelper ] && /sbin/phyhelper restart lan
+    fi
+}
+
 case "$1" in
 	deconfig)
 		deconfig_interface
 	;;
 	renew|bound)
 		setup_interface
+		# do other config for mesh RE device [master:whc_cap  child:whc_re]
+		mesh_mode=$(uci -q get xiaoqiang.common.NETMODE)
+		if [ "$mesh_mode" = "whc_re" ]; then
+			if [ "$1" = "bound" ]; then
+				setup_for_mesh_re 1
+			else
+				setup_for_mesh_re 0
+			fi
+		fi
+	;;
+	offer_exit)
+		echo vendorinfo=$vendorinfo
+		vendorinfo_tmp=${vendorinfo:0:8}
+		echo vendorinfo_tmp=$vendorinfo_tmp
+		if [ "$vendorinfo_tmp" != "opt_ret=" ];then
+			echo "100" > /tmp/dhcp_opt43_act_tmp
+		else
+			echo ${vendorinfo##*=} > /tmp/dhcp_opt43_act_tmp
+		fi
 	;;
 esac
 

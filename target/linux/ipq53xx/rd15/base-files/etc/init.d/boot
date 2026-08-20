@@ -1,0 +1,54 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=10
+STOP=98
+
+boot_phy_control() {
+	# Power on all wired Ethernet PHYs immediately
+	/sbin/phyhelper start 2>/dev/null || true
+}
+
+boot() {
+	[ -f /proc/mounts ] || /sbin/mount_root
+	[ -f /proc/jffs2_bbc ] && echo "S" > /proc/jffs2_bbc
+	[ -f /proc/net/vlan/config ] && vconfig set_name_type DEV_PLUS_VID_NO_PAD
+
+	mkdir -p /var/run
+	ln -sf /var/run/ubus/ubus.sock /var/run/ubus.sock 2>/dev/null || true
+	mkdir -p /var/log
+	mkdir -p /var/lock
+	mkdir -p /var/state
+	mkdir -p /var/tmp
+	mkdir -p /tmp/.uci
+	chmod 0700 /tmp/.uci
+	touch /var/log/wtmp
+	touch /var/log/lastlog
+	touch /tmp/resolv.conf.auto
+	ln -sf /tmp/resolv.conf.auto /tmp/resolv.conf
+	grep -q debugfs /proc/filesystems && /bin/mount -o noatime -t debugfs debugfs /sys/kernel/debug
+	[ -d /sys/fs/bpf ] && grep -q bpf /proc/filesystems && /bin/mount -o nosuid,nodev,noexec,noatime,mode=0700 -t bpf bpffs /sys/fs/bpf
+	[ -d /sys/fs/pstore ] && grep -q pstore /proc/filesystems && /bin/mount -o noatime -t pstore pstore /sys/fs/pstore
+	[ "$FAILSAFE" = "true" ] && touch /tmp/.failsafe
+
+	[ "0" = "$(cat /proc/xiaoqiang/ft_mode)" -a -f "/etc/config/wireless" ] && {
+		uci set wireless.wifi0.disabled='0'
+		uci set wireless.wifi1.disabled='0'
+		uci commit wireless
+	}
+
+	if [ "$(uci -q get misc.features.detect_delay)" = "1" ]; then
+		nice -n -19 /sbin/kmodloader
+		echo "wifi detect delay" > /dev/console
+	else
+		echo "wifi detect normal" > /dev/console
+
+		/sbin/kmodloader
+
+	fi
+
+	# temporary hack until configd exists
+	/sbin/reload_config
+
+	boot_phy_control
+}

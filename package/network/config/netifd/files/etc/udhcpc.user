@@ -1,1 +1,24 @@
-# This script is sourced by udhcpc's dhcp.script at every DHCP event.
+#!/bin/sh
+
+[ -z "$1" ] && echo "Udhcpc.user Error: should be run by udhcpc" && exit 1
+
+ip_conflict()
+{
+	local mesh_mode=$(uci -q get xiaoqiang.common.NETMODE)
+	if [ "$mesh_mode" != "whc_re" ]; then
+		#wan ip change
+		[ -f /usr/sbin/cr_ip_conflict.lua ] && lua /usr/sbin/cr_ip_conflict.lua &
+	else
+		#br-lan ip change
+		[ -x /usr/sbin/ip_conflict.sh ] && /usr/sbin/ip_conflict.sh br-lan &
+	fi
+}
+
+case "$1" in
+    deconfig)
+        #switch batman-adv client->server
+    ;;
+    renew|bound)
+		ip_conflict
+    ;;
+esac

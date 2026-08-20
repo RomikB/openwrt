@@ -4,6 +4,11 @@
 START=10
 STOP=90
 
+boot_phy_control() {
+	# Power on all wired Ethernet PHYs immediately
+	[ -x /sbin/phyhelper ] && /sbin/phyhelper start 2>/dev/null || true
+}
+
 uci_apply_defaults() {
 	. /lib/functions/system.sh
 
@@ -58,4 +63,6 @@ boot() {
 	
 	# temporary hack until configd exists
 	/sbin/reload_config
+
+	boot_phy_control
 }

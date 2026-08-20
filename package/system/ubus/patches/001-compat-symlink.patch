@@ -1,0 +1,19 @@
+--- a/ubusd_main.c
++++ b/ubusd_main.c
+@@ -301,10 +301,16 @@ int main(int argc, char **argv)
+ 		ret = -1;
+ 		goto out;
+ 	}
++	if (strcmp(ubus_socket, "/var/run/ubus.sock") != 0) {
++		unlink("/var/run/ubus.sock");
++		symlink(ubus_socket, "/var/run/ubus.sock");
++	}
+ 	uloop_fd_add(&server_fd, ULOOP_READ | ULOOP_EDGE_TRIGGER);
+ 	ubusd_acl_load();
+ 
+ 	uloop_run();
++	if (strcmp(ubus_socket, "/var/run/ubus.sock") != 0)
++		unlink("/var/run/ubus.sock");
+ 	unlink(ubus_socket);
+ 
+ out:

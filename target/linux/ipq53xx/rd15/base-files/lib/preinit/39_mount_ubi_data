@@ -1,0 +1,382 @@
+#!/bin/sh
+# Copyright (C) 2006-2010 OpenWrt.org
+# Copyright (C) 2016 Xiaomi
+
+ubi_data_devn=${pi_ubi_data_devn:="1"}
+# pi_overlay_partitions can be defined in 00_preinit.conf to overwrite default value
+pi_overlay_partitions=${pi_overlay_partitions:="data:/data:"}
+# default fs type is ubifs, you can define pi_overlay_fs_type in 00_preinit.conf to overwrite it
+pi_overlay_fs_type=${pi_overlay_fs_type:="ubifs"}
+
+attach_ubi() {
+	local ubi_devn="$1"
+	local mtd_dev="$2"
+
+	[ -z "${ubi_devn}" -o -z "${mtd_dev}" ] && return 1
+
+	# if ubi device is already attached, return
+	ubinfo -d "${ubi_devn}" >/dev/null 2>&1 && return 0
+
+	# attach ubi device
+	ubiattach /dev/ubi_ctrl -d ${ubi_data_devn} -m "${mtd_dev}"
+
+	# if no ubi device node, create it
+	[ -c /dev/ubi${ubi_data_devn} ] || {
+		maj=$(cat /sys/class/ubi/ubi${ubi_data_devn}/dev | awk -F':' '{print $1}')
+		min=$(cat /sys/class/ubi/ubi${ubi_data_devn}/dev | awk -F':' '{print $2}')
+		mknod /dev/ubi${ubi_data_devn} c "${maj}" "${min}"
+	}
+}
+
+detach_ubi() {
+	local ubi_devn="$1"
+
+	# ubi device doesn't exist, return
+	ubinfo -d "${ubi_devn}" >/dev/null 2>&1 || return 0
+
+	# detach ubi device
+	ubidetach -d "${ubi_devn}"
+}
+
+get_vol_info() {
+	local i
+	local vol_name
+	local vol_mount_dir
+	local vol_size
+	local vol_num=0
+	local vol_list
+	local fixed_size_list
+	local percentage_size_list
+	local maxav_size_vol
+
+	# get volume info
+	for i in ${pi_overlay_partitions}; do
+		vol_name=$(echo "${i}" | awk -F: '{print $1}')
+		vol_mount_dir=$(echo "${i}" | awk -F: '{print $2}')
+		vol_size=$(echo "${i}" | awk -F: '{print $3}')
+		[ -z "${vol_name}" ] && continue
+		[ -z "${vol_mount_dir}" ] && continue
+
+		# vol_num + 1
+		vol_num=$((vol_num + 1))
+		vol_list="${vol_list} ${vol_name}"
+
+		# check format of vol_size
+		case ${vol_size} in
+		0.*)
+			percentage_size_list="${percentage_size_list} ${vol_num}"
+			;;
+		*MiB)
+			fixed_size_list="${fixed_size_list} ${vol_num}"
+			;;
+		*)
+			vol_size="maxavsize"
+			maxav_size_vol="${vol_num}"
+			;;
+
+		esac
+
+		# debug print
+		echo "Vol#${vol_num} name:${vol_name} size:${vol_size} mount_dir:${vol_mount_dir}"
+
+		# export variables
+		eval export UBI_DATA_VOL_${vol_num}_NAME="${vol_name}"
+		eval export UBI_DATA_VOL_${vol_num}_MOUNT_DIR="${vol_mount_dir}"
+		eval export UBI_DATA_VOL_${vol_num}_SIZE="${vol_size}"
+	done
+	export UBI_DATA_VOL_NUM="${vol_num}"
+	export UBI_DATA_VOL_LIST="${vol_list}"
+	export UBI_DATA_VOL_FIXED_SIZE_LIST="${fixed_size_list}"
+	export UBI_DATA_VOL_PERCENTAGE_SIZE_LIST="${percentage_size_list}"
+	export UBI_DATA_VOL_MAX_SIZE_LIST="${maxav_size_vol}"
+}
+
+create_all_vol() {
+	local i
+	local cur_vol_list
+	local vol_name
+	local vol_size
+	local free_size
+
+	# get current volumes
+	cur_vol_list=$(ubinfo -d ${ubi_data_devn} -a | grep Present | awk -F: '{print $2}' | tr ',' ' ')
+	if [ -n "${cur_vol_list}" ]; then
+		for i in ${cur_vol_list}; do
+			# get volume name
+			vol_name=$(ubinfo -d ${ubi_data_devn} -n "${i}" | grep Name | awk '{print $2}')
+			# if volume is not in vol_list, delete it
+			echo "${UBI_DATA_VOL_LIST}" | grep -wq "${vol_name}" || {
+				echo "Delete volume ${vol_name}"
+				ubirmvol /dev/ubi${ubi_data_devn} -N "${vol_name}"
+			}
+		done
+	fi
+
+	# create volumes
+	for i in ${UBI_DATA_VOL_FIXED_SIZE_LIST}; do
+		vol_name=UBI_DATA_VOL_${i}_NAME
+		vol_size=UBI_DATA_VOL_${i}_SIZE
+		eval vol_name=\$"${vol_name}"
+		eval vol_size=\$"${vol_size}"
+		[ -z "${vol_name}" ] && continue
+		[ -z "${vol_size}" ] && continue
+
+		ubinfo -d ${ubi_data_devn} -N "${vol_name}" >/dev/null 2>&1 || ubimkvol /dev/ubi${ubi_data_devn} -n "${i}" -N "${vol_name}" -s "${vol_size}"
+	done
+
+	# get free size of ubi device
+	free_size=$(ubinfo -d ${ubi_data_devn} | grep available | awk '{print int($9)}')
+	[ -z "${free_size}" ] && free_size=0
+
+	# create percentage size volume
+	for i in ${UBI_DATA_VOL_PERCENTAGE_SIZE_LIST}; do
+		vol_name=UBI_DATA_VOL_${i}_NAME
+		vol_size=UBI_DATA_VOL_${i}_SIZE
+		eval vol_name=\$"${vol_name}"
+		eval vol_size=\$"${vol_size}"
+		[ -z "${vol_name}" ] && continue
+		[ -z "${vol_size}" ] && continue
+
+		# vol_size = free_size * vol_size
+		vol_size=$(awk "BEGIN {print int(${free_size} * ${vol_size})}")
+		vol_size="${vol_size}MiB"
+		ubinfo -d ${ubi_data_devn} -N "${vol_name}" >/dev/null 2>&1 || ubimkvol /dev/ubi${ubi_data_devn} -n "${i}" -N "${vol_name}" -s "${vol_size}"
+	done
+
+	# create maxavsize volume
+	for i in ${UBI_DATA_VOL_MAX_SIZE_LIST}; do
+		vol_name=UBI_DATA_VOL_${i}_NAME
+		vol_size=UBI_DATA_VOL_${i}_SIZE
+		eval vol_name=\$"${vol_name}"
+		eval vol_size=\$"${vol_size}"
+		[ -z "${vol_name}" ] && continue
+		[ -z "${vol_size}" ] && continue
+
+		ubinfo -d ${ubi_data_devn} -N "${vol_name}" >/dev/null 2>&1 || ubimkvol /dev/ubi${ubi_data_devn} -n "${i}" -N "${vol_name}" -m
+	done
+}
+
+mount_all_vol() {
+	local i
+	local vol_name
+	local vol_mount_dir
+	local mount_flag
+	local failed_vol=""
+
+	for i in $(seq 1 "${UBI_DATA_VOL_NUM}"); do
+		mount_flag=""
+		vol_name=UBI_DATA_VOL_${i}_NAME
+		vol_mount_dir=UBI_DATA_VOL_${i}_MOUNT_DIR
+		eval vol_name=\$"${vol_name}"
+		eval vol_mount_dir=\$"${vol_mount_dir}"
+		[ -z "${vol_name}" ] && continue
+		[ -z "${vol_mount_dir}" ] && continue
+
+		# check if volume is mounted
+		grep -q "${vol_mount_dir}" /proc/mounts && {
+			echo "Volume ${vol_name} is mounted"
+			continue
+		}
+
+		# mount cfg or data vol with -osync
+		case ${vol_name} in
+		cfg | data)
+			mount_flag="-osync"
+			;;
+		esac
+
+		# create mount dir
+		mkdir -p "${vol_mount_dir}"
+
+		# mount vol
+		mount -t ubifs ubi${ubi_data_devn}:"${vol_name}" "${vol_mount_dir}" ${mount_flag}
+		[ $? -ne 0 ] && failed_vol="${failed_vol} ${vol_name}"
+	done
+	echo "${failed_vol}"
+}
+
+remove_a_vol() {
+	local vol_name="$1"
+
+	# if vol doesn't exist, return
+	ubinfo -d ${ubi_data_devn} -N "${vol_name}" || return 0
+
+	# delete this vol
+	ubirmvol /dev/ubi${ubi_data_devn} -N "${vol_name}"
+
+	sync
+}
+
+do_format_ubifs() {
+	local mtd_dev="$1"
+	[ -z "${mtd_dev}" ] && return 1
+
+	ubiformat /dev/mtd"${mtd_dev}" --sub-page-size=2048 --yes
+
+	echo "ubi device: /dev/ubi${ubi_data_devn} format ok"
+}
+
+do_data_mnt_fail() {
+	local mtd_dev="$1"
+	local failed_vol="$2"
+	local vol_name
+	local flag=$(nvram get flag_data_mount_fail)
+
+	if [ "${flag}" = "1" ]; then
+		#save whatever we got in crash
+		dmesg >/tmp/dbgmsg.txt
+		mtd_crash_log -f /tmp/dbgmsg.txt
+
+		for vol_name in ${failed_vol}; do
+			# some important volume mount failed, means user data is corrupted
+			# we need to restore to factory default
+			case ${vol_name} in
+			data | cfg | plugin)
+				echo "FATAL: ${vol_name} mount fail again. Restoring defaults."
+				nvram set restore_defaults=1
+				nvram commit
+				sync
+				reboot -f
+				return 1
+				;;
+			esac
+
+			# other volumes mount failed, just clean up and try again
+			remove_a_vol "${vol_name}"
+			create_all_vol
+			echo $(mount_all_vol) | grep -wq "${vol_name}" && {
+				echo "WARNING: ${vol_name} mount failed again and skipped."
+			}
+		done
+		nvram unset flag_data_mount_fail
+		nvram commit
+	else
+		echo "FATAL: ${failed_vol} mount fail. Reboot and give it another try."
+		nvram set flag_data_mount_fail=1
+		nvram commit
+		sync
+		reboot -f
+		return 1
+	fi
+}
+
+find_mount_ubi_data() {
+	local failed_vol
+	local overlay_magic
+	local mtd_dev=$(grep overlay /proc/mtd | awk -F: '{print substr($1,4)}')
+
+	# get ubi data volume info
+	get_vol_info
+
+	# check if overlay partition is formatted
+	nanddump --bb=skipbad --omitoob --length=2048 -f /tmp/ubi_data_firstpage.bin /dev/mtd"${mtd_dev}" >/dev/null 2>&1
+	overlay_magic=$(hexdump -C -n 4 /tmp/ubi_data_firstpage.bin | awk 'NR<2 {print $2$3$4$5}')
+	rm /tmp/ubi_data_firstpage.bin
+
+	# if overlay partition is not formatted, format it
+	if [ "${overlay_magic}" != "55424923" ]; then
+		echo "overlay partition is not formatted, format it"
+		nvram set flag_format_overlay=1
+		do_format_ubifs "${mtd_dev}"
+	fi
+
+	# attach ubi data device
+	attach_ubi ${ubi_data_devn} "${mtd_dev}"
+
+	# create all volumes
+	create_all_vol
+
+	# mount all volumes
+	failed_vol=$(mount_all_vol)
+	[ -z "${failed_vol}" ] || {
+		# handle mount fail case
+		do_data_mnt_fail "${mtd_dev}" "${failed_vol}"
+		touch /tmp/need_config_recovery
+	}
+
+	# extra mount for userdisk
+	# we need /data/userdisk for plugin APP, and /data/usr for logging
+	# make sure these dirs exist
+	mkdir -p /data/userdisk
+
+	mount -o bind /data/userdisk /userdisk
+	mkdir -p /userdisk/data
+	#FIXME: set /userdisk/data to readonly
+	mount --bind /readonly /userdisk/data
+
+	mkdir -p /data/usr/app
+}
+
+find_mount_jffs2_data() {
+	local mtd_dev
+	local erase_size
+	local overlay_magic
+	grep -wqs overlay /proc/mtd || return 1
+
+	mtd_dev=$(grep overlay /proc/mtd | awk -F: '{print substr($1,4)}')
+	erase_size=$(cat /sys/class/mtd/mtd"${mtd_dev}"/erasesize)
+	dd if=/dev/mtdblock"${mtd_dev}" bs="${erase_size}" count=2 2>/dev/null | hexdump >/tmp/overlay_magic.txt
+
+	if [ "$(wc -l /tmp/overlay_magic.txt | awk '{print $1}')" -eq 3 ]; then
+		overlay_magic=$(head -n 1 /tmp/overlay_magic.txt)
+
+		if [ "${overlay_magic}" = "0000000 ffff ffff ffff ffff ffff ffff ffff ffff" ]; then
+			echo "overlay partition is not formatted, format it"
+			nvram set flag_format_overlay=1
+		fi
+	fi
+
+	rm /tmp/overlay_magic.txt
+
+	if mount "$(find_mtd_part overlay)" /data -t jffs2 -osync; then
+		mtd -qq unlock overlay
+	elif [ "$(nvram get flag_data_mount_fail)" != "1" ]; then
+		# save whatever we got to crash partition
+		dmesg >/tmp/dbgmsg.txt
+		mtd_crash_log -f /tmp/dbgmsg.txt
+		# data mount failed. this is not suppose to happen. reboot and try again
+		nvram set flag_data_mount_fail=1
+		nvram commit
+		sync
+		reboot -f
+		return 1
+	else
+		# data mount failed again. this is not suppose to happen. restore defaults
+		echo "FATAL: overlay mount fail again. Restoring defaults."
+		nvram set restore_defaults=1
+		nvram commit
+		sync
+		reboot -f
+		return 1
+	fi
+
+	# last time we failed to mount data, but this time we succeed
+	# we need to clean up the flag and try to recover config
+	if [ "$(nvram get flag_data_mount_fail)" = "1" ]; then
+		touch /tmp/need_config_recovery
+		nvram unset flag_data_mount_fail
+		nvram commit
+	fi
+
+	# extra mount for userdisk
+	# we need /data/userdisk for plugin APP, and /data/usr for logging
+	# make sure these dirs exist
+	mkdir -p /data/userdisk
+	mount -o bind /data/userdisk /userdisk
+	mkdir -p /userdisk/data
+	#FIXME: set /userdisk/data to readonly
+	mount --bind /readonly /userdisk/data
+
+	mkdir -p /data/usr/log
+	mkdir -p /data/usr/app
+}
+
+do_mount_data() {
+	if [ "$pi_overlay_fs_type" = "ubifs" ]; then
+		find_mount_ubi_data && pi_mount_skip_next=true
+	elif [ "$pi_overlay_fs_type" = "jffs2" ]; then
+		find_mount_jffs2_data && pi_mount_skip_next=true
+	fi
+}
+
+boot_hook_add preinit_mount_root do_mount_data

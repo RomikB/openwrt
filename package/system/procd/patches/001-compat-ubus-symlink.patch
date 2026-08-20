@@ -1,0 +1,24 @@
+--- a/initd/early.c
++++ b/initd/early.c
+@@ -75,9 +75,10 @@ early_mounts(void)
+ 	mount("tmpfs", "/tmp", "tmpfs", MS_NOSUID | MS_NODEV | MS_NOATIME, "mode=01777");
+ 	mkdir("/tmp/shm", 01777);
+ 
+-	mkdir("/tmp/run", 0755);
++	mkdir("/tmp/run", 01777);
+ 	mkdir("/tmp/lock", 0755);
+ 	mkdir("/tmp/state", 0755);
++	ignore(symlink("ubus/ubus.sock", "/tmp/run/ubus.sock"));
+ 	umask(oldumask);
+ }
+ 
+--- a/state.c
++++ b/state.c
+@@ -156,6 +156,7 @@ static void state_enter(void)
+ 			LOG("- ubus (running as root!) -\n");
+ 		}
+ 
++		symlink("/var/run/ubus/ubus.sock", "/var/run/ubus.sock");
+ 		procd_connect_ubus();
+ 		service_start_early("ubus", ubus_cmd, p?"ubus":NULL, p?"ubus":NULL);
+ 		break;

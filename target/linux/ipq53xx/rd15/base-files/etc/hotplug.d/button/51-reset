@@ -1,0 +1,34 @@
+#!/bin/sh
+
+ft_mode=$(cat /proc/xiaoqiang/ft_mode)
+[ "$BUTTON" = "reset" ] && {
+	echo -e "BUTTON:$BUTTON ACTION:$ACTION SEEN:$SEEN\n" | tee /dev/console /dev/pts/* /tmp/button_test_"$BUTTON".log
+	[ "1" = "$ft_mode" ] && {
+		exit 0
+	}
+
+	[ "$ACTION" = "reset" ] && {
+		uptime
+		xqled sys_booting;xqled func_off
+		echo "Reset key is reset" | tee /dev/console
+		ap_mode=$(uci -q get xiaoqiang.common.NETMODE)
+		mesh_version=$(uci -q get xiaoqiang.common.MESH_VERSION)
+		cap_mode=$(uci -q get xiaoqiang.common.CAP_MODE)
+		if [ "$ap_mode" = "whc_cap" ] || [ "$mesh_version" -ge "2" -a "$ap_mode" = "lanapmode" -a "$cap_mode" = "ap" ]; then
+			ubus call xq_info_sync_mqtt restore
+		fi
+
+		easymesh_support=$(mesh_cmd easymesh_support)
+		if [ "$easymesh_support" = "1" ]; then
+			easymesh_role=$(uci -q get xiaoqiang.common.EASYMESH_ROLE)
+			if [ "$easymesh_role" = "controller" ]; then
+				echo "Reset agent right now" > /dev/console
+				ubus -t 3 call mapd event '{"type":2}'
+			fi
+		fi
+	}
+
+	[ "$ACTION" = "released" ] && [ "$SEEN" = "0" ] && [ "$(uci -q get misc.mesh.reset_button_meshing)" = "1" ] && {
+		ubus call miwifi-discovery start_mesh
+	}
+}

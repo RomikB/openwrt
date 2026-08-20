@@ -1,0 +1,17 @@
+#!/bin/sh
+# Copyright (C) 2006-2010 OpenWrt.org
+# Copyright (C) 2010 Vertical Communications
+
+RAMFS_DIR="$pi_preinit_ramfs_dir"
+
+mount_tmpfs(){
+	for dir in $RAMFS_DIR
+	do
+		cp -a $dir /tmp/mount_tmp
+		mount -t ramfs -n none $dir
+		cp -a /tmp/mount_tmp/. $dir
+		rm -rf /tmp/mount_tmp
+	done
+}
+
+boot_hook_add preinit_mount_root mount_tmpfs

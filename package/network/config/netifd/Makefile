@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=netifd
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=$(PROJECT_GIT)/project/netifd.git
@@ -40,13 +40,9 @@ CMAKE_OPTIONS += \
 
 define Package/netifd/install
 	$(INSTALL_DIR) $(1)/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/netifd $(1)/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/netifd $(1)/sbin/netifd
 	$(CP) ./files/* $(1)/
 	$(INSTALL_DIR) $(1)/etc/udhcpc.user.d/
-	$(CP) \
-		$(PKG_BUILD_DIR)/scripts/utils.sh \
-		$(PKG_BUILD_DIR)/scripts/netifd-proto.sh \
-		$(1)/lib/netifd/
 endef
 
 $(eval $(call BuildPackage,netifd))

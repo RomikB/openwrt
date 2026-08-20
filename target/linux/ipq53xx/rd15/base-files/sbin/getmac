@@ -1,0 +1,172 @@
+#!/bin/sh
+
+usage() {
+	echo "getmac <wl2|wl1|wl0|lan|wan|wan2|eth0|eth1|eth2|all>"
+	echo "getmac <peer1|peer2> <lan|wan|wl0|wl1|wl2|all>"
+	echo "getmac <peernum>"
+	echo "example: getmac"
+	echo "         getmac wan|eth1"
+	echo "         getmac lan|eth0"
+	echo "         getmac wl0"
+	echo "         getmac wl1"
+	echo "         getmac wl2"
+	echo "         getmac peer1 lan"
+	echo "         getmac peer1 all"
+}
+
+art_mtd=`cat /proc/mtd | grep ART | cut -d ":" -f 1`
+[ -z "$art_mtd" ] && exit 1
+
+get_eth0()
+{
+	eth0adr="`hexdump -s 0 -n 6 -e '6/1 "%02x:"'  /dev/"$art_mtd" | cut -b-17`"
+}
+
+get_eth1()
+{
+	eth1adr="`hexdump -s 6 -n 6 -e '6/1 "%02x:"'  /dev/"$art_mtd" | cut -b-17`"
+}
+
+get_eth2()
+{
+	eth2adr="`hexdump -s 12 -n 6 -e '6/1 "%02x:"'  /dev/"$art_mtd" | cut -b-17`"
+}
+
+get_wifi0()
+{
+	wifi0adr="`hexdump -s 22 -n 6 -e '6/1 "%02x:"' /tmp/IPQ5332/caldata.bin | cut -b -17`"
+	[ "${wifi0adr}" == "" -o "$wifi0adr" = "ff:ff:ff:ff:ff:ff" ] && wifi0adr="`cat /sys/class/net/wifi0/address 2>/dev/null`"
+	ath0adr="$wifi0adr"
+}
+
+get_wifi1()
+{
+	wifi1adr="`hexdump -s 22 -n 6 -e '6/1 "%02x:"' /tmp/qcn6432/caldata_1.b0060 | cut -b -17`"
+	[ "${wifi1adr}" == "" -o "$wifi1adr" = "ff:ff:ff:ff:ff:ff" ] && wifi1adr="`cat /sys/class/net/wifi1/address 2>/dev/null`"
+	ath1adr="$wifi1adr"
+}
+
+get_mac_bdata()
+{
+	local name="$1"
+	local mac=""
+
+	[ -z "$name" ] && usage && exit 0
+
+	mac=$(bdata get "$name")
+
+	echo "$mac"
+}
+
+get_peer_macs()
+{
+	local peer="$1"
+	local lan_mac=""
+	local wan_mac=""
+	local wl0_mac=""
+	local wl1_mac=""
+	local wl2_mac=""
+
+	[ -z "$peer" ] && {
+		echo ""
+		return
+	}
+
+	lan_mac=$(get_mac_bdata "${peer}_lan")
+	wan_mac=$(get_mac_bdata "${peer}_wan")
+	wl0_mac=$(get_mac_bdata "${peer}_wl0")
+	wl1_mac=$(get_mac_bdata "${peer}_wl1")
+	wl2_mac=$(get_mac_bdata "${peer}_wl2")
+
+	echo "${lan_mac},${wan_mac},${wl0_mac},${wl1_mac},${wl2_mac}"
+}
+
+get_peers_num()
+{
+	local peer=""
+	local num=0
+
+	for i in 1 2 3
+	do
+		peer=$(bdata show | grep "peer${i}_wl0")
+		[ -n "$peer" ] && {
+			num=`expr $num + 1`
+		}
+	done
+
+	echo $num
+}
+
+# eth0 eth1 2g 5g plc eth2 eth3
+case $1 in
+	-h)
+	usage
+	;;
+
+	wl0|wifi1)
+	# wl0=5g iface, to adapt miwifi habit
+	get_wifi1
+	echo "$ath1adr"
+	;;
+
+	wl1|wifi0)
+	# wl1=2.4g iface, to adapt miwifi habit
+	get_wifi0
+	echo "$ath0adr"
+	;;
+
+	wl2|wifi2)
+	# wl2=5g iface, to adapt miwifi habit
+	get_wifi2
+	echo "$ath2adr"
+	;;
+
+	wan|eth0)
+	get_eth0
+	[ "$eth0adr" = "ff:ff:ff:ff:ff:ff" ] && eth0adr="8C:29:C3:60:34:41"
+	echo "$eth0adr"
+	;;
+
+	lan|eth1)
+	get_eth1
+	[ "$eth1adr" = "ff:ff:ff:ff:ff:ff" ] && eth1adr="8C:29:C3:60:34:42"
+	echo "$eth1adr"
+	;;
+
+	wan2|eth2)
+	get_eth2
+	[ "$eth2adr" = "ff:ff:ff:ff:ff:ff" ] && eth2adr="8C:29:C3:60:34:43"
+	echo "$eth2adr"
+	;;
+
+	peer1|peer2)
+		opt="$2"
+
+		case "$opt" in
+		"lan"|"wan"|"wl0"|"wl1"|"wl2")
+			get_mac_bdata "${1}"_"${opt}"
+		;;
+
+		"all")
+			get_peer_macs "$1"
+		;;
+
+		*)
+			usage
+		;;
+		esac
+	;;
+
+	peernum)
+		get_peers_num
+	;;
+
+	*)
+		get_eth0
+		get_eth1
+		get_eth2
+		get_wifi0
+		get_wifi1
+		echo "$eth1adr,$ath0adr,$ath1adr,$eth0adr,$eth2adr"
+	;;
+esac
