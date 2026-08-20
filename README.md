@@ -67,7 +67,6 @@ make4.1+ perl python3.7+ rsync subversion unzip which
    CONFIG_TARGET_ipq53xx=y
    CONFIG_TARGET_ipq53xx_rd15=y
    CONFIG_TARGET_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild=y
-   # CONFIG_PACKAGE_knot-resolver_dnstap is not set
    EOF
    make defconfig
    ```

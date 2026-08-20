@@ -50,7 +50,7 @@ EXTRA_KMOD_DEPS = {
     'kmod-ipt-nat': ['kmod-nf-nat', 'kmod-ipt-conntrack', 'kmod-ipt-core'],
     'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
     'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
-    'kmod-nf-conntrack6': ['kmod-nf-conntrack', 'kmod-nf-ipt6'],
+    'kmod-nf-conntrack6': ['kmod-nf-conntrack'],
     'kmod-pppoe': ['kmod-ppp', 'kmod-pppox'],
     'kmod-pppox': ['kmod-ppp'],
     'kmod-ppp': ['kmod-slhc', 'kmod-lib-crc-ccitt'],
