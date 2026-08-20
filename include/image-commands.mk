@@ -140,6 +140,8 @@ define Build/append-ubi
 		$(if $(UBOOTENV_IN_UBI),--uboot-env) \
 		$(if $(KERNEL_IN_UBI),--kernel $(IMAGE_KERNEL)) \
 		$(foreach part,$(UBINIZE_PARTS),--part $(part)) \
+		$(if $(ROOTFS_NAME),--rootfs-name $(ROOTFS_NAME)) \
+		$(if $(NO_ROOTFS_DATA),--no-rootfs-data) \
 		--rootfs $(IMAGE_ROOTFS) \
 		$@.tmp \
 		-p $(BLOCKSIZE:%k=%KiB) -m $(PAGESIZE) \

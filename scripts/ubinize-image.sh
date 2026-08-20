@@ -85,15 +85,21 @@ ubilayout() {
 			autoresize=1
 			;;
 		"squashfs")
-			# squashfs uses 1k block size, ensure we do not
-			# violate that
-			rootsize="$( round_up "$( stat -c%s "$2" )" 1024 )"
+			if [ -n "$no_rootfs_data" ]; then
+				autoresize=1
+			else
+				# squashfs uses 1k block size, ensure we do not
+				# violate that
+				rootsize="$( round_up "$( stat -c%s "$2" )" 1024 )"
+			fi
 			;;
 		esac
-		ubivol $vol_id rootfs "$2" "$autoresize" "$rootsize"
+		ubivol $vol_id "$rootfs_name" "$2" "$autoresize" "$rootsize"
 
 		vol_id=$(( vol_id + 1 ))
-		[ "$rootfs_type" = "ubifs" ] || ubivol $vol_id rootfs_data "" 1
+		if [ "$rootfs_type" != "ubifs" ] && [ -z "$no_rootfs_data" ]; then
+			ubivol $vol_id rootfs_data "" 1
+		fi
 	fi
 }
 
@@ -102,6 +108,9 @@ set_ubinize_seq() {
 		ubinize_seq="-Q $SOURCE_DATE_EPOCH"
 	fi
 }
+
+rootfs_name="rootfs"
+no_rootfs_data=""
 
 while [ "$1" ]; do
 	case "$1" in
@@ -119,6 +128,17 @@ while [ "$1" ]; do
 	"--rootfs")
 		rootfs="$2"
 		shift
+		shift
+		continue
+		;;
+	"--rootfs-name")
+		rootfs_name="$2"
+		shift
+		shift
+		continue
+		;;
+	"--no-rootfs-data")
+		no_rootfs_data=1
 		shift
 		continue
 		;;
