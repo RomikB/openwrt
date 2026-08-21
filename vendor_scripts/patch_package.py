@@ -131,12 +131,12 @@ def patch_package_directory(target_dir: Path) -> None:
                 file_path.rename(new_path)
                 print(f"    Renamed  {name!r} -> {new_name!r}")
 
-    # 3. Patch ELF binaries (executables and libraries)
+    # 3. Patch ELF binaries (executables and libraries, skip .ko kernel modules)
     for root, _dirs, filenames in os.walk(target_dir):
         root_path = Path(root)
         for name in filenames:
             file_path = root_path / name
-            if file_path.is_symlink() or not file_path.is_file():
+            if file_path.is_symlink() or not file_path.is_file() or name.endswith(".ko"):
                 continue
 
             if not is_elf(file_path):
@@ -191,13 +191,190 @@ def patch_vendor_package(pkg_dir: Path) -> None:
             content = content.replace("#!/bin/sh  /etc/rc.common", "#!/bin/sh /etc/rc.common")
             init_ecm.write_text(content)
 
-    is_kmod = orig_pkg_name.startswith("kmod")
+    # Configure init scripts for kmod-qca-wifi-lowmem-profile
+    if orig_pkg_name == "kmod-qca-wifi-lowmem-profile":
+        # 1. Update load_cnss2 to use procd supervision with START=11
+        init_cnss2 = pkg_dir / "files" / "etc" / "init.d" / "load_cnss2"
+        if init_cnss2.is_file():
+            cnss2_content = """#!/bin/sh /etc/rc.common
+#
+# Copyright (c) 2022-2023 Qualcomm Technologies, Inc.
+# All Rights Reserved.
+#
 
-    print(f"Patching: {orig_pkg_name} [kmod={is_kmod}]")
+START=11
+STOP=89
 
-    if is_kmod:
-        print("  Kernel module -- skipping.")
-        return
+USE_PROCD=1
+SVC_NAME=load_cnss2
+
+start_service() {
+\tlocal cnss2_args=""
+\tlocal cnssd_args="-n -s"
+
+\tfor arg in $(cat /proc/cmdline); do
+\t\tcase "$arg" in
+\t\t\tcnss2*)
+\t\t\t\targ="$(echo $arg | awk -F '.' '{print$2}')"
+\t\t\t\tcnss2_args="$cnss2_args $arg"
+\t\t\t\t;;
+\t\tesac
+\tdone
+
+\techo "Loading cnss2: $cnss2_args" > /dev/console
+\tif [ -f /lib/modules/5.4.213/ipq_cnss2.ko ]; then
+\t\tinsmod /lib/modules/5.4.213/ipq_cnss2.ko $cnss2_args 2>/dev/null || true
+\telse
+\t\tmodprobe ipq_cnss2 $cnss2_args 2>/dev/null || true
+\tfi
+
+\tprocd_open_instance $SVC_NAME
+\tprocd_set_param command /usr/bin/cnssdaemon $cnssd_args
+\tprocd_set_param respawn
+\tprocd_set_param stdout 1
+\tprocd_set_param stderr 1
+\tprocd_close_instance
+}
+
+stop_service() {
+\tkillall cnssdaemon 2>/dev/null || true
+}
+"""
+            init_cnss2.write_text(cnss2_content)
+
+        # 2. Disable automatic startup for qcawifi-config-cmd and diag_socket_app
+        for init_name in ["qcawifi-config-cmd", "diag_socket_app"]:
+            init_file = pkg_dir / "files" / "etc" / "init.d" / init_name
+            if init_file.is_file():
+                c = init_file.read_text()
+                c = re.sub(r"^START=\d+", "START=", c, flags=re.MULTILINE)
+                init_file.write_text(c)
+
+    # Configure init script for qca-hostap
+    if orig_pkg_name == "qca-hostap":
+        init_hostapd = pkg_dir / "files" / "etc" / "init.d" / "qca-hostapd"
+        if init_hostapd.is_file():
+            hostapd_content = """#!/bin/sh /etc/rc.common
+#
+# Copyright (c) 2024 Qualcomm Technologies, Inc. / OpenWrt
+# QCA Wi-Fi 6 / 7 Hostapd Service for Xiaomi Router BE3600 (RD15)
+#
+
+START=21
+STOP=87
+
+USE_PROCD=1
+PROCD_DEBUG=1
+
+setup_vaps() {
+\tlocal retries=10
+\twhile [ $retries -gt 0 ]; do
+\t\t[ -d /sys/class/net/wifi0 ] && [ -d /sys/class/net/wifi1 ] && break
+\t\tsleep 1
+\t\tretries=$((retries - 1))
+\tdone
+
+\tlocal phy0=$(cat /sys/class/net/wifi0/phy80211/name 2>/dev/null || echo "phy1")
+\tlocal phy1=$(cat /sys/class/net/wifi1/phy80211/name 2>/dev/null || echo "phy2")
+
+\t# Ensure br-lan is up
+\t[ -d /sys/class/net/br-lan ] || brctl addbr br-lan 2>/dev/null || true
+\tip link set br-lan up 2>/dev/null || true
+
+\tsysctl -w net.bridge.bridge-nf-call-iptables=0 2>/dev/null || true
+\tsysctl -w net.bridge.bridge-nf-call-arptables=0 2>/dev/null || true
+\tsysctl -w net.bridge.bridge-nf-call-ip6tables=0 2>/dev/null || true
+
+\t# Create VAPs
+\tif [ ! -d /sys/class/net/ath0 ]; then
+\t\tiw phy "$phy0" interface add ath0 type __ap 2>/dev/null || true
+\tfi
+\tif [ ! -d /sys/class/net/ath1 ]; then
+\t\tiw phy "$phy1" interface add ath1 type __ap 2>/dev/null || true
+\tfi
+
+\tbrctl addif br-lan ath0 2>/dev/null || true
+\tbrctl addif br-lan ath1 2>/dev/null || true
+\tip link set ath0 up 2>/dev/null || true
+\tip link set ath1 up 2>/dev/null || true
+
+\t# NAT and forwarding for Wi-Fi clients
+\tiptables -I FORWARD -i br-lan -j ACCEPT 2>/dev/null || true
+\tiptables -I FORWARD -o br-lan -j ACCEPT 2>/dev/null || true
+\tiptables -t nat -I POSTROUTING -s 192.168.1.0/24 -j MASQUERADE 2>/dev/null || true
+}
+
+generate_configs() {
+\tmkdir -p /var/run/hostapd
+
+\tcat << 'EOF' > /var/run/hostapd-ath0.conf
+driver=nl80211
+interface=ath0
+bridge=br-lan
+ssid=OpenWrt_RD15_2.4G
+hw_mode=g
+channel=1
+ieee80211n=1
+ieee80211ax=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+wpa_passphrase=12345678
+ctrl_interface=/var/run/hostapd
+EOF
+
+\tcat << 'EOF' > /var/run/hostapd-ath1.conf
+driver=nl80211
+interface=ath1
+bridge=br-lan
+ssid=OpenWrt_RD15_5G
+hw_mode=a
+channel=36
+ieee80211n=1
+ieee80211ac=1
+ieee80211ax=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+wpa_passphrase=12345678
+ctrl_interface=/var/run/hostapd
+EOF
+}
+
+start_service() {
+\tsetup_vaps
+\tgenerate_configs
+
+\tprocd_open_instance hostapd_2g
+\tprocd_set_param command /usr/sbin/hostapd -P /var/run/hostapd-ath0.pid -e /var/run/entropy.bin /var/run/hostapd-ath0.conf
+\tprocd_set_param respawn 3600 5 5
+\tprocd_set_param stdout 1
+\tprocd_set_param stderr 1
+\tprocd_close_instance
+
+\tprocd_open_instance hostapd_5g
+\tprocd_set_param command /usr/sbin/hostapd -P /var/run/hostapd-ath1.pid -e /var/run/entropy.bin /var/run/hostapd-ath1.conf
+\tprocd_set_param respawn 3600 5 5
+\tprocd_set_param stdout 1
+\tprocd_set_param stderr 1
+\tprocd_close_instance
+}
+
+stop_service() {
+\tkillall hostapd 2>/dev/null || true
+\tbrctl delif br-lan ath0 2>/dev/null || true
+\tbrctl delif br-lan ath1 2>/dev/null || true
+\tiw dev ath0 del 2>/dev/null || true
+\tiw dev ath1 del 2>/dev/null || true
+}
+"""
+            init_hostapd.write_text(hostapd_content)
+
+
+
+    print(f"Patching: {orig_pkg_name}")
 
     files_dir = pkg_dir / "files"
     if files_dir.is_dir():

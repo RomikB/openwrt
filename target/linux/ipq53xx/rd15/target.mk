@@ -19,6 +19,10 @@ DEFAULT_PACKAGES += \
 	kmod-ppp-vendor kmod-pppoe-vendor kmod-pppox-vendor kmod-slhc-vendor kmod-lib-crc-ccitt-vendor kmod-ipv6-vendor \
 	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-ds-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
 	luci iperf3 htop \
+	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
+	kmod-qca-cnss-vendor qca-cnss-daemon-vendor qca-qmi-framework-vendor libnl-vendor \
+	kmod-cfg80211-linux-vendor kmod-qca-wifi-lowmem-profile-vendor qca-cfg80211-vendor libroxml-vendor iw \
+	libopenssl-vendor qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli-vendor qca-wpa-cli-vendor \
 	nvram-vendor qca-ssdk-shell-vendor \
 	yt-9215s-client-vendor
 

@@ -1,11 +1,11 @@
 #!/bin/bash
+#
+# Upload Factory UBI firmware image to Xiaomi Router BE3600 (RD15)
+# Usage: ./upload_ubi_rd15.sh [HOST]
+#
 
-HOST="${1:-192.168.11.36}"
-USER="root"
-# Compatible with both legacy and modern OpenSSH versions
-PARAMS="-o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+HOST="${1:-192.168.11.46}"
 FILE="bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi"
-REMOTE_DIR="/tmp"
 
 # Auto-detect if exact file path isn't found
 if [ ! -f "$FILE" ]; then
@@ -21,18 +21,4 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-echo "Uploading: $FILE ($(du -h "$FILE" | cut -f1)) to ${USER}@${HOST}:${REMOTE_DIR}/root.ubi"
-
-read -s -p "Password: " PASS
-echo
-
-# Upload the file via sftp
-sshpass -p "$PASS" sftp $PARAMS "${USER}@${HOST}" <<EOF
-put "$FILE" "$REMOTE_DIR/root.ubi"
-quit
-EOF
-
-if [ $? -eq 0 ]; then
-    echo "Successfully uploaded to ${REMOTE_DIR}/root.ubi"
-fi
-
+./upload_file.sh "$HOST" "$FILE" "/tmp/root.ubi"

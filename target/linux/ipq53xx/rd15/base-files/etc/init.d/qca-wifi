@@ -1,0 +1,89 @@
+#!/bin/sh /etc/rc.common
+#
+# Copyright (c) 2024 Qualcomm Technologies, Inc. / OpenWrt
+# QCA Wi-Fi 7 Direct Connect Kernel Module Loader
+#
+
+START=12
+STOP=88
+
+load_modules() {
+	# 1. Ensure kernel firmware search path includes /ini
+	if [ -e /sys/module/firmware_class/parameters/path ]; then
+		echo -n "/ini" > /sys/module/firmware_class/parameters/path
+	fi
+
+	# 2. Fallback symlinks in /lib/firmware
+	ln -sf /ini/global.ini /lib/firmware/global.ini 2>/dev/null || true
+	ln -sf /ini/internal /lib/firmware/internal 2>/dev/null || true
+	ln -sf /ini/QCA5332.ini /lib/firmware/QCA5332.ini 2>/dev/null || true
+	ln -sf /ini/QCN6432.ini /lib/firmware/QCN6432.ini 2>/dev/null || true
+
+	# 3. Ensure CNSS2 daemon is up
+	[ -d /sys/module/ipq_cnss2 ] || {
+		[ -x /etc/init.d/load_cnss2 ] && /etc/init.d/load_cnss2 start
+	}
+
+	# 4. Load CFG80211
+	[ -d /sys/module/cfg80211 ] || {
+		insmod /lib/modules/5.4.213/cfg80211.ko 2>/dev/null || modprobe cfg80211 2>/dev/null || true
+	}
+
+	# 5. Load memory manager & QDF
+	[ -d /sys/module/mem_manager ] || {
+		insmod /lib/modules/5.4.213/mem_manager.ko 2>/dev/null || true
+	}
+	[ -d /sys/module/qdf ] || {
+		insmod /lib/modules/5.4.213/qdf.ko 2>/dev/null || true
+	}
+
+	# 6. Load prerequisite PPE acceleration modules
+	[ -d /sys/module/qca_nss_ppe ] || {
+		insmod /lib/modules/5.4.213/qca-nss-ppe.ko 2>/dev/null || true
+	}
+	[ -d /sys/module/qca_nss_ppe_vp ] || {
+		insmod /lib/modules/5.4.213/qca-nss-ppe-vp.ko 2>/dev/null || true
+	}
+	[ -d /sys/module/qca_nss_ppe_ds ] || {
+		insmod /lib/modules/5.4.213/qca-nss-ppe-ds.ko 2>/dev/null || true
+	}
+
+	# 7. Load UMAC & Offload layer
+	[ -d /sys/module/umac ] || {
+		insmod /lib/modules/5.4.213/umac.ko 2>/dev/null || true
+	}
+	[ -d /sys/module/qca_ol ] || {
+		insmod /lib/modules/5.4.213/qca_ol.ko 2>/dev/null || true
+	}
+
+	# 8. Load Wi-Fi 3.0 Direct Connect driver
+	[ -d /sys/module/wifi_3_0 ] || {
+		insmod /lib/modules/5.4.213/wifi_3_0.ko 2>/dev/null || true
+	}
+
+	# 9. Load optional monitor & pktlog modules
+	[ -d /sys/module/monitor ] || {
+		insmod /lib/modules/5.4.213/monitor.ko 2>/dev/null || true
+	}
+	[ -d /sys/module/ath_pktlog ] || {
+		insmod /lib/modules/5.4.213/ath_pktlog.ko 2>/dev/null || true
+	}
+}
+
+unload_modules() {
+	for mod in ath_pktlog monitor wifi_3_0 qca_ol umac qdf mem_manager; do
+		[ -d "/sys/module/${mod}" ] && rmmod "${mod}" 2>/dev/null || true
+	done
+}
+
+start() {
+	load_modules
+}
+
+boot() {
+	load_modules
+}
+
+stop() {
+	unload_modules
+}
