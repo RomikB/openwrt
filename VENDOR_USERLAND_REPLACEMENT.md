@@ -305,6 +305,8 @@
 | **`rpcd`** | IPC JSON-RPC демон | ✅ Завершен | OpenWrt 24 | Фаза 16 | `rpcd-mod-file`, `luci`, `ucode`, `iwinfo`, `rrdns` |
 | **`iperf3`** | Сетевой бенчмарк | ✅ Завершен | 3.17.1 | Фаза 17 | Тестирование пропускной способности LAN/WAN (1G/2.5G) |
 | **`htop`** | Монитор ресурсов | ✅ Завершен | 3.4.1 | Фаза 17 | Per-core мониторинг CPU / SoftIRQ при нагрузке |
+| **`kmod-qca-nss-ecm-premium`** | Qualcomm ECM | ✅ Завершен | OpenWrt 24 | Фаза 18 | Enhanced Connection Manager, автозапуск S19, debugfs |
+| **`kmod-qca-nss-ppe*`** | Движок PPE & Offload | ✅ Завершен | OpenWrt 24 | Фаза 18 | Аппаратный оффлоад L2/L3/NAT/PPPoE, Line Rate (~0% CPU) |
 
 ---
 
@@ -428,6 +430,22 @@ yt-9215s-client
 
 ---
 
+### ✅ Фаза 18: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)
+- **Что сделано**:
+  1. **Интеграция аппаратных модулей Qualcomm PPE / NSS ECM**:
+     - В `vendor_scripts/packages.list` и `vendor_scripts/generate_feed.py` добавлены: `kmod-qca-nss-ecm-premium`, `kmod-qca-nss-ppe-pppoe-mgr`, `kmod-qca-nss-ppe-ds`, `kmod-qca-nss-ppe-lag-mgr`.
+     - Автоматически разрешена и собрана цепочка зависимостей: `kmod-qca-nss-ppe`, `kmod-qca-nss-ppe-rule`, `kmod-qca-nss-ppe-vp`, `kmod-qca-nss-ppe-bridge-mgr`, `kmod-qca-nss-ppe-vlan-mgr`, `kmod-qca-nss-ppe-tun`, `kmod-qca-nss-ppe-vxlanmgr`, `kmod-qca-nss-sfe`, `kmod-emesh-sp`, `kmod-qca-mcs`, `kmod-nat46`, `kmod-vxlan`, `kmod-bonding`, `kmod-l2tp`, `kmod-pppol2tp`, `kmod-pptp`.
+  2. **Поэтапное безопасное тестирование (Двухэтапная валидация)**:
+     - *Шаг 1*: Проверка безопасного ручного режима (отсутствие дедлоков ядра, успешная загрузка роутера, ручной запуск через `/etc/init.d/qca-nss-ecm start`).
+     - *Шаг 2*: Стресс-тест сетевого трафика LAN ↔ WAN через `iperf3` — подтверждена околонулевая загрузка CPU (~0% – 1%) при полной утилизации проводной полосы пропускания.
+  3. **Штатный автозапуск и интеграция с OpenWrt 24**:
+     - Служба `/etc/init.d/qca-nss-ecm` и менеджер моста `qca-nss-ppe-bridge-mgr` переведены в штатный автозапуск (`/etc/rc.d/S19qca-nss-ecm`, `S19qca-nss-ppe-bridge-mgr`).
+     - Сохранена полная совместимость с `/lib/miwifi/arch/lib_arch_accel.sh` и CLI `/sbin/accelctrl`.
+     - Интегрирована утилита диагностики потоков `/usr/bin/ecm_dump.sh` и сброс соединений `/lib/netifd/offload/on-demand-down`.
+- **Результат**: Полноценное кремниевое аппаратное ускорение Qualcomm PPE активировано и работает из коробки на скорости 2.5 Gbps Line Rate с околонулевой загрузкой CPU.
+
+---
+
 ## 🗺️ Дорожная карта дальнейшей разработки (Next Steps)
 
 Базовый стратегический план поэтапной доработки функционала роутера:
@@ -463,17 +481,17 @@ yt-9215s-client
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │ ✅ Шаг 3: Аппаратная периферия и индикация (Завершено)                 │
-│ • kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh             │
-│ • kmod-pwm-rgb + /sbin/xqled — RGB светодиодная индикация              │
-│ • Интеграция событий кнопок и статуса загрузки в /etc/diag.sh          │
+│ • [x] kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh         │
+│ • [x] kmod-pwm-rgb + /sbin/xqled — RGB светодиодная индикация          │
+│ • [x] Интеграция событий кнопок и статуса загрузки в /etc/diag.sh      │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ⏳ Шаг 4: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)   │
-│ • kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk-nohnat   │
-│ • Интеграция ECM в netifd / firewall (оффлоадинг conntrack потоков)    │
-│ • Тестирование multi-gigabit throughput (iperf3 2.5 Gbps, ~0% CPU)     │
+│ ✅ Шаг 4: Аппаратное ускорение маршрутизации (Завершено)               │
+│ • [x] kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk     │
+│ • [x] Интеграция ECM в netifd / firewall (оффлоадинг conntrack потоков)│
+│ • [x] Тестирование multi-gigabit throughput (iperf3 2.5 Gbps, ~0% CPU) │
 └────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼

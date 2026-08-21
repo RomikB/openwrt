@@ -25,3 +25,7 @@ kmod-pppox
 kmod-slhc
 kmod-lib-crc-ccitt
 kmod-ipv6
+kmod-qca-nss-ecm-premium
+kmod-qca-nss-ppe-pppoe-mgr
+kmod-qca-nss-ppe-ds
+kmod-qca-nss-ppe-lag-mgr

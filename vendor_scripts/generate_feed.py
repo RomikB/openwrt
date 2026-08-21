@@ -10,12 +10,22 @@ if len(sys.argv) < 6:
     print("  ./vendor_scripts/prepare_feed.sh [firmware_file.bin]", file=sys.stderr)
     sys.exit(1)
 
+import json
+
 # Parse command line arguments
 status_file = sys.argv[1]
 extracted_rootfs = sys.argv[2]
 feed_dir = sys.argv[3]
 add_pkgs = sys.argv[4].split()
 ignore_pkgs = set(sys.argv[5].split())
+deps_json_file = sys.argv[6] if len(sys.argv) > 6 else os.path.join(os.path.dirname(feed_dir), "tmp/kmod_deps.json")
+
+# Load kernel module dependencies extracted from .ko binaries
+extra_kmod_deps = {}
+if os.path.isfile(deps_json_file):
+    with open(deps_json_file, 'r') as f:
+        extra_kmod_deps = json.load(f)
+    print(f"Loaded dynamic kernel module dependencies from {deps_json_file}")
 
 # Parse opkg status file for package metadata and dependencies
 pkg_info = {}
@@ -44,18 +54,6 @@ for pkg in pkg_info:
             cfs = [l.strip() for l in cf if l.strip()]
             pkg_info[pkg]['conffiles'] = cfs
 
-# Extra kernel module dependencies not fully captured in opkg status
-EXTRA_KMOD_DEPS = {
-    'kmod-ipt-core': ['kmod-nf-reject', 'kmod-nf-ipt'],
-    'kmod-ipt-nat': ['kmod-nf-nat', 'kmod-ipt-conntrack', 'kmod-ipt-core'],
-    'kmod-ipt-conntrack': ['kmod-nf-conntrack', 'kmod-ipt-core'],
-    'kmod-ip6tables': ['kmod-nf-reject6', 'kmod-nf-ipt6'],
-    'kmod-nf-conntrack6': ['kmod-nf-conntrack'],
-    'kmod-pppoe': ['kmod-ppp', 'kmod-pppox'],
-    'kmod-pppox': ['kmod-ppp'],
-    'kmod-ppp': ['kmod-slhc', 'kmod-lib-crc-ccitt'],
-}
-
 # Resolve target package list and transitive dependencies
 visited = set()
 to_visit = list(add_pkgs)
@@ -67,7 +65,7 @@ while to_visit:
     visited.add(pkg)
     resolved.append(pkg)
     deps = list(pkg_info.get(pkg, {}).get('depends', []))
-    for extra in EXTRA_KMOD_DEPS.get(pkg, []):
+    for extra in extra_kmod_deps.get(pkg, []):
         if extra not in deps:
             deps.append(extra)
     for dep in deps:
@@ -116,7 +114,7 @@ for pkg in resolved:
 
     raw_deps = pkg_info.get(pkg, {}).get('depends', [])
     filtered_deps = [d for d in raw_deps if d not in ignore_pkgs]
-    for extra_dep in EXTRA_KMOD_DEPS.get(pkg, []):
+    for extra_dep in extra_kmod_deps.get(pkg, []):
         if extra_dep not in filtered_deps and extra_dep not in ignore_pkgs:
             filtered_deps.append(extra_dep)
     depends_str = ' '.join(f"+{d}-vendor" for d in filtered_deps)

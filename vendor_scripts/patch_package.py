@@ -26,6 +26,7 @@ Usage:
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -75,7 +76,7 @@ def get_vendor_lib_name(name: str) -> str:
 
 def patch_package_directory(target_dir: Path) -> None:
     """
-    Scans a directory (e.g. files/ or postinst/), renames libraries/symlinks,
+    Scans a directory (e.g. files/), renames libraries/symlinks,
     and updates ELF metadata (INTERP, SONAME, NEEDED).
     """
     if not target_dir.is_dir():
@@ -182,6 +183,14 @@ def patch_vendor_package(pkg_dir: Path) -> None:
     dir_name = pkg_dir.name
     orig_pkg_name = dir_name[:-7] if dir_name.endswith("-vendor") else dir_name
 
+    # Enable automatic boot startup for qca-nss-ecm in OpenWrt rc.common
+    init_ecm = pkg_dir / "files" / "etc" / "init.d" / "qca-nss-ecm"
+    if init_ecm.is_file():
+        content = init_ecm.read_text()
+        if "#!/bin/sh  /etc/rc.common" in content:
+            content = content.replace("#!/bin/sh  /etc/rc.common", "#!/bin/sh /etc/rc.common")
+            init_ecm.write_text(content)
+
     is_kmod = orig_pkg_name.startswith("kmod")
 
     print(f"Patching: {orig_pkg_name} [kmod={is_kmod}]")
@@ -193,10 +202,6 @@ def patch_vendor_package(pkg_dir: Path) -> None:
     files_dir = pkg_dir / "files"
     if files_dir.is_dir():
         patch_package_directory(files_dir)
-
-    postinst_dir = pkg_dir / "postinst"
-    if postinst_dir.is_dir():
-        patch_package_directory(postinst_dir)
 
 
 def main() -> None:

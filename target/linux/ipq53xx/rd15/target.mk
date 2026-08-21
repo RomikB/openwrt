@@ -17,6 +17,7 @@ DEFAULT_PACKAGES += \
 	kmod-ipt-nat6-vendor kmod-nf-conntrack-vendor kmod-nf-conntrack6-vendor \
 	kmod-nf-nat-vendor kmod-nf-nat6-vendor kmod-nf-reject-vendor kmod-nf-reject6-vendor \
 	kmod-ppp-vendor kmod-pppoe-vendor kmod-pppox-vendor kmod-slhc-vendor kmod-lib-crc-ccitt-vendor kmod-ipv6-vendor \
+	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-ds-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
 	luci iperf3 htop \
 	nvram-vendor qca-ssdk-shell-vendor \
 	yt-9215s-client-vendor

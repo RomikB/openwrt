@@ -24,6 +24,7 @@ echo "Using firmware image: $FW_FILE"
 
 PACKAGES_LIST="vendor_scripts/packages.list"
 REQUIRED_LIST="vendor_scripts/required.list"
+IGNORED_LIST="vendor_scripts/ignored.list"
 
 if [ ! -f "$PACKAGES_LIST" ]; then
 	echo "Error: Packages list file not found at $PACKAGES_LIST" >&2
@@ -35,8 +36,13 @@ if [ ! -f "$REQUIRED_LIST" ]; then
 	exit 1
 fi
 
+if [ ! -f "$IGNORED_LIST" ]; then
+	echo "Error: Ignored packages list file not found at $IGNORED_LIST" >&2
+	exit 1
+fi
+
 ADD_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$PACKAGES_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
-IGNORE_VENDOR_PACKAGES="${IGNORE_VENDOR_PACKAGES:-kernel ubus ubusd ubox fstools ubi-utils procd jshn netifd jsonfilter usign openwrt-keyring fwtool base-files}"
+IGNORE_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$IGNORED_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
 
 # Validate that all required packages from required.list are present
 while IFS= read -r req_pkg || [ -n "$req_pkg" ]; do
@@ -112,6 +118,11 @@ if [ -d "vendor_data" ]; then
 	cp -a vendor_data/* "$EXTRACTED_ROOTFS/"
 fi
 
+# Extract kernel module dependencies directly from .ko binaries
+KMOD_DEPS_JSON="$TMP_DIR/kmod_deps.json"
+echo "Extracting kernel module dependencies from binaries to $KMOD_DEPS_JSON..."
+python3 ./vendor_scripts/extract_kmod_deps.py "$EXTRACTED_ROOTFS" "$KMOD_DEPS_JSON"
+
 # Resolve package list and generate vendor feed using external python script
 STATUS_FILE="$EXTRACTED_ROOTFS/usr/lib/opkg/status"
 if [ ! -f "$STATUS_FILE" ]; then
@@ -120,7 +131,7 @@ if [ ! -f "$STATUS_FILE" ]; then
 fi
 
 echo "Generating vendor feed in $FEED_DIR..."
-python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES"
+python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON"
 echo "Vendor feed generation complete: $FEED_DIR"
 
 # Run patch script for each generated package

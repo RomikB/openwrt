@@ -1,0 +1,17 @@
+# Packages replaced by native OpenWrt 24 components or ignored during vendor feed generation
+kernel
+ubus
+ubusd
+ubox
+fstools
+ubi-utils
+procd
+jshn
+netifd
+jsonfilter
+usign
+openwrt-keyring
+fwtool
+base-files
+iptables-mod-extra
+iptables
