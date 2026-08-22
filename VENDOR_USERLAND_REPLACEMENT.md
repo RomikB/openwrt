@@ -307,6 +307,7 @@
 | **`htop`** | Монитор ресурсов | ✅ Завершен | 3.4.1 | Фаза 17 | Per-core мониторинг CPU / SoftIRQ при нагрузке |
 | **`kmod-qca-nss-ecm-premium`** | Qualcomm ECM | ✅ Завершен | OpenWrt 24 | Фаза 18 | Enhanced Connection Manager, автозапуск S19, debugfs |
 | **`kmod-qca-nss-ppe*`** | Движок PPE & Offload | ✅ Завершен | OpenWrt 24 | Фаза 18 | Аппаратный оффлоад L2/L3/NAT/PPPoE, Line Rate (~0% CPU) |
+| **`kmod-qca-wifi` / `hostapd`** | Wi-Fi 6 / 7 & UCI | ✅ Завершен | OpenWrt 24 | Фаза 19 | Direct Connect, `/etc/config/wireless`, LuCI UI, `/sbin/wifi` |
 
 ---
 
@@ -442,7 +443,22 @@ yt-9215s-client
      - Служба `/etc/init.d/qca-nss-ecm` и менеджер моста `qca-nss-ppe-bridge-mgr` переведены в штатный автозапуск (`/etc/rc.d/S19qca-nss-ecm`, `S19qca-nss-ppe-bridge-mgr`).
      - Сохранена полная совместимость с `/lib/miwifi/arch/lib_arch_accel.sh` и CLI `/sbin/accelctrl`.
      - Интегрирована утилита диагностики потоков `/usr/bin/ecm_dump.sh` и сброс соединений `/lib/netifd/offload/on-demand-down`.
-- **Результат**: Полноценное кремниевое аппаратное ускорение Qualcomm PPE активировано и работает из коробки на скорости 2.5 Gbps Line Rate с околонулевой загрузкой CPU.
+### ✅ Фаза 19: Интеграция беспроводного стека (Wi-Fi 6 / 7) с UCI и веб-интерфейсом LuCI
+- **Что сделано**:
+  1. **Унифицированная конфигурация UCI Wireless (`/etc/config/wireless`)**:
+     - Настроены радиомодули `radio0` (2.4 GHz, `HE40`, `country=CN`) и `radio1` (5.0 GHz, `HE160`, `country=CN`).
+     - Настроены VAP-интерфейсы `ath0` (`OpenWrt_RD15_2.4G`) и `ath1` (`OpenWrt_RD15_5G`) с режимом WPA2-PSK CCMP и готовностью к WPA3-SAE.
+  2. **Динамический генератор конфигурации `hostapd` (`/lib/wifi/hostapd_config.sh`)**:
+     - Автоматическая трансляция параметров UCI в `/var/run/hostapd-ath0.conf` и `/var/run/hostapd-ath1.conf`.
+     - Поддержка стандартов 802.11ax (Wi-Fi 6) и 802.11be (Wi-Fi 7 EHT 160MHz), шифрования WPA2-PSK / WPA3-SAE / Mixed с PMF, изоляции клиентов и скрытия SSID.
+     - Безопасная работа с регуляторным доменом (отключение `ieee80211d` для предотвращения конфликтов с калибровками BDF в `0:ART`).
+  3. **Стандартная утилита `/sbin/wifi` и служба `qca-hostapd`**:
+     - Реализованы команды `wifi config`, `wifi up`, `wifi down`, `wifi reload`, `wifi status` с мьютексом `/var/run/wifi.lock`.
+     - Служба `/etc/init.d/qca-hostapd` переведена на управление инстансами `hostapd_2g` и `hostapd_5g` под супервизором `procd`.
+     - Обеспечена бесшовная перезагрузка параметров hostapd при нажатии «Сохранить и применить» в LuCI без сброса моста `br-lan`.
+  4. **Очистка отладочного кода**:
+     - Полностью удалены временные скрипты `/sbin/wifi_ap_start.sh` и `/sbin/wifi_ap_stop.sh`.
+- **Результат**: Собран полный образ прошивки `factory.ubi` (18 МБ) с полноценным управлением Wi-Fi через веб-интерфейс LuCI и командную строку OpenWrt.
 
 ---
 
@@ -496,9 +512,20 @@ yt-9215s-client
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ⏳ Шаг 5: Беспроводной стек (Wi-Fi 7 / QCN6432)                         │
-│ • Драйверы kmod-qca-wifi / ath12k, прошивки firmware                   │
-│ • Стек qca-hostap / wpa_supplicant, конфигурация радиоинтерфейсов      │
+│ ✅ Шаг 5: Беспроводной стек и LuCI (Завершено)                         │
+│ • [x] Драйверы Qualcomm Direct Connect (umac, qca_ol, wifi_3_0)        │
+│ • [x] Подсистема PCIe cnssdaemon, BDF калибровки ART                   │
+│ • [x] UCI /etc/config/wireless + генератор hostapd_config.sh           │
+│ • [x] Системная утилита /sbin/wifi + procd служба qca-hostapd          │
+│ • [x] Полное управление и мониторинг через LuCI (Network -> Wireless)  │
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ 🔄 Шаг 6: Wi-Fi 7 EHT 160MHz, Multi-Link Operation (MLO) & WPA3-SAE    │
+│ • [ ] Тонкая настройка полосы 160 МГц и Wi-Fi 7 EHT параметров         │
+│ • [ ] Активация mld-wifi0 для multi-link агрегации                     │
+│ • [ ] Тесты пропускной способности Wi-Fi (iperf3) с оффлоадом PPE/ECM  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 

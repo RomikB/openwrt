@@ -22,15 +22,15 @@ graph TD
     S1["Этап 1: Калибровки ART & BDF"] -->|Успешно| S2["Этап 2: PCIe & cnssdaemon"]
     S2 -->|Успешно| S3["Этап 3: Direct Connect драйвер"]
     S3 -->|Успешно| S4["Этап 4: Hostapd, Wi-Fi 6, DHCP & NAT"]
-    S4 -->|Готово к запуску| S5["Этап 5: LuCI Web UI & UCI wireless"]
-    S5 -->|В планах| S6["Этап 6: Wi-Fi 7 EHT 160MHz, MLO & WPA3"]
+    S4 -->|Успешно| S5["Этап 5: LuCI Web UI & UCI wireless"]
+    S5 -->|Следующий этап| S6["Этап 6: Wi-Fi 7 EHT 160MHz, MLO & WPA3"]
     
     style S1 fill:#d4edda,stroke:#28a745,color:#155724
     style S2 fill:#d4edda,stroke:#28a745,color:#155724
     style S3 fill:#d4edda,stroke:#28a745,color:#155724
     style S4 fill:#d4edda,stroke:#28a745,color:#155724
-    style S5 fill:#cce5ff,stroke:#004085,color:#004085
-    style S6 fill:#fff3cd,stroke:#856404,color:#856404
+    style S5 fill:#d4edda,stroke:#28a745,color:#155724
+    style S6 fill:#cce5ff,stroke:#004085,color:#004085
 ```
 
 | Этап | Задача | Статус | Достигнутый результат |
@@ -39,8 +39,8 @@ graph TD
 | **Этап 2** | Подсистема PCIe и CNSS2 | ✅ **Завершен** | Скомпилирован `ipq_cnss2.ko`, настроен автозапуск `cnssdaemon -n -s` под супервизором `procd` (`START=11`). |
 | **Этап 3** | Qualcomm Direct Connect радиодрайвер | ✅ **Завершен** | Модули `umac.ko`, `qca_ol.ko`, `wifi_3_0.ko` поднимают радиоинтерфейсы: `wifi0` (2.4G), `wifi1` (5G), `mld-wifi0` (MLO). Установлен путь `/sys/module/firmware_class/parameters/path` -> `/ini`. |
 | **Этап 4** | Hostapd, вещание точек, DHCP и интернет | ✅ **Завершен** | Точки `OpenWrt_RD15_2.4G` и `OpenWrt_RD15_5G` вещают в **Wi-Fi 6 (802.11ax)**, клиенты получают IP по DHCP (`192.168.1.x`) и полный доступ в интернет. Автозапуск `S21qca-hostapd` после `S20network`. |
-| **Этап 5** | Интеграция с LuCI Web UI & UCI | 🔄 **Следующий этап** | Управление Wi-Fi через веб-интерфейс LuCI (`/etc/config/wireless`, статус радио, смена пароля и SSID). |
-| **Этап 6** | Wi-Fi 7 EHT 160MHz, MLO, WPA3 & Производительность | ⏳ **Запланирован** | Тонкая настройка полосы 160 МГц, Multi-Link Operation (MLO), WPA3-SAE, тесты iperf3 с ускорением PPE/ECM. |
+| **Этап 5** | Интеграция с LuCI Web UI & UCI | ✅ **Завершен** | Создан `/etc/config/wireless`, динамический генератор `/lib/wifi/hostapd_config.sh`, системная утилита `/sbin/wifi`, procd-служба `qca-hostapd` с поддержкой перезагрузки без обрыва моста `br-lan`. |
+| **Этап 6** | Wi-Fi 7 EHT 160MHz, MLO, WPA3 & Производительность | 🔄 **Следующий этап** | Тонкая настройка полосы 160 МГц, Multi-Link Operation (MLO), WPA3-SAE, тесты iperf3 с ускорением PPE/ECM. |
 
 ---
 
@@ -110,20 +110,36 @@ S21qca-hostapd    -> Создание VAP ath0/ath1, привязка к br-lan,
 
 ## 4. План реализации следующих этапов
 
-### **Этап 5: Интеграция с веб-интерфейсом LuCI Web UI**
+### **✅ Этап 5: Интеграция с веб-интерфейсом LuCI Web UI & UCI (Завершен и Проверен)**
 1. **UCI Wireless (`/etc/config/wireless`)**:
-   - Настройка скрипта автоопределения радиомодулей (`wifi config` / `detect_qcawifi`) или шаблона конфигурации для радиомодулей `wifi0` и `wifi1`.
-2. **LuCI интерфейс**:
-   - Интеграция с меню `Network -> Wireless` для возможности изменения SSID, шифрования (WPA2/WPA3), пароля и выбора каналов через браузер.
-   - Отображение статуса подключенных станций и уровней сигнала на главной странице `Status -> Overview` / `Status -> Wireless`.
-3. **Обработчик `wifi reload`**:
-   - Бесшовная перезагрузка параметров hostapd при нажатии «Сохранить и применить» в LuCI без обрыва проводной сети.
+   - Стандартная конфигурация для радиомодулей `radio0` (2.4 GHz, `HE40`, `country=CN`) и `radio1` (5.0 GHz, `HE160`, `country=CN`).
+2. **Генератор конфигураций hostapd (`/lib/wifi/hostapd_config.sh`)**:
+   - Динамическая трансляция параметров UCI в `/var/run/hostapd-ath0.conf` и `/var/run/hostapd-ath1.conf`.
+   - Автоматический расчет центральных частот 160MHz (`seg0=50`), 80MHz (`seg0=42/58/106/122`), HT40+/-.
+   - Обязательный PMF (`ieee80211w=1`) для стандартов 802.11ax/be, fallback полей паролей (`key`, `password`, `sae_password`).
+   - Защита маппинга железа (`radio0` -> 2.4G, `radio1` -> 5.0G) вне зависимости от формы LuCI.
+3. **Драйвер Netifd (`/lib/netifd/wireless/mac80211.sh`)**:
+   - Независимый хэш-перезапуск (`cmp -s`): изменение параметров 2.4G не прерывает 5G, и наоборот.
+   - Отслеживание и очистка процессов через `pgrep -f "hostapd-athX.conf"` без риска утечек PID и зависаний.
+   - Проверка живости через `hostapd_cli ping` (ответ `PONG`).
+4. **Патч библиотеки `libiwinfo`**:
+   - Итерация подключенных станций Qualcomm Direct Connect (`STA-FIRST` / `STA-NEXT`).
+   - Полное отображение в LuCI: имя хоста, MAC, IPv4/IPv6, уровень сигнала (-95 dBm), скорость модуляции Wi-Fi 6 (`2402 Mbit/s, 160 MHz, HE-MCS 11`).
+5. **Служба `/etc/init.d/qca-hostapd` (`START=21`)**:
+   - Фоновый запуск чистых демонов без конфликтов procd-respawn.
+   - Автоматическое создание VAP `ath0`/`ath1`, привязка к мосту `br-lan` и старт при каждой загрузке из SquashFS.
+6. **Скрипт сборки вендор-пакетов (`vendor_scripts/patch_package.py`)**:
+   - Все изменения внедрены в систему патчинга для полной воспроизводимости при чистой перегенерации фида.
 
-### **Этап 6: Wi-Fi 7 EHT 160MHz, Multi-Link Operation (MLO) & WPA3-SAE**
+---
+
+### **🔄 Этап 6: Wi-Fi 7 EHT 160MHz, Multi-Link Operation (MLO) & WPA3-SAE (Следующий этап)**
 1. **Wi-Fi 7 EHT 160MHz**:
    - Включение параметров `ieee80211be=1`, `eht_oper_chwidth=2`, `eht_oper_centr_freq_seg0_idx=50`.
 2. **Multi-Link Operation (MLO)**:
    - Активация виртуального интерфейса `mld-wifi0` для одновременного агрегирования каналов 2.4G + 5G в единый высокоскоростной линк.
+3. **Тестирование пропускной способности iperf3**:
+   - Тестирование реальной скорости передачи через беспроводной стек с аппаратным ускорением PPE/ECM.
 3. **WPA3-SAE и WPA2/WPA3 Mixed Mode**:
    - Добавление `wpa_key_mgmt=WPA-PSK SAE` и `ieee80211w=1` (PMF Capable).
 4. **Тестирование пропускной способности (iperf3)**:

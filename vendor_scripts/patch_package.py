@@ -257,22 +257,19 @@ stop_service() {
             hostapd_content = """#!/bin/sh /etc/rc.common
 #
 # Copyright (c) 2024 Qualcomm Technologies, Inc. / OpenWrt
-# QCA Wi-Fi 6 / 7 Hostapd Service for Xiaomi Router BE3600 (RD15)
+# QCA Wi-Fi 6 / 7 Hostapd Service with UCI Integration for Xiaomi BE3600 (RD15)
 #
 
 START=21
 STOP=87
 
-USE_PROCD=1
-PROCD_DEBUG=1
+. /lib/functions.sh
 
 setup_vaps() {
-\tlocal retries=10
-\twhile [ $retries -gt 0 ]; do
-\t\t[ -d /sys/class/net/wifi0 ] && [ -d /sys/class/net/wifi1 ] && break
-\t\tsleep 1
-\t\tretries=$((retries - 1))
-\tdone
+\t# 1. Ensure driver is loaded
+\t[ -d /sys/module/wifi_3_0 ] || {
+\t\t[ -x /etc/init.d/qca-wifi ] && /etc/init.d/qca-wifi start
+\t}
 
 \tlocal phy0=$(cat /sys/class/net/wifi0/phy80211/name 2>/dev/null || echo "phy1")
 \tlocal phy1=$(cat /sys/class/net/wifi1/phy80211/name 2>/dev/null || echo "phy2")
@@ -281,96 +278,83 @@ setup_vaps() {
 \t[ -d /sys/class/net/br-lan ] || brctl addbr br-lan 2>/dev/null || true
 \tip link set br-lan up 2>/dev/null || true
 
+\t# Disable bridge netfilter dropping
 \tsysctl -w net.bridge.bridge-nf-call-iptables=0 2>/dev/null || true
 \tsysctl -w net.bridge.bridge-nf-call-arptables=0 2>/dev/null || true
 \tsysctl -w net.bridge.bridge-nf-call-ip6tables=0 2>/dev/null || true
 
-\t# Create VAPs
-\tif [ ! -d /sys/class/net/ath0 ]; then
+\t# Create VAPs once if they do not exist
+\tif [ ! -d /sys/class/net/ath0 ] && [ -d /sys/class/net/wifi0 ]; then
 \t\tiw phy "$phy0" interface add ath0 type __ap 2>/dev/null || true
 \tfi
-\tif [ ! -d /sys/class/net/ath1 ]; then
+\t[ -d /sys/class/net/ath0 ] && brctl addif br-lan ath0 2>/dev/null || true
+\t[ -d /sys/class/net/ath0 ] && ip link set ath0 up 2>/dev/null || true
+
+\tif [ ! -d /sys/class/net/ath1 ] && [ -d /sys/class/net/wifi1 ]; then
 \t\tiw phy "$phy1" interface add ath1 type __ap 2>/dev/null || true
 \tfi
-
-\tbrctl addif br-lan ath0 2>/dev/null || true
-\tbrctl addif br-lan ath1 2>/dev/null || true
-\tip link set ath0 up 2>/dev/null || true
-\tip link set ath1 up 2>/dev/null || true
-
-\t# NAT and forwarding for Wi-Fi clients
-\tiptables -I FORWARD -i br-lan -j ACCEPT 2>/dev/null || true
-\tiptables -I FORWARD -o br-lan -j ACCEPT 2>/dev/null || true
-\tiptables -t nat -I POSTROUTING -s 192.168.1.0/24 -j MASQUERADE 2>/dev/null || true
+\t[ -d /sys/class/net/ath1 ] && brctl addif br-lan ath1 2>/dev/null || true
+\t[ -d /sys/class/net/ath1 ] && ip link set ath1 up 2>/dev/null || true
 }
 
-generate_configs() {
-\tmkdir -p /var/run/hostapd
-
-\tcat << 'EOF' > /var/run/hostapd-ath0.conf
-driver=nl80211
-interface=ath0
-bridge=br-lan
-ssid=OpenWrt_RD15_2.4G
-hw_mode=g
-channel=1
-ieee80211n=1
-ieee80211ax=1
-wpa=2
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=CCMP
-rsn_pairwise=CCMP
-wpa_passphrase=12345678
-ctrl_interface=/var/run/hostapd
-EOF
-
-\tcat << 'EOF' > /var/run/hostapd-ath1.conf
-driver=nl80211
-interface=ath1
-bridge=br-lan
-ssid=OpenWrt_RD15_5G
-hw_mode=a
-channel=36
-ieee80211n=1
-ieee80211ac=1
-ieee80211ax=1
-wpa=2
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=CCMP
-rsn_pairwise=CCMP
-wpa_passphrase=12345678
-ctrl_interface=/var/run/hostapd
-EOF
-}
-
-start_service() {
+start() {
 \tsetup_vaps
-\tgenerate_configs
 
-\tprocd_open_instance hostapd_2g
-\tprocd_set_param command /usr/sbin/hostapd -P /var/run/hostapd-ath0.pid -e /var/run/entropy.bin /var/run/hostapd-ath0.conf
-\tprocd_set_param respawn 3600 5 5
-\tprocd_set_param stdout 1
-\tprocd_set_param stderr 1
-\tprocd_close_instance
+\tif [ -x /lib/wifi/hostapd_config.sh ]; then
+\t\t/lib/wifi/hostapd_config.sh all
+\tfi
 
-\tprocd_open_instance hostapd_5g
-\tprocd_set_param command /usr/sbin/hostapd -P /var/run/hostapd-ath1.pid -e /var/run/entropy.bin /var/run/hostapd-ath1.conf
-\tprocd_set_param respawn 3600 5 5
-\tprocd_set_param stdout 1
-\tprocd_set_param stderr 1
-\tprocd_close_instance
+\tconfig_load wireless
+\tlocal r0_disabled r1_disabled
+\tconfig_get_bool r0_disabled "radio0" disabled 0
+\tconfig_get_bool r1_disabled "radio1" disabled 0
+
+\t# 2.4 GHz hostapd instance
+\tif [ "$r0_disabled" -eq 0 ] && [ -f /var/run/hostapd-ath0.conf ]; then
+\t\tlocal pids0=$(pgrep -f "hostapd-ath0.conf")
+\t\tlocal ping0=$(hostapd_cli -p /var/run/hostapd -i ath0 ping 2>/dev/null | grep "PONG")
+\t\tif [ -z "$pids0" ] || [ -z "$ping0" ]; then
+\t\t\t[ -n "$pids0" ] && kill -9 $pids0 2>/dev/null || true
+\t\t\trm -f /var/run/hostapd-ath0.pid /var/run/hostapd/ath0
+\t\t\t/usr/sbin/hostapd -B -P /var/run/hostapd-ath0.pid -e /var/run/entropy.bin /var/run/hostapd-ath0.conf
+\t\t\tcp -f /var/run/hostapd-ath0.conf /var/run/hostapd-ath0.conf.active 2>/dev/null || true
+\t\tfi
+\tfi
+
+\t# 5.0 GHz hostapd instance
+\tif [ "$r1_disabled" -eq 0 ] && [ -f /var/run/hostapd-ath1.conf ]; then
+\t\tlocal pids1=$(pgrep -f "hostapd-ath1.conf")
+\t\tlocal ping1=$(hostapd_cli -p /var/run/hostapd -i ath1 ping 2>/dev/null | grep "PONG")
+\t\tif [ -z "$pids1" ] || [ -z "$ping1" ]; then
+\t\t\t[ -n "$pids1" ] && kill -9 $pids1 2>/dev/null || true
+\t\t\trm -f /var/run/hostapd-ath1.pid /var/run/hostapd/ath1
+\t\t\t/usr/sbin/hostapd -B -P /var/run/hostapd-ath1.pid -e /var/run/entropy.bin /var/run/hostapd-ath1.conf
+\t\t\tcp -f /var/run/hostapd-ath1.conf /var/run/hostapd-ath1.conf.active 2>/dev/null || true
+\t\tfi
+\tfi
 }
 
-stop_service() {
+stop() {
 \tkillall hostapd 2>/dev/null || true
-\tbrctl delif br-lan ath0 2>/dev/null || true
-\tbrctl delif br-lan ath1 2>/dev/null || true
-\tiw dev ath0 del 2>/dev/null || true
-\tiw dev ath1 del 2>/dev/null || true
+\trm -f /var/run/hostapd-*.pid /var/run/hostapd-*.conf.active
+}
+
+restart() {
+\tstop
+\tsleep 1
+\tstart
+}
+
+reload() {
+\tsetup_vaps
+\tif [ -x /lib/wifi/hostapd_config.sh ]; then
+\t\t/lib/wifi/hostapd_config.sh all
+\tfi
+\tstart
 }
 """
             init_hostapd.write_text(hostapd_content)
+            init_hostapd.chmod(0o755)
 
 
 
