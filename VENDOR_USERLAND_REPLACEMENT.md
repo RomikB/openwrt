@@ -1,532 +1,297 @@
-# Xiaomi BE3600 (RD15) — Пошаговая замена Vendor Userland на OpenWrt 24
+# Xiaomi Router BE3600 (RD15) — Нативный Userland OpenWrt 24 на ядре Linux 5.4.213
 
-## 1. Цель проекта
+## 1. Цель проекта и архитектурная концепция
 
-Перевести userland (userspace) роутера **Xiaomi BE3600 (RD15)** (SoC Qualcomm IPQ5332, свитч Motorcomm YT9215S, ядро 5.4.213) на стандартный стек **OpenWrt 24 (master/24.x)** с сохранением:
-- Оригинального ядра Linux 5.4.213 и всех вендорных модулей ядра (`qca-nss-dp`, `qca-ssdk`, `qca-nss-ppe`, `yt_switch`, `yt_phy_module`).
-- Вендорных бинарников и библиотек через механизм версионирования (`ld-vendor.so.1`, `v_lc.so`, `v_lubox.so` и т.д.).
-- Скриптов инициализации аппаратной части (`/sbin/phyhelper`, `switch_ctl`, `/lib/miwifi/*`).
+Проект переводит маршрутизатор **Xiaomi Router BE3600 (RD15)** (SoC Qualcomm IPQ5332, свитч Motorcomm YT9215S, ядро 5.4.213) на стандартный открытый стек **OpenWrt 24 (master / 24.10)** с полным сохранением аппаратных возможностей:
+- **Оригинальное ядро Linux 5.4.213** и все проприетарные модули ядра (`qca-nss-dp`, `qca-ssdk`, `qca-nss-ppe`, `yt_switch`, `yt_phy_module`, `ecm`, `umac`, `wifi_3_0`).
+- **Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)** — Line Rate 2.5 Gbps при околонулевой нагрузке на CPU (~0–1%).
+- **Беспроводной стек Wi-Fi 6 / 7 (Qualcomm Direct Connect)** — полоса 160 МГц (`HE160` / `EHT160`), WPA2/WPA3 Mixed с PMF, аппаратный оффлоад Wi-Fi трафика.
+- **Изоляция вендорного окружения** через механизм динамического версионирования библиотек (`ld-vendor.so.1`, `v_lc.so`, `v_lssl.so.1.1` и др.), исключающий конфликты между Musl libc / OpenSSL 3.x в OpenWrt 24 и стоковыми бинарниками.
 
 ---
 
-## 2. Архитектура и методология миграции
+## 2. Схема архитектуры гибридного окружения
 
-### Принцип строгой поэтапности:
-1. Замена строго по **1 пакету за шаг**.
-2. Обязательная сборка и проверка работоспособности на реальном оборудовании перед переходом к следующему пакету.
-3. Полная автоматизация генерации вендорного фида и наложения патчей через скрипт `prepare_feed.sh`.
-
-### Схема взаимодействия компонентов:
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Ядро Linux 5.4.213                              │
-│  qca-nss-dp.ko → eth0, eth1         qca-ssdk.ko → Switch SDK          │
-│  yt_switch.ko  → YT9215S (switch1)   yt_phy_module.ko → PHY Driver     │
-│  qca-nss-ppe.ko → PPE Engine         bootconfig.ko, nat46.ko и др.     │
+│  qca-nss-dp.ko ─── Сетевые интерфейсы eth0 (WAN/LAN), eth1 (2.5G LAN)  │
+│  yt_switch.ko, yt_phy_module.ko ─── Коммутатор YT9215S & Ethernet PHY  │
+│  qca-nss-ppe.ko, qca-ssdk.ko, ecm.ko ─── Аппаратный акселератор PPE/ECM │
+│  umac.ko, qca_ol.ko, wifi_3_0.ko, ecm-wifi-plugin.ko ─── Wi-Fi 6/7     │
+│  bootconfig.ko, pwm-rgb.ko, gpio-button-hotplug.ko ─── Периферия       │
 └────────────────────────────────────────────────────────────────────────┘
-                                  ↕
+                                   ↕
 ┌────────────────────────────────────────────────────────────────────────┐
 │                  OpenWrt 24 Нативный Userland (Musl)                   │
 │                                                                        │
-│  [Фаза 10.2] /etc/init.d/boot, base-files ── Базовая система & /data   │
-│  [Фаза 10.1] jsonfilter, usign, fwtool ── Системные утилиты            │
-│  [Фаза 9] /sbin/netifd ────────────── Network Interface Daemon         │
-│  [Фаза 9] /etc/init.d/network ─────── Сетевая служба & swconfig hooks  │
-│  [Фаза 9] /usr/libexec/network/* ──── SMP Packet Steering (Ucode)      │
-│  [Фаза 8] /sbin/init, /sbin/procd ── Init & Process Manager (PID 1)    │
-│  [Фаза 8] /sbin/reload_config, /sbin/service ── Управление службами    │
-│  [Фаза 8] /etc/hotplug*.json ─────── Диспетчер системных событий       │
-│  [Фаза 7] /sbin/mount_root, /sbin/block ── Файловые системы & UBI      │
-│  [Фаза 6] /sbin/kmodloader ───────── Загрузка kmod-* при старте        │
-│  [Фаза 6] /sbin/validate_data ────── Валидация UCI типов данных        │
-│  [Фаза 6] /sbin/logd, logread ────── Демон системного логирования      │
-│  [Фаза 5] /sbin/ubusd, /bin/ubus ─── IPC-шина, Libubus 2025.x          │
-│  [Фаза 2] /usr/sbin/dropbear ─────── SSH-сервер (OpenWrt 24)           │
-│  [Фаза 3.1] /sbin/uci ────────────── UCI CLI & Libuci 2025.x           │
-│  [Фаза 3.2] /sbin/swconfig ───────── Настройка свитча YT9215S          │
-│  [Фаза 4] /bin/busybox (v1.36.1) ─── Ash shell, Coreutils, Udhcpc      │
-│  [Фаза 4] /bin/ipcalc.sh ─────────── POSIX расчет подсетей              │
-│  [Фаза 4] /etc/rc.common ─────────── Системная обвязка init-скриптов    │
+│  • Системный менеджер & Init: /sbin/init, /sbin/procd (PID 1)          │
+│  • Системная шина & IPC: /sbin/ubusd, /bin/ubus (Libubus 2025.x)       │
+│  • Сетевой стек: /sbin/netifd, /lib/network/config.sh, packet-steering │
+│  • Управление конфигурацией: /sbin/uci, /etc/config/*                  │
+│  • Сетевой экран & NAT: /sbin/fw3, /usr/sbin/iptables, xtables         │
+│  • DNS & DHCP: /usr/sbin/dnsmasq (v2.90, LAN пул 192.168.1.100-249)    │
+│  • PPPoE & IPv6: /usr/sbin/pppd (2.5.1), odhcp6c, odhcpd-ipv6only      │
+│  • Веб-интерфейс: LuCI (ucode stack), /usr/sbin/uhttpd, /sbin/rpcd     │
+│  • Пакетный менеджер & TLS: /bin/opkg, mbedtls, /sbin/urngd (CSPRNG)   │
+│  • Утилиты & Shell: /bin/busybox (1.36.1-r2, PIE, SUID, 30+ апплетов)  │
+│  • Файловые системы: /sbin/mount_root, /sbin/block, ubi-utils, ext4    │
+│  • Индикация & Кнопки: /sbin/xqled (RGB LED), /etc/rc.button/reset     │
+│  • Системные хелперы: /sbin/kmodloader, /sbin/logd, jsonfilter, usign  │
+│  • Wi-Fi интеграция: /lib/wifi/hostapd_config.sh, /sbin/wifi, iwinfo   │
 └────────────────────────────────────────────────────────────────────────┘
-                                  ↕
+                                   ↕
 ┌────────────────────────────────────────────────────────────────────────┐
-│               Vendor Userland (изолирован через ld-vendor)             │
+│              Vendor Userland (Изолирован через ld-vendor)              │
 │                                                                        │
-│  /sbin/phyhelper, /usr/sbin/switch_ctl, /usr/sbin/ssdk_sh,             │
-│  /usr/sbin/nvram, /lib/miwifi/*                                        │
-│  Линковка: ld-vendor.so.1 → v_lc.so, v_lgcc_s.so.1                     │
+│  • /sbin/phyhelper ─── Управление питанием и режимами Ethernet PHY     │
+│  • /usr/sbin/switch_ctl ─── Аппаратный контроль коммутатора YT9215S    │
+│  • /usr/sbin/ssdk_sh ─── Qualcomm Switch SDK & PPE Control Shell       │
+│  • /usr/sbin/nvram ─── Чтение заводских MAC-адресов и калибровок       │
+│  • /usr/sbin/hostapd ─── Аутентификатор Qualcomm Direct Connect        │
+│  • /usr/sbin/cnssdaemon ─── Демон шины PCIe радиомодуля QCN6432        │
+│  Линковка: ld-vendor.so.1 → v_lc.so, v_lssl.so.1.1, v_lcrypto.so.1.1   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+### Механизм изоляции и запуска вендорных библиотек (ELF-версионирование)
 
-## 3. Достигнутые результаты по фазам
-
-### ✅ Фаза 2: Миграция `dropbear`
-- **Что сделано**:
-  - Пакет `dropbear` переведен на нативный OpenWrt 24 (включен в `target.mk` → `dropbear`, исключен из вендорного списка).
-  - Сняты вендорские ограничения на запуск SSH (проверки `ssh_en`, `channel = release`).
-  - Обеспечена корректная генерация 2048-битного хост-ключа RSA при старте.
-- **Результат**: Нативный SSH-сервер OpenWrt 24 стартует штатно, обеспечивая надежный терминальный доступ.
+Для запуска закрытых вендорных бинарников без пересборки и исключения конфликтов с Musl libc и OpenSSL 3.x из OpenWrt 24 реализована схема полной изоляции:
+1. **Префикс вендорных библиотек**: Все разделяемые библиотеки стоковой системы переименованы с префиксом `v_l*` (например, `libc.so` $\to$ `v_lc.so`, `libubox.so` $\to$ `v_lubox.so`, `libssl.so.1.1` $\to$ `v_lssl.so.1.1`, `libcrypto.so.1.1` $\to$ `v_lcrypto.so.1.1`, `libgcc_s.so.1` $\to$ `v_lgcc_s.so.1`).
+2. **Изолированный динамический компоновщик**: Интерпретатор `PT_INTERP` во всех исполняемых бинарниках вендора перенаправлен на `/lib/ld-vendor.so.1`.
+3. **Обновление заголовков ELF**: Поля `DT_SONAME` и `DT_NEEDED` во всех ELF-файлах модифицированы на имена с префиксом `v_l*`, что гарантирует связывание зависимостей строго внутри изолированного вендорного дерева.
+4. **Утилиты и симлинки**: Библиотечные симлинки перенаправлены на `v_l*` цели, а вендорный `ldd` переименован в `vldd`.
 
 ---
 
-### ✅ Фаза 3.1: Миграция `uci`
-- **Что сделано**:
-  - Пакет `uci` переведен на нативный OpenWrt 24 (`packages.list` → удален `uci`, `target.mk` → `uci`).
-  - В вендорский `lib/functions/procd.sh` добавлен полифил `uci_load_validate()`, необходимый для современных скриптов конфигурации.
-- **Результат**: Нативный бинарник `uci` и библиотека `libuci` работают штатно, все вендорные конфигурации считываются и применяются корректно.
+## 3. Реализованные системные компоненты
+
+### 1. Базовый стек ОС и инициализация:
+* **`procd` (PID 1) и `init`**: Стандартный диспетчер процессов OpenWrt 24 со скриптами `/etc/rc.common`, валидацией `uci_load_validate()` и диспетчером `/etc/hotplug.json`.
+* **`ubus` и `ubox`**: IPC-шина `ubusd`, утилита `ubus`, системный загрузчик модулей ядра `/sbin/kmodloader`, демоны системного логирования `/sbin/logd` и `/sbin/logread`.
+* **`busybox` (v1.36.1-r2)**: Скомпилирован с поддержкой `CONFIG_BUSYBOX_DEFAULT_PIE=y` и `CONFIG_BUSYBOX_DEFAULT_FEATURE_SUID=y` (требование ASLR ядра Qualcomm), включены 30 расширенных апплетов (`timeout`, `stat`, `devmem`, `watch`, `arping`, `wget`, `xz` и др.) и поддержка опции `udhcpc -a` (ARP Ping).
+* **Файловая система и память**: Нативный `base-files` с оверлеем `rd15` (`target/linux/ipq53xx/rd15/base-files/`). Preinit-монтирование RAMFS поверх `/etc` и UBIFS поверх `/data`.
+
+### 2. Сетевая подсистема и маршрутизация:
+* **`netifd` (2025.x)**: Сетевой демон OpenWrt со скриптом SMP Packet Steering `/usr/libexec/network/packet-steering.uc`. Мост `br-lan` объединяет порты `eth0.2`, `eth0.3`, `eth1` (IP `192.168.1.1/24`), WAN поднят на `eth0.1` (`proto dhcp`).
+* **`swconfig`**: Управление коммутатором Motorcomm YT9215S (`switch1`) с аппаратными хуками `switch_ctl forward 0 / 1`.
+* **`dnsmasq` (v2.90)**: Локальный DNS-резолвер (`openwrt.lan`) и DHCP-сервер LAN с пулом `192.168.1.100` – `192.168.1.249`.
+* **`firewall` (fw3) & `iptables`**: Межсетевой экран Firewall3, трансляция адресов NAT Masquerade, защита зон, правила доступа SSH и LuCI.
+* **PPPoE & IPv6**: Пакет `ppp` (v2.5.1) со связкой `pppd` / `rp-pppoe.so`, клиент `odhcp6c` (интерфейс `wan6`) и сервер `odhcpd-ipv6only` (SLAAC, RA, DHCPv6).
+
+### 3. Веб-интерфейс LuCI и утилиты:
+* **LuCI**: Современный интерфейс управления на базе `ucode` и JS (`luci-mod-admin-full`, тема `luci-theme-bootstrap`, приложения `luci-app-firewall`, `luci-app-package-manager`, `luci-proto-ppp`, `luci-proto-ipv6`). Веб-сервер `uhttpd` и демон `rpcd` настроены на доступ как через LAN, так и через WAN (порты 80/443).
+* **Пакетный менеджер и криптография**: Нативный `opkg` со связкой `uclient-fetch`, библиотека `libustream-mbedtls` (mbedTLS 3.6.x), корневые сертификаты `ca-bundle`, генератор энтропии `urngd` (Jitter Entropy CSPRNG).
+* **Диагностика и бенчмарк**: Интегрированы `iperf3` (v3.17.1) и `htop` (v3.4.1) для профилирования пропускной способности и per-core нагрузки CPU.
+* **Периферия**: Управление RGB светодиодом `/sbin/xqled` (`kmod-pwm-rgb`, индикация загрузки и работы в `/etc/diag.sh`), обработка кнопок Reset и Mesh (`kmod-gpio-button-hotplug`, скрипт сброса `/etc/rc.button/reset`).
 
 ---
 
-### ✅ Фаза 3.2: Миграция `swconfig`
-- **Что сделано**:
-  - Пакет `swconfig` переведен на нативный OpenWrt 24.
-  - В `package/network/config/swconfig/files/switch.sh` интегрированы вендорные хуки `switch_ctl forward 0 / 1` для предотвращения широковещательного шторма и сбоев YT9215S при инициализации.
-  - Устранены коллизии файлов `switch.sh` между `swconfig` и `base-files-vendor`.
-- **Результат**: Свитч `switch0`/`switch1` настраивается без ошибок, изолированные VLAN поднимаются, петли трафика отсутствуют.
+## 4. Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)
+
+В прошивке активирован полнофункциональный кремниевый оффлоад сетевого трафика:
+* **Диспетчер ECM**: Модуль `ecm.ko` (`kmod-qca-nss-ecm-premium-vendor`) отслеживает Conntrack-сессии и передает их на аппаратную обработку в движок Qualcomm PPE.
+* **Драйверы акселератора PPE**: `qca-ssdk.ko`, `qca-nss-ppe.ko`, `qca-nss-ppe-vp.ko`, `qca-nss-ppe-rule.ko`, `qca-nss-ppe-bridge-mgr.ko`, `qca-nss-ppe-vlan-mgr.ko`, `qca-nss-ppe-pppoe-mgr.ko`, `qca-nss-ppe-lag-mgr.ko`, `qca-nss-sfe.ko`.
+* **Производительность**: При стресс-тестировании маршрутизации LAN ↔ WAN через `iperf3` обеспечивается полная утилизация полосы пропускания (Line Rate 2.5 Gbps) при загрузке CPU ~0–1%.
 
 ---
 
-### ✅ Фаза 4: Миграция `busybox`
-- **Что сделано**:
-  1. **Настройки безопасности и ELF**:
-     - Включены `CONFIG_BUSYBOX_DEFAULT_PIE=y` и `CONFIG_BUSYBOX_DEFAULT_FEATURE_SUID=y` (критично для Qualcomm hardened kernel с включенным ASLR).
-  2. **Апплеты и функции**:
-     - Включено 30 недостающих апплетов (`timeout`, `vconfig`, `getopt`, `usleep`, `stat`, `base64`, `devmem`, `watch`, `arping`, `lsof`, `pstree`, `renice`, `mpstat`, `wget`, `xz`, `bunzip2`, `telnet`, `telnetd` и др.).
-     - Включены расширенные опции шелла (`FEATURE_SH_READ_FRAC`, `FEATURE_SH_MATH_BASE`, `ASH_SLEEP`, `ASH_HELP`).
-     - Включены расширенные параметры мониторинга процессов (`FEATURE_PS_LONG`, `FEATURE_PS_TIME`, `FEATURE_TOPMEM`, `FEATURE_SHOW_THREADS`).
-  3. **Сетевой стек и DHCP (Критический фикс)**:
-     - Включен `BUSYBOX_DEFAULT_FEATURE_UDHCPC_ARPING=y`, обеспечивающий поддержку опции `-a` в `udhcpc` (ARP Ping для проверки уникальности IP перед применением DHCP-аренды).
-  4. **POSIX-скрипты и совместимость**:
-     - Вендорский сбойный `bin/ipcalc.sh` (падавший на `awk xor`) заменен на чистую POSIX-шелл реализацию OpenWrt 24 и библиотеку `/lib/functions/ipv4.sh`.
-     - Вендорский `/etc/rc.common` модифицирован на месте:
-       - Добавлен системный `export PATH="/usr/sbin:/usr/bin:/sbin:/bin"`.
-       - Добавлена функция `extra_command()`.
-       - Сохранены парные вызовы `procd_lock` и `procd_unlock` (исключающие дедлоки на `flock` при вызовах `service restart`).
-- **Результат**: Роутер успешно стартует с нативным BusyBox 1.36.1-r2, получает IP-адрес на `br-lan`, SSH доступен.
+## 5. Беспроводной стек Wi-Fi 6 / 7
+
+Беспроводной стек построен на проприетарных драйверах **Qualcomm Direct Connect** и изолированном аутентификаторе `hostapd`:
+* **Аппаратные радиомодули**:
+  * 2.4 GHz On-SoC IPQ5312 (VAP `ath0`, ширина 20/40 МГц `HE40`, 2x2 MIMO).
+  * 5.0 GHz PCIe QCN6432 (VAP `ath1`, широкая полоса 160 МГц `HE160` / `EHT160`, 2x2 MIMO).
+* **Минимальный набор пакетов Wi-Fi с аппаратным ускорением** (входит в [packages.list](vendor_scripts/packages.list)):
+  1. `kmod-qca-nss-ecm-wifi-plugin` — плагин оффлоада Wi-Fi трафика в движок Qualcomm PPE/ECM (FSE классификация и MSCS QoS).
+  2. `qca-cnss-daemon` — демон шины PCIe и загрузки прошивки для радиомодуля QCN6432.
+  3. `qca-firmware` — бинарные прошивки и микрокод радиочипов.
+  4. `qca-hostap` — изолированный WPA2/WPA3 аутентификатор hostapd под супервизором `procd`.
+  5. `qca-hostapd-cli` — CLI-утилита опроса и управления hostapd.
+  6. `qca-wifi-scripts` — скрипты инициализации радиомодулей.
+  7. `qca-wpa-cli` и `qca-wpa-supplicant` — клиентские компоненты WPA.
+  8. `wififw_mount_script` — монтирование заводских BDF-калибровок `caldata.bin` из раздела `0:ART`.
+  *(Транзитивно драйвер ядра `kmod-qca-wifi-lowmem-profile` подтягивается автоматически).*
+* **Интеграция с LuCI и управление**: Конфигурация через `/etc/config/wireless`, служба `/lib/netifd/wireless/mac80211.sh` и CLI `/sbin/wifi`.
+
+> 📖 **Полная техническая документация по Wi-Fi**: Подробное описание архитектуры радиомодулей, параметров 160 МГц, DFS CAC, MLO, патчей `libiwinfo` и работы hostapd вынесено в отдельный специализированный документ — **[WIFI_ROADMAP.md](WIFI_ROADMAP.md)**.
 
 ---
 
-### ✅ Фаза 5: Миграция `ubus`
-- **Что сделано**:
-  1. **Нативные компоненты**:
-     - Пакеты `ubus` и `ubusd` включены в сборку OpenWrt 24 (`target.mk` → `ubus ubusd`).
-     - Скомпилированы нативные `/sbin/ubusd`, `/bin/ubus`, `/lib/libubus.so.*`, `/lib/libblobmsg_json.so.*`, `/lib/libubox.so.*`.
-  2. **Исключение вендорных дубликатов**:
-     - В `vendor_scripts/prepare_feed.sh` добавлен фильтр `IGNORE_VENDOR_PACKAGES="... ubus ubusd"`.
-     - Вендорные пакеты `ubus-vendor` и `ubusd-vendor` исключены из фида, устраняя коллизии на путях `/sbin/ubusd` и `/bin/ubus`.
-  3. **Изоляция и обратная совместимость сокета**:
-     - Сохранена изолированная библиотека `/lib/v_lubus.so` (`libubus-vendor`).
-     - Добавлен патч `package/system/ubus/patches/001-compat-symlink.patch`, создающий при старте `ubusd` симлинк `/var/run/ubus.sock -> /var/run/ubus/ubus.sock`. Это позволяет старым вендорным бинарникам (`switch_ctl`, `nvram`) мгновенно подключаться к нативному сокету `ubusd`.
-- **Результат**: Собрана прошивка с нативным `ubusd` и полной поддержкой как современных клиентов OpenWrt 24 (`/var/run/ubus/ubus.sock`), так и вендорных клиентов (`/var/run/ubus.sock`).
+## 6. Модификации системных пакетов и патчи фидов
+
+В процессе интеграции OpenWrt 24 на монолитном ядре 5.4.213 были внедрены следующие патчи и адаптации:
+
+### 1. Системные патчи в дереве `package/`:
+* **`procd`** (`package/system/procd/patches/001-compat-ubus-symlink.patch`):
+  * Выставление прав доступа `01777` на `/tmp/run` при раннем монтировании в `initd/early.c`.
+  * Создание симлинка `/var/run/ubus.sock -> /var/run/ubus/ubus.sock` от имени `root` при старте `procd` до перехода `ubusd` под пользователя `ubus`.
+* **`ubus`** (`package/system/ubus/patches/001-compat-symlink.patch`):
+  * Поддержка обратной совместимости сокета для устаревших вендорных клиентов (`switch_ctl`, `nvram`).
+* **`netifd`** (`package/network/config/netifd/patches/`):
+  * `001-fix-ifname-fixup-for-non-bridges.patch` — корректная обработка `ifname -> ports` только для мостов.
+  * `002-fix-bridge-netlink-attrs.patch` — предотвращение отправки неподдерживаемых Netlink-атрибутов моста (`IFLA_BR_VLAN_FILTERING`) в ядро 5.4 без VLAN Filtering и fallback на `ioctl(SIOCBRADDBR)`.
+
+### 2. Адаптация сборочных Makefiles:
+* **`package/network/config/firewall/Makefile`** и **`package/network/utils/iptables/Makefile`**:
+  * Зависимости на ядро перенаправлены со стандартного нескомпилированного ядра 6.6 на вендорные модули ядра 5.4.213 (`+kmod-ipt-*-vendor`), добавлен `+libgcc` для библиотек `libxtables`, `libip4tc`, `libip6tc`, `libiptext`.
+* **`package/network/services/ppp/Makefile`**:
+  * Зависимости перенаправлены на `+kmod-ppp-vendor`, `+kmod-pppoe-vendor`, добавлен `+libgcc`.
+* **`package/libs/ncurses/Makefile`**:
+  * Добавлена явная зависимость `+libgcc` для `Package/libncurses`.
+
+### 3. Автоматизированный патчинг внешних фидов (`vendor_scripts/patch_feeds.py`):
+* `feeds/luci/contrib/package/lucihttp/Makefile` — добавление `DEPENDS:=+libgcc`.
+* `feeds/packages/net/iperf3/Makefile` — добавление `DEPENDS:=+libatomic +libgcc`.
+
+### 4. Патчи служб вендорного фида (`vendor_scripts/patch_package.py`):
+* **Патч службы аппаратного оффлоада `qca-nss-ecm` (`files/etc/init.d/qca-nss-ecm`)**:
+  * Исправление заголовка rc.common `#!/bin/sh  /etc/rc.common` на `#!/bin/sh /etc/rc.common`.
+  * Замена условия ожидания Wi-Fi `[ -f /tmp/.wifi-config-done ]` на проверку загрузки модуля ядра `[ -d /sys/module/wifi_3_0 ]`.
+*(Патчи служб Wi-Fi `qca-hostap` и `load_cnss2` описаны в [WIFI_ROADMAP.md](WIFI_ROADMAP.md)).*
 
 ---
 
-### ✅ Фаза 6: Миграция `ubox`
-- **Что сделано**:
-  1. **Нативные системные утилиты**:
-     - Пакеты `ubox`, `getrandom`, `logd` включены в сборку OpenWrt 24 (`target.mk` → `ubox getrandom logd`).
-     - Скомпилированы нативные `/sbin/kmodloader` (с симлинками `lsmod`, `insmod`, `rmmod`, `modprobe`, `modinfo`), `/sbin/validate_data`, `/lib/libvalidate.so`, `/usr/bin/getrandom`, `/sbin/logd`, `/sbin/logread`.
-  2. **Исключение вендорных пакетов**:
-     - В `vendor_scripts/prepare_feed.sh` добавлен фильтр `IGNORE_VENDOR_PACKAGES="... ubox"`.
-     - Пакет `ubox-vendor` исключен из фида.
-  3. **Сохранение библиотечной изоляции**:
-     - Сохранена библиотека `libubox-vendor` (`/lib/v_lubox.so`), необходимая для работы оставшихся вендорных демонов.
-- **Результат**: Модули ядра загружаются через нативный `kmodloader`, доступна валидация UCI-данных и системное логирование `logd` / `logread`.
+## 7. Состав вендорного фида и механизм генерации
 
----
+Главным инструментом создания вендорного фида является скрипт **[vendor_scripts/prepare_feed.sh](vendor_scripts/prepare_feed.sh)**. Он полностью автоматизирует сборочный конвейер:
+1. Распаковывает UBI-образ стоковой прошивки (`ubireader_extract_images` и `unsquashfs`).
+2. Извлекает стоковый образ ядра в `target/linux/ipq53xx/rd15/kernel`.
+3. Запускает автоматический анализ зависимостей модулей ядра (`extract_kmod_deps.py`).
+4. Формирует структуру фида с предварительной валидацией в памяти (`generate_feed.py`).
+5. Пропатчивает сгенерированные пакеты (`patch_package.py`).
+6. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
 
-### ✅ Фаза 7: Миграция `fstools` и `ubi-utils`
-- **Что сделано**:
-  1. **Нативные утилиты файловых систем**:
-     - Пакеты `fstools`, `block-mount`, `ubi-utils` включены в сборку OpenWrt 24 (`target.mk` → `fstools block-mount ubi-utils`).
-     - Скомпилированы нативные `/sbin/mount_root`, `/sbin/block`, `/lib/libfstools.so`, `/lib/libblkid-tiny.so`, `/usr/sbin/ubiattach`, `/usr/sbin/ubinfo`, `/usr/sbin/ubiformat` (с поддержкой UBIFS / NAND flash).
-  2. **Исключение вендорных пакетов**:
-     - В `vendor_scripts/prepare_feed.sh` добавлен фильтр `IGNORE_VENDOR_PACKAGES="... fstools ubi-utils"`.
-     - Пакеты `fstools-vendor` и `ubi-utils-vendor` исключены из фида.
-- **Результат**: Монтирование rootfs/overlayfs на этапе preinit и работа с блочными/UBI устройствами переведены на чистый OpenWrt 24.
-
----
-
-### ✅ Фаза 8: Миграция `procd`
-- **Что сделано**:
-  1. **Нативная система инициализации и менеджер процессов (PID 1)**:
-     - Пакет `procd` переведен на нативный OpenWrt 24 (`target.mk` → убран `-procd`, добавлен `procd`).
-     - Скомпилированы нативные `/sbin/init`, `/sbin/procd`, `/sbin/askfirst`, `/sbin/udevtrigger`, `/sbin/upgraded`, `/sbin/reload_config`, `/sbin/service`, `/lib/libsetlbf.so`.
-     - Установлен нативный `/usr/bin/jshn` и `/usr/share/libubox/jshn.sh`.
-  2. **Стандартизация скриптов и диспетчера hotplug**:
-     - Установлен нативный `/lib/functions/procd.sh` OpenWrt 24 со встроенной валидацией UCI (`uci_load_validate`, `uci_validate_section`) и расширенной поддержкой сервисов (`procd_running`, группы, namespaces).
-     - Установлен нативный `/etc/hotplug.json` со стандартной инициализацией POSIX-дескрипторов (`/dev/fd`, `/dev/stdin`, `/dev/stdout`, `/dev/stderr`) и группой `dialout` для TTY.
-  3. **Патчи совместимости и права доступа (Критический фикс)**:
-     - В `package/system/procd/patches/001-compat-ubus-symlink.patch` реализовано:
-       - Установка прав `01777` на `/tmp/run` при раннем монтировании в `initd/early.c`.
-       - Гарантированное создание симлинка `/var/run/ubus.sock -> /var/run/ubus/ubus.sock` от имени `root` при старте `procd` (до запуска `ubusd` под непривилегированным пользователем `ubus`).
-  4. **Исключение вендорных пакетов**:
-     - В `vendor_scripts/prepare_feed.sh` добавлен фильтр `IGNORE_VENDOR_PACKAGES="... procd jshn"`.
-     - Пакеты `procd-vendor` и `jshn-vendor` полностью исключены из фида.
-- **Результат**: Проверено на реальном роутере Xiaomi BE3600. `init` (PID 1) и `procd` стартуют штатно, супервизор процессов управляет службами, сетевой мост `br-lan` и свитч YT9215S поднимаются, SSH доступен.
-
----
-
-### ✅ Фаза 9: Миграция `netifd`
-- **Что сделано**:
-  1. **Нативный сетевой демон и утилиты**:
-     - Пакет `netifd` переведен на нативный OpenWrt 24 (`target.mk` → убран `-netifd`, добавлен `netifd`).
-     - Скомпилированы нативные `/sbin/netifd`, `/sbin/ifup`, `/sbin/ifdown`, `/sbin/ifstatus`, `/sbin/devstatus`, `/lib/network/config.sh`, `/lib/netifd/netifd-proto.sh`, `/lib/netifd/utils.sh`.
-     - Подключены современные библиотеки зависимостей: `libudebug`, `ucode`, `ucode-mod-fs`, `libnl-tiny`.
-     - Включен нативный сервис SMP Packet Steering `/etc/init.d/packet_steering` и скрипт `/usr/libexec/network/packet-steering.uc`.
-  2. **Аппаратные хуки и совместимость в `/etc/init.d/network`**:
-     - В `package/network/config/netifd/files/etc/init.d/network` интегрированы:
-       - Вызов `init_arch()` (`/lib/miwifi/miwifi_core_libs.sh network_extra_init`) для аппаратной настройки ускорения ECM PPE, отключения GRO на `eth0`/`eth1` и PHY-контроля.
-       - Вызов `init_switch()` (`/lib/network/switch.sh setup_switch`) с хуками `switch_ctl forward 0 / 1` и загрузкой `swconfig dev switch1 load network`.
-       - Дополнительная команда `reconfig_switch`.
-  3. **Исключение вендорных пакетов и библиотек**:
-     - В `vendor_scripts/prepare_feed.sh` добавлен `netifd` в `IGNORE_VENDOR_PACKAGES`.
-     - Удален `libblobmsg-json` из `vendor_scripts/packages.list` и `target.mk` (так как все клиенты переведены на нативный `libblobmsg_json`).
-     - Пакеты `netifd-vendor` и `libblobmsg-json-vendor` полностью удалены из фида.
-  4. **Совместимость с ядром (Критический фикс Netlink & Bridge)**:
-     - В ядре 5.4.213 (`CONFIG_BRIDGE_VLAN_FILTERING` не включен) передача атрибута `IFLA_BR_VLAN_FILTERING` (а также multicast-атрибутов) в `system_bridge_addbr()` приводила к отказу ядра с ошибкой `-EOPNOTSUPP` (`-10`), даже если их значение было `0`.
-     - В патче `002-fix-bridge-netlink-attrs.patch`:
-       - Вырезана безусловная отправка неподдерживаемых атрибутов (передаются только при явном включении).
-       - Добавлен автоматический fallback на `ioctl(sock_ioctl, SIOCBRADDBR, bridge->ifname)` и `ioctl(sock_ioctl, SIOCBRDELBR, bridge->ifname)`.
-     - В патче `001-fix-ifname-fixup-for-non-bridges.patch` обеспечено разделение fixup `ifname -> ports` только для мостов, что гарантирует работу со стоковым `/etc/config/network`.
-- **Результат**: Проверено на роутере Xiaomi BE3600 (со стоковым конфигом). Мост `br-lan` создается штатно, порты `eth0.1`, `eth0.2`, `eth0.3`, `eth1` подключаются и переходят в режим forwarding, DHCP-клиент получает IP `192.168.11.36`, шлюз и DNS применились, SSH и сеть функционируют штатно.
-
----
-
-### ✅ Фаза 10.1: Замена вспомогательных утилит (`jsonfilter`, `usign`, `openwrt-keyring`, `fwtool`)
-- **Что сделано**:
-  1. Пакеты `jsonfilter`, `usign`, `openwrt-keyring`, `fwtool` переведены на нативную сборку из открытых исходников OpenWrt 24.
-  2. Добавлены в `IGNORE_VENDOR_PACKAGES` в `vendor_scripts/prepare_feed.sh`.
-  3. Включены в `DEFAULT_PACKAGES` в `target/linux/ipq53xx/rd15/target.mk`.
-  4. Удалены вендорные пребилды `*-vendor` из `vendor_feed/` и очищены зависимости `base-files-vendor`.
-- **Результат**: `/usr/bin/jsonfilter`, `/usr/bin/usign`, `/usr/bin/signify`, `/usr/bin/fwtool` и ключи `/etc/opkg/keys/` собираются и работают как нативные компоненты OpenWrt 24.
-
----
-
-### ✅ Фаза 10.2: Переход на нативный `base-files` и размещение аппаратного слоя в подплатформе `rd15`
-- **Что сделано**:
-  1. **Создан аппаратный оверлей подплатформы в `target/linux/ipq53xx/rd15/base-files/`**:
-     - **Preinit & Ramfs**:
-       - `lib/preinit/39_mount_tmpfs` — монтирование RAMFS поверх `/etc` (и других временных каталогов), обеспечивающее возможность записи при read-only корне SquashFS.
-       - `lib/preinit/39_mount_ubi_data` — автоматический поиск, привязка `ubi1` и монтирование UBIFS-тома `/data`.
-     - **Сеть, PPE и Switch**:
-       - `lib/miwifi/miwifi_core_libs.sh`, `lib_network.sh`, `lib_accel.sh`, `lib_phy.sh`, `lib_port_map.sh`, `lib_sp_colls.sh`, `lib_ap_re.sh`, `miwifi_functions.sh` — аппаратные библиотеки (ускорение PPE/ECM, отключение GRO на `eth0`/`eth1`, PHY-контроль, получение MAC-адресов через `getmac`).
-       - `lib/miwifi/arch/*` — драйверная обвязка архитектуры IPQ53xx.
-     - **Утилиты железа**:
-       - `/sbin/phyhelper` — управление питанием и режимами Ethernet PHY.
-       - `/sbin/port_map` — маппинг и опрос физических портов для `phyhelper`.
-       - `/sbin/getmac`, `/sbin/setmac`, `/sbin/setmac_all` — чтение/запись заводских MAC-адресов.
-       - `/sbin/hwversion` — определение аппаратной ревизии.
-       - `/sbin/accelctrl` — интерфейс управления ускорением PPE.
-       - `/sbin/wifi` — заглушка, предотвращающая сбои при вызове `wifi config`.
-     - **Инициализация и LED**:
-       - `/etc/init.d/boot` — запуск `boot_phy_control` (`/sbin/phyhelper start`), настройка формата VLAN (`vconfig set_name_type DEV_PLUS_VID_NO_PAD`), запуск `kmodloader` и `reload_config`.
-       - `/etc/inittab` — настройка UART-консоли на `ttyMSM0::askfirst:/bin/ash --login`.
-       - `/etc/board.d/01_network`, `/etc/diag.sh`, `/etc/hotplug.d/button/51-reset`, `/etc/hotplug.d/button/02-mesh`.
-     - **NAND Sysupgrade**:
-       - `/lib/upgrade/platform.sh`.
-     - **Конфигурация**:
-       - Чистые файлы `/etc/config/network`, `/etc/config/port_map`, `/etc/config/system`, `/etc/config/traffic`, `/etc/config/dropbear`.
-  2. **Сборочные хуки `target/linux/ipq53xx/base-files.mk`**:
-     - В хуке `Package/base-files/install-target` прописано автоматическое добавление:
-       - `pi_preinit_ramfs_dir="/etc /lib/wifi /mnt /vendor /ini /cfg /license /lib/firmware/qcn6432"`
-       - `pi_overlay_partitions="cfg:/data:"`
-       в `/lib/preinit/00_preinit.conf`.
-  3. **Очистка от мертвого вендорного кода**:
-     - Пакет `base-files` переведен на стандартный OpenWrt 24 (`package/base-files`).
-     - Удалено более 200 неиспользуемых вендорных файлов (все `*.lua` скрипты облака Xiaomi, более 50 устаревших конфигов, заглушки служб `/etc/init.d/`).
-     - Пакет `base-files-vendor` полностью исключен из фида.
-  4. **Состав фида**: В `vendor_feed` остались **ровно 7 аппаратных компонентов из `required.list`**.
-- **Результат**: **Успешно проверено на реальном роутере Xiaomi BE3600 (RD15)!**
-  - Роутер стартует с чистым нативным `base-files` OpenWrt 24.
-  - Каталог `/etc` доступен для записи через RAMFS, том `/data` примонтирован из UBIFS.
-  - Ethernet PHY поднимаются штатно через `phyhelper` и `port_map`.
-  - Мост `br-lan` и свитч YT9215S работают, получен IP-адрес по DHCP, SSH-сервер доступен.
-
----
-
-### ✅ Фаза 11: Подключение менеджера пакетов `opkg`, TLS-стека (`mbedtls`, `ca-bundle`) и подсистемы энтропии (`urngd`, `urandom-seed`)
-- **Что сделано**:
-  1. В `target/linux/ipq53xx/rd15/target.mk` сняты флаги блокировки стандартных пакетов (`opkg`, `ca-bundle`, `libustream-mbedtls`, `urandom-seed`, `urngd`).
-  2. В `README.md` очищен шаблон `.config` от блокировок `opkg` / `uclient-fetch`.
-  3. Пакеты автоматически включены в сборку через стандартный механизм `make defconfig`:
-     - **Менеджер пакетов**: `/bin/opkg`, `/bin/uclient-fetch`, `/usr/lib/libuclient.so`, `/usr/sbin/opkg-key`.
-     - **TLS & Безопасность**: `/lib/libustream-ssl.so` (mbedTLS бэкенд), `/usr/lib/libmbedtls.so.*`, `/usr/lib/libmbedcrypto.so.*`, `/usr/lib/libmbedx509.so.*`, корневые сертификаты `/etc/ssl/certs/ca-certificates.crt`.
-     - **Энтропия и CSPRNG ядра 5.4.213**: `/sbin/urngd` (демон Jitter Entropy) и сервис `/etc/init.d/urandom_seed` (сохранение/восстановление сида случайных чисел).
-- **Результат**: Полноценный нативный стек `opkg` и HTTPS-клиента интегрирован в сборку прошивки.
-
----
-
-### ✅ Фаза 12: Интеграция `dnsmasq` и настройка стандартной сетевой конфигурации OpenWrt (`192.168.1.1`)
-- **Что сделано**:
-  1. Пакет `dnsmasq` (v2.90) включен в сборку подплатформы `rd15` (`target.mk` → `DEFAULT_PACKAGES += dnsmasq`).
-  2. В `/etc/config/network` зафиксирована топология роутера:
-     - **WAN**: Порт 1 (`eth0.1`), протокол `dhcp` (получение IP от провайдера/домашней сети).
-     - **LAN**: Порты 2, 3, 4 (`eth0.2 eth0.3 eth1`), мост `br-lan`, статический IP `192.168.1.1/24`.
-  3. Создан конфигурационный файл `/etc/config/dhcp`:
-     - Настроен локальный DNS-домен `lan` (`openwrt.lan`), кеш DNS на 1000 записей.
-     - Настроен DHCPv4-сервер для зоны `lan` с пулом `192.168.1.100` — `192.168.1.249` (аренда 12ч).
-     - Выключена раздача DHCP наружу в зону `wan` (`option ignore '1'`).
-- **Результат**: Роутер работает как полноценный локальный сервер DNS и DHCP для клиентов в LAN.
-
----
-
-## 4. Сводный статус миграции пакетов
-
-| Пакет | Роль | Статус | Версия | Фаза | Примечание |
-|---|---|---|---|---|---|
-| **`dropbear`** | SSH-сервер | ✅ Завершен | OpenWrt 24 | Фаза 2 | Проверено на роутере |
-| **`uci`** | Конфигурация | ✅ Завершен | OpenWrt 24 | Фаза 3.1 | Проверено на роутере |
-| **`swconfig`** | Свитч YT9215S | ✅ Завершен | OpenWrt 24 | Фаза 3.2 | С хуками `switch_ctl` |
-| **`busybox`** | Coreutils / Shell | ✅ Завершен | 1.36.1-r2 | Фаза 4 | PIE, SUID, 30 апплетов, UDHCPC ARPING |
-| **`ubus`** | IPC шина / Демон | ✅ Завершен | OpenWrt 24 | Фаза 5 | `ubusd`, `ubus` CLI, `libubus` (2025.x) |
-| **`ubox`** | Системные хелперы | ✅ Завершен | OpenWrt 24 | Фаза 6 | `kmodloader`, `logd`, `validate_data` |
-| **`fstools`** | Файловые системы | ✅ Завершен | OpenWrt 24 | Фаза 7 | `mount_root`, `block`, `ubi-utils` |
-| **`procd`** | Демон инициализации | ✅ Завершен | OpenWrt 24 | Фаза 8 | `init`, `procd`, `service`, `hotplug.json`, PID 1 |
-| **`netifd`** | Сетевой демон | ✅ Завершен | OpenWrt 24 | Фаза 9 | `netifd` 2025.x, ucode, packet-steering |
-| **`jsonfilter`** | Парсер JSON | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Слинкован с libubox/libjson-c |
-| **`usign`** | Верификатор подписей | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Нативный `usign` / `signify` |
-| **`openwrt-keyring`**| Открытые ключи | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Ключи OpenWrt 24.10 |
-| **`fwtool`** | Метаданные образов | ✅ Завершен | OpenWrt 24 | Фаза 10.1 | Утилита манипуляции образами |
-| **`base-files`** | Базовая система | ✅ Завершен | OpenWrt 24 | Фаза 10.2 | Нативный `base-files` + оверлей `rd15` (Проверено на роутере) |
-| **`opkg`** | Менеджер пакетов | ✅ Завершен | OpenWrt 24 | Фаза 11 | `opkg`, `uclient-fetch`, `libuclient` |
-| **`libustream-mbedtls`** | TLS бэкенд | ✅ Завершен | OpenWrt 24 | Фаза 11 | mbedTLS 3.6.x + `ca-bundle` |
-| **`urngd` / `urandom-seed`** | Энтропия CSPRNG | ✅ Завершен | OpenWrt 24 | Фаза 11 | Jitter RNG daemon + urandom seed |
-| **`dnsmasq`** | DNS / DHCP сервер | ✅ Завершен | 2.90 | Фаза 12 | Резолвер + DHCP пул `192.168.1.100-249` (Проверено на роутере) |
-| **`kmod-pwm-rgb` / `diag.sh`** | Светодиодная индикация | ✅ Завершен | OpenWrt 24 | Фаза 13 | RGB LED (`/sys/class/leds/rgb`), `xqled` CLI (Проверено на роутере) |
-| **`kmod-gpio-button-hotplug`** | Кнопки Reset & Mesh | ✅ Завершен | OpenWrt 24 | Фаза 13 | `/etc/rc.button/reset` & `/etc/rc.button/mesh` (Проверено на роутере) |
-| **`firewall` / `iptables`** | Firewall3 / NAT | ✅ Завершен | OpenWrt 24 | Фаза 14 | `fw3`, `iptables-legacy`, `xtables`, 15 Netfilter kmods |
-| **`ppp` / `ppp-mod-pppoe`** | PPPoE WAN-клиент | ✅ Завершен | 2.5.1 | Фаза 15 | `pppd`, `rp-pppoe.so`, `kmod-ppp*` модули 5.4.213 |
-| **`odhcp6c` / `odhcpd`** | IPv6 клиент / сервер | ✅ Завершен | OpenWrt 24 | Фаза 15 | `odhcp6c` (WAN), `odhcpd-ipv6only` (LAN RA/DHCPv6) |
-| **`luci`** | Веб-интерфейс UI | ✅ Завершен | OpenWrt 24 | Фаза 16 | LuCI ucode stack, Bootstrap UI, WAN+LAN доступ |
-| **`uhttpd` / `uhttpd-mod-ubus`** | Веб-сервер | ✅ Завершен | OpenWrt 24 | Фаза 16 | Порты 80/443, JSON-RPC proxy `/ubus`, rfc1918 off |
-| **`rpcd`** | IPC JSON-RPC демон | ✅ Завершен | OpenWrt 24 | Фаза 16 | `rpcd-mod-file`, `luci`, `ucode`, `iwinfo`, `rrdns` |
-| **`iperf3`** | Сетевой бенчмарк | ✅ Завершен | 3.17.1 | Фаза 17 | Тестирование пропускной способности LAN/WAN (1G/2.5G) |
-| **`htop`** | Монитор ресурсов | ✅ Завершен | 3.4.1 | Фаза 17 | Per-core мониторинг CPU / SoftIRQ при нагрузке |
-| **`kmod-qca-nss-ecm-premium`** | Qualcomm ECM | ✅ Завершен | OpenWrt 24 | Фаза 18 | Enhanced Connection Manager, автозапуск S19, debugfs |
-| **`kmod-qca-nss-ppe*`** | Движок PPE & Offload | ✅ Завершен | OpenWrt 24 | Фаза 18 | Аппаратный оффлоад L2/L3/NAT/PPPoE, Line Rate (~0% CPU) |
-| **`kmod-qca-wifi` / `hostapd`** | Wi-Fi 6 / 7 & UCI | ✅ Завершен | OpenWrt 24 | Фаза 19 | Direct Connect, `/etc/config/wireless`, LuCI UI, `/sbin/wifi` |
-
----
-
-## 5. Финальный состав вендорного фида (`vendor_scripts/packages.list` / `required.list`)
-
-В фиде `vendor_feed` включены необходимые аппаратные компоненты:
-
+### 1. Обязательный минимум проводного роутера с оффлоадом ([vendor_scripts/required.list](vendor_scripts/required.list)):
+Список из **13 пакетов**, необходимых для гарантированной работы роутера как проводного маршрутизатора с аппаратным ускорением:
 ```text
 kmod-bootconfig
-kmod-qca-nss-dp
+kmod-gpio-button-hotplug
+kmod-ipt-conntrack-extra
+kmod-ipt-ipopt
+kmod-ipt-offload
+kmod-pwm-rgb
+kmod-qca-nss-ecm-premium
+kmod-qca-nss-ppe-pppoe-mgr
 kmod-yt-9215s-driver
 kmod-yt-phy-driver
-kmod-pwm-rgb
-kmod-gpio-button-hotplug
-kmod-leds-gpio
 nvram
 qca-ssdk-shell
 yt-9215s-client
 ```
 
-### Классификация компонентов:
+### 2. Входной список пакетов сборки ([vendor_scripts/packages.list](vendor_scripts/packages.list)):
+Список из **26 ключевых точек входа**, включающий компоненты Wi-Fi, из которого автоматически разворачиваются все 87 пакетов фида:
+```text
+kmod-bootconfig
+kmod-gpio-button-hotplug
+kmod-ipt-conntrack-extra
+kmod-ipt-extra
+kmod-ipt-filter
+kmod-ipt-ipopt
+kmod-ipt-nat6
+kmod-ipt-offload
+kmod-ipt-raw
+kmod-pwm-rgb
+kmod-qca-nss-ecm-wifi-plugin
+kmod-qca-nss-ppe-lag-mgr
+kmod-qca-nss-ppe-pppoe-mgr
+kmod-yt-9215s-driver
+kmod-yt-phy-driver
+nvram
+qca-cnss-daemon
+qca-firmware
+qca-hostap
+qca-hostapd-cli
+qca-ssdk-shell
+qca-wifi-scripts
+qca-wpa-cli
+qca-wpa-supplicant
+wififw_mount_script
+yt-9215s-client
+```
 
-1. **Модули ядра (`kmod-*`) — Аппаратные драйверы ядра 5.4.213**:
-   - `kmod-bootconfig` — чтение параметров bootloader.
-   - `kmod-qca-nss-dp` — драйвер NSS Data Path сетевых интерфейсов `eth0`, `eth1`.
-   - `kmod-yt-9215s-driver` — драйвер свитча Motorcomm YT9215S (`switch1`).
-   - `kmod-yt-phy-driver` — драйвер Ethernet PHY Motorcomm.
-   - *Транзитивные kmod*: `kmod-qca-ssdk-nohnat`, `kmod-qca-nss-ppe`, `kmod-nat46`, `kmod-bonding` и др.
-   - ⚠️ **Не подлежат замене**, жестко привязаны к ядру Linux 5.4.213.
+*Пакеты `kmod-qca-nss-dp`, `kmod-qca-nss-ecm-premium` и `kmod-qca-wifi-lowmem-profile` автоматически разрешаются и генерируются через транзитивные зависимости.*
 
-2. **Аппаратные Vendor Userland утилиты**:
-   - `nvram` — `/usr/sbin/nvram` (доступ к разделу параметров factory/bootconfig).
-   - `qca-ssdk-shell` — `/usr/sbin/ssdk_sh` (утилита Qualcomm Switch SDK & PPE).
-   - `yt-9215s-client` — `/usr/sbin/switch_ctl` (управление режимами аппаратного коммутатора YT9215S).
-   - ⚠️ Работают изолированно через механизм версионирования `ld-vendor.so.1` и `v_lc.so` (`libc-vendor`).
-
----
-
-## 6. Ключевые скрипты сборки
-
-- **`vendor_scripts/prepare_feed.sh`**: Главный скрипт распаковки стоковой прошивки, генерации фида и наложения всех патчей.
-- **`vendor_scripts/patch_package.py`**: Модификатор бинарников под `ld-vendor.so.1` и переименованные библиотеки `v_l*.so`.
-- **`vendor_scripts/patch_procd.py`**: Добавление `uci_load_validate` в `lib/functions/procd.sh`.
-- **`vendor_scripts/patch_dropbear.py`**: Удаление вендорских ограничений доступа и генерация SSH RSA хост-ключа.
-- **`upload_ubi_rd15.sh`**: Скрипт автоматической загрузки собранного `factory.ubi` (`bin/targets/ipq53xx/rd15/*factory.ubi`) на роутер по SFTP в `/tmp/root.ubi`.
-
----
-
-### ✅ Фаза 14: Интеграция Firewall3, iptables и ядерных модулей Netfilter
-- **Что сделано**:
-  1. **Исследование механизма прокидывания и подмены ядерных модулей OpenWrt**:
-     - В OpenWrt пакет `firewall` (и `iptables-zz-legacy`, `xtables-legacy`) по умолчанию зависят от символов `+kmod-ipt-core`, `+kmod-ipt-conntrack`, `+kmod-ipt-nat`.
-     - При сборке с предсобранным монолитным ядром 5.4.213 система сборки OpenWrt пытается компилировать нативные `KernelPackage` из нескомпилированного дерева 6.6, что приводило к ошибке отсутствия `.ko` файлов.
-     - Для решения:
-       - В `vendor_scripts/generate_feed.py` реализована автоматическая генерация вендорных пакетов `kmod-*-vendor` с разрешением транзитивных зависимостей (`EXTRA_KMOD_DEPS`).
-       - В Makefiles пакетов `package/network/config/firewall/Makefile` и `package/network/utils/iptables/Makefile` зависимости на `kmod-ipt-*` переведены на вендорские аналоги (`kmod-ipt-core-vendor`, `kmod-ipt-nat-vendor` и т.д.).
-       - В `Package/libxtables`, `Package/libip4tc`, `Package/libip6tc`, `Package/libiptext*` добавлена явная зависимость `+libgcc` для прохождения валидации зависимостей `CheckDependencies`.
-  2. **Сборка юзерспейс-компонентов**:
-     - Собраны нативные `/sbin/fw3`, `/usr/sbin/xtables-legacy-multi`, `/usr/sbin/iptables`, `/usr/sbin/iptables-save`, `/usr/sbin/iptables-restore`, `/usr/sbin/ip6tables`.
-     - Библиотеки `libxtables.so.12`, `libip4tc.so.2`, `libip6tc.so.2`, `libiptext.so.0`, `libiptext6.so.0`.
-  3. **Конфигурация UCI Firewall**:
-     - Создан стандартный `/etc/config/firewall` с зонами `lan` (ACCEPT) и `wan` (REJECT + Masquerading/NAT), правилом `Allow-SSH-WAN` (для предотвращения блокировки доступа при тестировании) и цепочками проброса.
-  4. **Ядерные модули Netfilter**:
-     - Интегрированы в образ и настроены на автозагрузку в `/etc/modules.d/` все необходимые модули ядра 5.4.213: `ipt_core`, `ipt_nat`, `ipt_conntrack`, `xt_MASQUERADE`, `xt_conntrack`, `xt_state`, `xt_nat`, `nf_nat`, `nf_conntrack`, `nf_reject_ipv4`, `nf_reject_ipv6`, `iptable_filter`, `iptable_nat`, `iptable_raw`, `iptable_mangle`.
-- **Результат**: Собран полный образ фабричной прошивки `bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi` с поддержкой Firewall3, iptables и NAT Masquerade.
+### 3. Вспомогательные скрипты генерации фида:
+- **`vendor_scripts/extract_kmod_deps.py`**: Выполняет бинарный анализ экспортируемых и импортируемых символов всех `.ko` файлов распакованного rootfs и формирует карту зависимостей `tmp/kmod_deps.json`.
+- **`vendor_scripts/generate_feed.py`**: Считывает `opkg status` и `kmod_deps.json`, строит полный граф зависимостей в памяти, проверяет наличие всех 13 пакетов из `required.list` и генерирует дерево пакетов в `vendor_feed/`.
+- **`vendor_scripts/patch_package.py`**: Обрабатывает каждый пакет в сгенерированном фиде — выполняет ELF-версионирование библиотек (`v_l*.so`), перенаправляет интерпертатор на `ld-vendor.so.1` и патчит сервисные init-скрипты (`qca-nss-ecm`, `load_cnss2`, `qca-hostapd`).
 
 ---
 
-### ✅ Фаза 15: Интеграция PPPoE (`ppp`, `ppp-mod-pppoe`) и IPv6 стека (`odhcp6c`, `odhcpd-ipv6only`)
-- **Что сделано**:
-  1. **Ядерные модули PPP и IPv6**:
-     - В `vendor_scripts/packages.list` и `vendor_scripts/generate_feed.py` добавлены модули ядра 5.4.213: `kmod-ppp`, `kmod-pppoe`, `kmod-pppox`, `kmod-slhc`, `kmod-lib-crc-ccitt`, `kmod-ipv6`.
-     - Настроены связи `EXTRA_KMOD_DEPS` для автогенерации транзитивных зависимостей в вендорном фиде.
-  2. **Адаптация нативного пакета `ppp` (OpenWrt 24, v2.5.1)**:
-     - В `package/network/services/ppp/Makefile` зависимости на ядро перенаправлены на вендорные модули (`+kmod-ppp-vendor`, `+kmod-pppoe-vendor`) и добавлен `+libgcc` для удовлетворения проверок `CheckDependencies`.
-     - Собраны нативные `/usr/sbin/pppd`, плагин `/usr/lib/pppd/2.5.1/rp-pppoe.so` и протокольные скрипты `netifd` (`/lib/netifd/proto/ppp.sh`, `ppp-up`, `ppp-down`, `ppp6-up`).
-  3. **IPv6 клиент и сервер (`odhcp6c`, `odhcpd-ipv6only`)**:
-     - Скомпилированы нативные `/usr/sbin/odhcp6c` и `/usr/sbin/odhcpd` со связкой `libubox`, `libuci`, `libubus`, `libjson-c`, `libnl-tiny`.
-  4. **Конфигурация сети (`/etc/config/network` и `/etc/config/dhcp`)**:
-     - В `/etc/config/network` добавлен логический интерфейс `wan6` (`proto 'dhcpv6'`).
-     - В `/etc/config/dhcp` настроен сервер `odhcpd` и включены параметры анонсирования маршрутизатора (`ra 'server'`, `dhcpv6 'server'`, `ra_slaac '1'`) для зоны `lan`.
-- **Результат**: Собран полный образ прошивки `factory.ubi` со стандартной поддержкой провайдерских PPPoE-подключений и полного стека IPv6 в LAN/WAN.
+## 8. Ключевые скрипты сборки и автоматизации
+
+- **`vendor_scripts/prepare_feed.sh`**: Главный скрипт разворачивания вендорного фида из стоковой прошивки.
+- **`vendor_scripts/patch_feeds.py`**: Идемпотентный скрипт наложения сборочных зависимостей на внешние фиды OpenWrt (`luci`, `iperf3`).
+- **`upload_ubi_rd15.sh`**: Скрипт автоматической загрузки и прошивки собранного образа `factory.ubi` на роутер по SSH/SFTP.
 
 ---
 
-### ✅ Фаза 16: Интеграция веб-интерфейса LuCI и WAN-доступа к панели управления
-- **Что сделано**:
-  1. **Интеграция метапакета `luci` в целевую подплатформу**:
-     - В `target/linux/ipq53xx/rd15/target.mk` метапакет `luci` включен в `DEFAULT_PACKAGES`.
-     - В образ автоматически вошел современный стек LuCI OpenWrt 24 на базе `ucode` и клиентского JavaScript:
-       - **Веб-интерфейс**: `luci`, `luci-light`, `luci-base`, `luci-mod-admin-full`, `luci-mod-status`, `luci-mod-system`, `luci-mod-network`, тема `luci-theme-bootstrap`.
-       - **Приложения**: `luci-app-firewall`, `luci-app-package-manager` (веб-управление пакетами opkg), `luci-proto-ppp`, `luci-proto-ipv6`.
-       - **Веб-сервер и демоны**: `/usr/sbin/uhttpd`, `/usr/lib/uhttpd_ubus.so`, `/sbin/rpcd`, плагины `rpcd-mod-file`, `rpcd-mod-luci`, `rpcd-mod-ucode`, `rpcd-mod-iwinfo`, `rpcd-mod-rrdns`, `/usr/libexec/cgi-io`.
-  2. **Автоматизация патчинга внешних системных фидов (`vendor_scripts/patch_feeds.py`)**:
-     - Создан скрипт `vendor_scripts/patch_feeds.py`, идемпотентно накладывающий необходимые правки совместимости на внешние репозитории без ручной правки их рабочего дерева.
-     - Для `feeds/luci/contrib/package/lucihttp/Makefile` автоматически добавляется явная зависимость `DEPENDS:=+libgcc` для удовлетворения проверок `CheckDependencies` при сборке ARM shared-библиотек.
-     - Добавлен вызов скрипта в Quickstart инструкции `README.md`.
-  3. **Исправление зависимостей `ip6tables-zz-legacy`**:
-     - В `package/network/utils/iptables/Makefile` зависимость пакета `ip6tables-zz-legacy` перенаправлена со стандартного ядра 6.6 (`kmod-ip6tables`) на вендорный модуль ядра 5.4.213 (`kmod-ip6tables-vendor`).
-  4. **Конфигурация сетевого доступа (LAN + WAN доступ к UI)**:
-     - В `/etc/config/firewall` добавлены правила входящего доступа из зоны WAN:
-       - `Allow-HTTP-WAN` (TCP/80 -> ACCEPT)
-       - `Allow-HTTPS-WAN` (TCP/443 -> ACCEPT)
-     - В `/etc/config/uhttpd` отключен фильтр RFC1918 (`option rfc1918_filter '0'`), разрешающий веб-доступ со стороны приватных IP-адресов вышестоящей локальной сети.
-- **Результат**: Собран полный образ прошивки `factory.ubi` (7.2 МБ) с полноценным веб-интерфейсом LuCI, доступным как со стороны локальной сети (`192.168.1.1`), так и через WAN-интерфейс.
+## 9. Сводный статус компонентов
+
+| Компонент | Роль | Статус | Реализация |
+|---|---|---|---|
+| **`dropbear`** | SSH-сервер | ✅ Работает | Нативный OpenWrt 24, RSA 2048-bit |
+| **`uci` / `libuci`** | Конфигурация | ✅ Работает | Нативный OpenWrt 24 (2025.x) |
+| **`swconfig`** | Свитч YT9215S | ✅ Работает | Нативный OpenWrt 24 + хуки `switch_ctl` |
+| **`busybox`** | Coreutils / Shell | ✅ Работает | 1.36.1-r2 (PIE, SUID, 30+ апплетов, UDHCPC ARPING) |
+| **`ubus` / `ubusd`** | IPC шина | ✅ Работает | Нативный OpenWrt 24 + symlink compat |
+| **`ubox` / `kmodloader`** | Загрузка модулей | ✅ Работает | Нативный OpenWrt 24, `/sbin/logd` |
+| **`fstools` / `ubi-utils`**| Файловые системы | ✅ Работает | Нативный OpenWrt 24, UBIFS / SquashFS |
+| **`procd` / `init`** | PID 1 менеджер | ✅ Работает | Нативный OpenWrt 24, `hotplug.json` |
+| **`netifd`** | Сетевой демон | ✅ Работает | Нативный OpenWrt 24 (2025.x, ucode, packet-steering) |
+| **`base-files`** | Базовая система | ✅ Работает | Нативный OpenWrt 24 + оверлей `rd15` (RAMFS /etc, UBIFS /data) |
+| **`opkg` / `mbedtls`** | Пакетный менеджер | ✅ Работает | Нативный `opkg`, `uclient-fetch`, TLS, `urngd` |
+| **`dnsmasq`** | DNS / DHCP | ✅ Работает | Нативный 2.90, пул `192.168.1.100-249` |
+| **`kmod-pwm-rgb` / `diag.sh`** | Светодиодная индикация | ✅ Работает | RGB LED (`/sys/class/leds/rgb`), утилита `/sbin/xqled` |
+| **`kmod-gpio-button-hotplug`** | Кнопки Reset & Mesh | ✅ Работает | Аппаратный сброс настроек `/etc/rc.button/reset` |
+| **`firewall` / `iptables`** | Firewall3 / NAT | ✅ Работает | Нативный `fw3`, `iptables-legacy`, `xtables`, Netfilter kmods |
+| **`ppp` / `pppoe`** | PPPoE клиент | ✅ Работает | Нативный `pppd` 2.5.1, `rp-pppoe.so` |
+| **`odhcp6c` / `odhcpd`** | IPv6 клиент / сервер | ✅ Работает | Нативный OpenWrt 24 (SLAAC, RA, DHCPv6) |
+| **`luci`** | Веб-интерфейс | ✅ Работает | Нативный LuCI ucode stack, Bootstrap UI, LAN+WAN |
+| **`iperf3` / `htop`** | Бенчмарк & Мониторинг | ✅ Работает | Нативные `iperf3` (3.17.1) и `htop` (3.4.1) |
+| **`kmod-qca-nss-ppe*` / `ecm`** | Аппаратный оффлоад | ✅ Работает | Qualcomm PPE / NSS ECM, Line Rate 2.5G (~0% CPU) |
+| **`kmod-qca-wifi` / `hostapd`** | Wi-Fi 6 / 7 & UCI | ✅ Работает | Qualcomm Direct Connect, `hostapd`, HE160, LuCI UI |
 
 ---
 
-### ✅ Фаза 17: Интеграция сетевого бенчмарка (`iperf3`) и монитора ресурсов (`htop`)
-- **Что сделано**:
-  1. **Интеграция пакетов в сборку**:
-     - В `target/linux/ipq53xx/rd15/target.mk` добавлены `iperf3` и `htop` в `DEFAULT_PACKAGES`.
-     - Скомпилированы нативные `/usr/bin/iperf3`, библиотека `/usr/lib/libiperf.so.*`, `/usr/bin/htop` и `/lib/libatomic.so.*`.
-  2. **Автоматизация патчинга зависимостей фидов**:
-     - В `vendor_scripts/patch_feeds.py` добавлена функция `patch_iperf3_makefile`, гарантирующая установку зависимостей `DEPENDS:=+libatomic +libgcc` для `Package/libiperf3`.
-     - В `package/libs/ncurses/Makefile` добавлена зависимость `+libgcc` для `Package/libncurses`.
-  3. **Подготовка к замеру производительности (Baseline Soft-Routing vs PPE/ECM)**:
-     - Обеспечена возможность запуска `iperf3` сервера (`iperf3 -s -D`) на роутере.
-     - Обеспечен интерактивный per-core мониторинг CPU и SoftIRQ через `htop` в SSH-сессии во время стресс-тестов на скоростях 1 Gbps / 2.5 Gbps.
-- **Результат**: Собран полный образ прошивки `factory.ubi` (7.4 МБ) со встроенным инструментарием сетевого и системного профилирования.
-
----
-
-### ✅ Фаза 18: Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)
-- **Что сделано**:
-  1. **Интеграция аппаратных модулей Qualcomm PPE / NSS ECM**:
-     - В `vendor_scripts/packages.list` и `vendor_scripts/generate_feed.py` добавлены: `kmod-qca-nss-ecm-premium`, `kmod-qca-nss-ppe-pppoe-mgr`, `kmod-qca-nss-ppe-ds`, `kmod-qca-nss-ppe-lag-mgr`.
-     - Автоматически разрешена и собрана цепочка зависимостей: `kmod-qca-nss-ppe`, `kmod-qca-nss-ppe-rule`, `kmod-qca-nss-ppe-vp`, `kmod-qca-nss-ppe-bridge-mgr`, `kmod-qca-nss-ppe-vlan-mgr`, `kmod-qca-nss-ppe-tun`, `kmod-qca-nss-ppe-vxlanmgr`, `kmod-qca-nss-sfe`, `kmod-emesh-sp`, `kmod-qca-mcs`, `kmod-nat46`, `kmod-vxlan`, `kmod-bonding`, `kmod-l2tp`, `kmod-pppol2tp`, `kmod-pptp`.
-  2. **Поэтапное безопасное тестирование (Двухэтапная валидация)**:
-     - *Шаг 1*: Проверка безопасного ручного режима (отсутствие дедлоков ядра, успешная загрузка роутера, ручной запуск через `/etc/init.d/qca-nss-ecm start`).
-     - *Шаг 2*: Стресс-тест сетевого трафика LAN ↔ WAN через `iperf3` — подтверждена околонулевая загрузка CPU (~0% – 1%) при полной утилизации проводной полосы пропускания.
-  3. **Штатный автозапуск и интеграция с OpenWrt 24**:
-     - Служба `/etc/init.d/qca-nss-ecm` и менеджер моста `qca-nss-ppe-bridge-mgr` переведены в штатный автозапуск (`/etc/rc.d/S19qca-nss-ecm`, `S19qca-nss-ppe-bridge-mgr`).
-     - Сохранена полная совместимость с `/lib/miwifi/arch/lib_arch_accel.sh` и CLI `/sbin/accelctrl`.
-     - Интегрирована утилита диагностики потоков `/usr/bin/ecm_dump.sh` и сброс соединений `/lib/netifd/offload/on-demand-down`.
-### ✅ Фаза 19: Интеграция беспроводного стека (Wi-Fi 6 / 7) с UCI и веб-интерфейсом LuCI
-- **Что сделано**:
-  1. **Унифицированная конфигурация UCI Wireless (`/etc/config/wireless`)**:
-     - Настроены радиомодули `radio0` (2.4 GHz, `HE40`, `country=CN`) и `radio1` (5.0 GHz, `HE160`, `country=CN`).
-     - Настроены VAP-интерфейсы `ath0` (`OpenWrt_RD15_2.4G`) и `ath1` (`OpenWrt_RD15_5G`) с режимом WPA2-PSK CCMP и готовностью к WPA3-SAE.
-  2. **Динамический генератор конфигурации `hostapd` (`/lib/wifi/hostapd_config.sh`)**:
-     - Автоматическая трансляция параметров UCI в `/var/run/hostapd-ath0.conf` и `/var/run/hostapd-ath1.conf`.
-     - Поддержка стандартов 802.11ax (Wi-Fi 6) и 802.11be (Wi-Fi 7 EHT 160MHz), шифрования WPA2-PSK / WPA3-SAE / Mixed с PMF, изоляции клиентов и скрытия SSID.
-     - Безопасная работа с регуляторным доменом (отключение `ieee80211d` для предотвращения конфликтов с калибровками BDF в `0:ART`).
-  3. **Стандартная утилита `/sbin/wifi` и служба `qca-hostapd`**:
-     - Реализованы команды `wifi config`, `wifi up`, `wifi down`, `wifi reload`, `wifi status` с мьютексом `/var/run/wifi.lock`.
-     - Служба `/etc/init.d/qca-hostapd` переведена на управление инстансами `hostapd_2g` и `hostapd_5g` под супервизором `procd`.
-     - Обеспечена бесшовная перезагрузка параметров hostapd при нажатии «Сохранить и применить» в LuCI без сброса моста `br-lan`.
-  4. **Очистка отладочного кода**:
-     - Полностью удалены временные скрипты `/sbin/wifi_ap_start.sh` и `/sbin/wifi_ap_stop.sh`.
-- **Результат**: Собран полный образ прошивки `factory.ubi` (18 МБ) с полноценным управлением Wi-Fi через веб-интерфейс LuCI и командную строку OpenWrt.
-
----
-
-## 🗺️ Дорожная карта дальнейшей разработки (Next Steps)
-
-Базовый стратегический план поэтапной доработки функционала роутера:
+## 10. Дорожная карта дальнейшей разработки (Next Steps)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ✅ Шаг 0 (Фундамент): Базовая ОС + SSH (Завершено)                     │
+│ ✅ Шаг 0: Базовая ОС + SSH (Завершено)                                 │
 │ • Ядро 5.4.213 + qca-nss-dp + yt_switch/yt_phy                         │
 │ • Нативный OpenWrt 24 userland (procd, ubus, ubox, netifd, uci)        │
 │ • RAMFS /etc, UBIFS /data, swconfig, DHCP-клиент br-lan, SSH           │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
+├────────────────────────────────────────────────────────────────────────┤
 │ ✅ Шаг 1: Базовый проводной маршрутизатор (Завершено)                  │
-│ • [x] opkg + ca-bundle + libustream-mbedtls + mbedtls (TLS-стек)       │
-│ • [x] dnsmasq — раздача DHCP и DNS клиентам в LAN                      │
-│ • [x] firewall3 (fw3) + iptables-legacy — межсетевой экран и NAT (WAN) │
-│ • [x] urandom-seed / urngd — подсистема энтропии                       │
-│ • [x] ppp + ppp-mod-pppoe — поддержка PPPoE-подключений провайдера     │
-│ • [x] odhcp6c + odhcpd-ipv6only — стек IPv6 (WAN клиент + LAN сервер)   │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
+│ • opkg + ca-bundle + libustream-mbedtls (TLS-стек)                     │
+│ • dnsmasq (DHCP/DNS LAN 192.168.1.1), firewall3 + iptables-legacy      │
+│ • urandom-seed / urngd, ppp + pppoe, odhcp6c + odhcpd (IPv6)           │
+├────────────────────────────────────────────────────────────────────────┤
 │ ✅ Шаг 2: Веб-интерфейс управления LuCI (Завершено)                   │
-│ • [x] luci-core, rpcd, uhttpd + uhttpd-mod-ubus (JSON-RPC)             │
-│ • [x] luci-app-firewall, luci-app-package-manager                      │
-│ • [x] Доступ к веб-панели управления через LAN (80) и WAN (80/443)     │
-│ • [x] Идемпотентный скрипт патчинга фидов vendor_scripts/patch_feeds.py│
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
+│ • luci, rpcd, uhttpd + JSON-RPC proxy, firewall/package-manager UI     │
+│ • LAN (80) и WAN (80/443) доступ, скрипт patch_feeds.py               │
+├────────────────────────────────────────────────────────────────────────┤
 │ ✅ Шаг 3: Аппаратная периферия и индикация (Завершено)                 │
-│ • [x] kmod-gpio-button-hotplug — обработка кнопок Reset и Mesh         │
-│ • [x] kmod-pwm-rgb + /sbin/xqled — RGB светодиодная индикация          │
-│ • [x] Интеграция событий кнопок и статуса загрузки в /etc/diag.sh      │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
+│ • kmod-pwm-rgb + /sbin/xqled (RGB LED индикация), diag.sh              │
+│ • kmod-gpio-button-hotplug (обработка кнопок Reset и Mesh)             │
+├────────────────────────────────────────────────────────────────────────┤
 │ ✅ Шаг 4: Аппаратное ускорение маршрутизации (Завершено)               │
-│ • [x] kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk     │
-│ • [x] Интеграция ECM в netifd / firewall (оффлоадинг conntrack потоков)│
-│ • [x] Тестирование multi-gigabit throughput (iperf3 2.5 Gbps, ~0% CPU) │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ ✅ Шаг 5: Беспроводной стек и LuCI (Завершено)                         │
-│ • [x] Драйверы Qualcomm Direct Connect (umac, qca_ol, wifi_3_0)        │
-│ • [x] Подсистема PCIe cnssdaemon, BDF калибровки ART                   │
-│ • [x] UCI /etc/config/wireless + генератор hostapd_config.sh           │
-│ • [x] Системная утилита /sbin/wifi + procd служба qca-hostapd          │
-│ • [x] Полное управление и мониторинг через LuCI (Network -> Wireless)  │
-└────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ 🔄 Шаг 6: Wi-Fi 7 EHT 160MHz, Multi-Link Operation (MLO) & WPA3-SAE    │
-│ • [ ] Тонкая настройка полосы 160 МГц и Wi-Fi 7 EHT параметров         │
-│ • [ ] Активация mld-wifi0 для multi-link агрегации                     │
-│ • [ ] Тесты пропускной способности Wi-Fi (iperf3) с оффлоадом PPE/ECM  │
+│ • kmod-qca-nss-ppe + kmod-qca-nss-ecm-premium + kmod-qca-ssdk         │
+│ • Интеграция ECM в netifd / firewall, Line Rate 2.5G (~0% CPU)         │
+├────────────────────────────────────────────────────────────────────────┤
+│ ✅ Шаг 5: Беспроводной стек Wi-Fi 6/7 и LuCI (Завершено)               │
+│ • Qualcomm Direct Connect (umac, qca_ol, wifi_3_0, ipq_cnss2)          │
+│ • UCI /etc/config/wireless, /lib/wifi/hostapd_config.sh (HE160/PMF)    │
+│ • /sbin/wifi, procd qca-hostapd, патч libiwinfo для мониторинга в LuCI │
+│ • Аппаратный Wi-Fi оффлоад kmod-qca-nss-ecm-wifi-plugin (FSE/MSCS)     │
+├────────────────────────────────────────────────────────────────────────┤
+│ 🔄 Шаг 6: Расширенный функционал и пакеты экосистемы OpenWrt           │
+│ • [ ] Интеграция модулей IPset (kmod-ipt-ipset) для списков обхода     │
+│ • [ ] Интеграция TPROXY (kmod-ipt-tproxy) для прозрачного прокси       │
+│ • [ ] Интеграция Traffic Control / QoS (kmod-sched) для SQM CAKE       │
+│ • [ ] Тонкая настройка Multi-Link Operation (MLO mld-wifi0)            │
 └────────────────────────────────────────────────────────────────────────┘
 ```
-
-

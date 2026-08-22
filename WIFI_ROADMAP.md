@@ -1,101 +1,145 @@
-# Дорожная карта и техническая документация: Wi-Fi 6 / 7 на Xiaomi Router BE3600 (RD15)
+# Техническая документация: Стек Wi-Fi 6 / 7 на Xiaomi Router BE3600 (RD15)
 
-## 1. Архитектура и стек компонентов
-
-| Компонент | Назначение | Реализация / Путь |
-| :--- | :--- | :--- |
-| **SoC / CPU** | Qualcomm IPQ5312 (Quad-Core Cortex-A7 @ 1.1 GHz) | Target: `ipq53xx/rd15`, Kernel: `5.4.213` |
-| **2.4 GHz Radio** | QCA IPQ5312 On-SoC (2x2 Wi-Fi 6 / 7) | `wifi0` -> VAP `ath0` (`phy1`) |
-| **5.0 GHz Radio** | QCN6432 PCIe Radio (2x2 Wi-Fi 6 / 7 160MHz) | `wifi1` -> VAP `ath1` (`phy2`) |
-| **MLD Radio** | Multi-Link Device (Wi-Fi 7 MLO) | `mld-wifi0` (`phy0`) |
-| **Switch / Ethernet** | Motorcomm YT9215S + Qualcomm PPE VP | `eth0.1` (WAN), `eth0.2`, `eth0.3`, `eth1` (LAN) |
-| **Платформа PCIe** | `ipq_cnss2.ko` + `cnssdaemon -n -s` | Init: `/etc/init.d/load_cnss2` (`START=11`) |
-| **Драйвер Wi-Fi** | Qualcomm Direct Connect (`umac.ko`, `qca_ol.ko`, `wifi_3_0.ko`) | Init: `/etc/init.d/qca-wifi` (`START=12`) |
-| **Аутентификатор** | Qualcomm `hostapd` (`v_lssl.so.1.1`) | Init: `/etc/init.d/qca-hostapd` (`START=21`) |
+Дополнительный документ к [VENDOR_USERLAND_REPLACEMENT.md](VENDOR_USERLAND_REPLACEMENT.md), описывающий архитектуру, специфичные компоненты и механизмы интеграции беспроводного стека Qualcomm Direct Connect в OpenWrt 24.
 
 ---
 
-## 2. Статус реализации этапов
+## 1. Архитектура радиомодулей и аппаратная часть
 
-```mermaid
-graph TD
-    S1["Этап 1: Калибровки ART & BDF"] -->|Успешно| S2["Этап 2: PCIe & cnssdaemon"]
-    S2 -->|Успешно| S3["Этап 3: Direct Connect драйвер"]
-    S3 -->|Успешно| S4["Этап 4: Hostapd, Wi-Fi 6, DHCP & NAT"]
-    S4 -->|Успешно| S5["Этап 5: LuCI Web UI & UCI wireless"]
-    S5 -->|Успешно| S6["Этап 6: Wi-Fi 7 EHT, MLO & Валидация"]
-    
-    style S1 fill:#d4edda,stroke:#28a745,color:#155724
-    style S2 fill:#d4edda,stroke:#28a745,color:#155724
-    style S3 fill:#d4edda,stroke:#28a745,color:#155724
-    style S4 fill:#d4edda,stroke:#28a745,color:#155724
-    style S5 fill:#d4edda,stroke:#28a745,color:#155724
-    style S6 fill:#d4edda,stroke:#28a745,color:#155724
+| Радиоинтерфейс | Чипсет / Контроллер | Шина подключения | VAP интерфейс | PHY имя | Диапазон и полоса |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **2.4 GHz Radio** | Qualcomm IPQ5312 On-SoC | AHB (встроен в SoC) | `ath0` | `phy1` | 2.4 GHz, 802.11ax (HE20/HE40), 2x2 MIMO |
+| **5.0 GHz Radio** | Qualcomm QCN6432 PCIe Radio | PCIe Gen3 | `ath1` | `phy2` | 5.0 GHz, 802.11ax/be (HE160/EHT160), 2x2 MIMO |
+| **MLD Radio** | Multi-Link Device (Wi-Fi 7) | Внутренняя шина | `mld-wifi0` | `phy0` | Wi-Fi 7 MLO (агрегация 2.4G + 5G) |
+
+---
+
+## 2. Стек компонентов Wi-Fi
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        LuCI Web UI / UCI CLI                           │
+│  /etc/config/wireless  ───►  /lib/wifi/hostapd_config.sh (Генератор)   │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               Сетевой менеджер Netifd & Утилита /sbin/wifi             │
+│  /lib/netifd/wireless/mac80211.sh  ───►  /sbin/wifi (CLI & Mutex)      │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   Аутентификатор Qualcomm hostapd                      │
+│  /usr/sbin/hostapd (изолирован через ld-vendor / OpenSSL 1.1)          │
+│  Сокеты управления: /var/run/hostapd/ath0, /var/run/hostapd/ath1       │
+│  Мониторинг LuCI: libiwinfo (STA-FIRST / STA-NEXT fallback patch)      │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               Qualcomm Direct Connect Драйверы (Ядро 5.4)              │
+│  • ipq_cnss2.ko + cnssdaemon ─── Инициализация PCIe шины QCN6432       │
+│  • mem_manager.ko, qdf.ko, umac.ko, qca_ol.ko, wifi_3_0.ko, cfg80211  │
+│  • ecm-wifi-plugin.ko ───────── Аппаратный оффлоад потоков (PPE/ECM)   │
+│  • 0:ART / 0:0:ALL_MISC ─────── Заводские калибровки BDF (caldata.bin) │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Этап | Задача | Статус | Достигнутый результат |
-| :--- | :--- | :---: | :--- |
-| **Этап 1** | Калибровка и BDF-блобы | ✅ **Завершен** | Извлечены и смонтированы `caldata.bin`, `caldata_1.b0060`, `ftm.conf` из заводских разделов `0:ART` и `0:0:ALL_MISC`. |
-| **Этап 2** | Подсистема PCIe и CNSS2 | ✅ **Завершен** | Скомпилирован `ipq_cnss2.ko`, настроен автозапуск `cnssdaemon -n -s` под супервизором `procd` (`START=11`). |
-| **Этап 3** | Qualcomm Direct Connect радиодрайвер | ✅ **Завершен** | Модули `umac.ko`, `qca_ol.ko`, `wifi_3_0.ko` поднимают радиоинтерфейсы: `wifi0` (2.4G), `wifi1` (5G), `mld-wifi0` (MLO). Установлен путь `/sys/module/firmware_class/parameters/path` -> `/ini`. |
-| **Этап 4** | Hostapd, вещание точек, DHCP и интернет | ✅ **Завершен** | Точки `OpenWrt_RD15_2.4G` и `OpenWrt_RD15_5G` вещают в **Wi-Fi 6 (802.11ax)**, клиенты получают IP по DHCP (`192.168.1.x`) и полный доступ в интернет. Автозапуск `S21qca-hostapd` после `S20network`. |
-| **Этап 5** | Интеграция с LuCI Web UI & UCI | ✅ **Завершен** | Создан `/etc/config/wireless`, динамический генератор `/lib/wifi/hostapd_config.sh`, системная утилита `/sbin/wifi`, procd-служба `qca-hostapd` с поддержкой перезагрузки без обрыва моста `br-lan`. Патч `libiwinfo` для отображения клиентов в LuCI. |
-| **Этап 6** | Wi-Fi 7 EHT 160MHz, MLO & WPA3 | ✅ **Завершен** | Генерация параметров 802.11be (`ieee80211be=1`, `eht_oper_chwidth=2`, `eht_oper_centr_freq_seg0_idx=50`), поддержка WPA2/WPA3 Mixed Transition Mode (`WPA-PSK SAE` + PMF), готовность к MLO. |
+### Состав стека:
+1. **Подсистема PCIe и инициализация радиомодуля QCN6432**:
+   * `ipq_cnss2.ko` — платформенный драйвер шины PCIe для управления питанием и сбросом радиочипа.
+   * `cnssdaemon` (`/usr/sbin/cnssdaemon -n -s`) — сервис инициализации чипа и загрузки микрокода.
+   * Калибровки и BDF-блобы: монтирование заводских данных `caldata.bin`, `caldata_1.b0060`, `ftm.conf` из разделов `0:ART` и `0:0:ALL_MISC` в `/ini` и `/lib/firmware/qcn6432`.
+2. **Драйверный уровень Qualcomm Direct Connect**:
+   * `mem_manager.ko` — когерентная DMA-память дескрипторов.
+   * `qdf.ko` — слой абстракции ОС Qualcomm Driver Framework.
+   * `umac.ko` — Upper MAC уровень (управление точками доступа, протоколом 802.11 и Rate Control).
+   * `qca_ol.ko` — транспортный уровень обмена с микрокодом по шинам AHB/PCIe.
+   * `wifi_3_0.ko` — аппаратный драйвер радиомодулей Wi-Fi 3.0.
+   * `cfg80211.ko` — подсистема беспроводной конфигурации ядра Linux.
+3. **Аппаратное ускорение Wi-Fi трафика (Qualcomm PPE / NSS ECM)**:
+   * `ecm-wifi-plugin.ko` — модуль интеграции Qualcomm ECM с радиодрайвером Direct Connect. Реализует кремниевую классификацию потоков FSE (Flow Search Engine) и аппаратную приоритезацию QoS MSCS.
+4. **Аутентификация и управление точками доступа**:
+   * Qualcomm `hostapd` и `wpa_supplicant` (`/usr/sbin/hostapd`, `/usr/sbin/hostapd_cli`).
+   * Изоляция окружения: слинкованы с `ld-vendor.so.1` и `v_lssl.so.1.1` / `v_lcrypto.so.1.1` (OpenSSL 1.1).
 
 ---
 
-## 3. Обратная совместимость и стратегия тестирования (без Wi-Fi 7 устройств)
+## 3. Специфичные патчи беспроводного стека
 
-Стандарт **802.11be (Wi-Fi 7)** на 100% обратно совместим со всеми предыдущими поколениями Wi-Fi:
-- **Wi-Fi 6 (802.11ax)**: 2.4 GHz (HE40/HE20) и 5.0 GHz (HE160/HE80/HE40/HE20) со скоростями до 2402 Мбит/с.
-- **Wi-Fi 5 (802.11ac)**: 5.0 GHz (VHT80/VHT40/VHT20) до 866 Мбит/с.
-- **Wi-Fi 4 (802.11n)**: 2.4 GHz и 5.0 GHz (HT40/HT20) до 300-400 Мбит/с.
-- **Legacy (802.11b/g/a)**: IoT, умный дом (ESP8266, ESP32).
+### 1. Системный патч `libiwinfo` ([200-hostapd-assoclist-fallback.patch](package/network/utils/iwinfo/patches/200-hostapd-assoclist-fallback.patch))
+* **Причина**: Драйвер Qualcomm Direct Connect не возвращает список станций через стандартный `nl80211` dump ядра (`iw dev ath0 station dump`), из-за чего в LuCI Web UI (*Network → Wireless*) не отображались подключенные клиенты.
+* **Реализованный механизм**:
+  1. В `libiwinfo` добавлен fallback на прямой опрос управляющих UNIX-сокетов hostapd (`/var/run/hostapd/ath0` и `/var/run/hostapd/ath1`).
+  2. Реализована итерация по станциям через специфичный вендорный протокол `STA-FIRST` / `STA-NEXT`.
+  3. Реализован парсинг расширенных метрик: MAC-адрес, уровень сигнала RSSI (`signal`), уровень шума (`noise`), время активности (`inactive_time`), битрейты TX/RX (HE/EHT rates, MCS, NSS, полоса 20/40/80/160 MHz), флаги авторизации.
+  4. Защита сокета при DFS CAC: предотвращено удаление управляющего сокета во время 60-секундного сканирования радаров на частоте 5 ГГц (каналы 52–64).
 
-### 📋 Матрица тестирования
-
-| Категория | Что проверяем | Метод проверки |
-|---|---|---|
-| **✅ Полное тестирование (Wi-Fi 6/5/4)** | 1. Ассоциация 2.4G & 5G | Подключение смартфона/ноутбука к `OpenWrt_RD15_2.4G` и `OpenWrt_RD15_5G`. Проверено: клиенты стабильно ассоциируются и получают IP. |
-| | 2. Выдача DHCP и интернет | Получение IP `192.168.1.x`, DNS-резолв, NAT через WAN. Проверено: интернет и локальная сеть доступны. |
-| | 3. WPA2-PSK / WPA3-SAE | Подключение клиентов с WPA2 и WPA3 (Mixed Mode + PMF `ieee80211w=1`). |
-| | 4. LuCI Web UI & iwinfo | Страница *Network → Wireless*, таблица активных клиентов, уровень сигнала (-dBm), скорость TX/RX. Сокет `/var/run/hostapd/ath1` стабилен. |
-| | 5. Производительность PPE/ECM | Запуск `iperf3` (Wi-Fi ↔ WAN). **Результат: 940 Мбит/с (Line Rate 1 Gbps)**. Нагрузка маршрутизации 0% CPU, SoftIRQ `%si` ~60% на одном ядре. |
-| | 6. Автозапуск и CLI | `reboot` роутера, команды `/sbin/wifi status`, `wifi up`, `wifi down`, `wifi reload`. |
-| **⚠️ Добавлено без тестов (Wi-Fi 7)** | 1. Модуляция 4096-QAM | EHT-MCS 12/13 (2882 Мбит/с) — требует Wi-Fi 7 клиент. |
-| | 2. MLO агрегация | Виртуальный интерфейс `mld-wifi0` для агрегации 2.4G + 5G. |
-| | 3. Punctured Channel | Обрабатывается прошивкой QCN6432. |
+### 2. Модификации пакетов вендорного фида ([vendor_scripts/patch_package.py](vendor_scripts/patch_package.py))
+* **Пакет `qca-hostap` (`files/etc/init.d/qca-hostapd`)**:
+  * Генерация сервиса формата `procd` / `rc.common` (`START=21`, `STOP=87`).
+  * Реализация функции `setup_vaps`: динамическое определение `phy1`/`phy2` через sysfs `wifi0`/`wifi1`, создание виртуальных AP-интерфейсов `ath0` и `ath1` (`iw phy <phy> interface add <ath> type __ap`), добавление в сетевой мост `br-lan` и перевод в `up`.
+  * Отключение фильтрации трафика моста через `sysctl` (`net.bridge.bridge-nf-call-iptables=0`, `ip6tables=0`, `arptables=0`) во избежание сброса сетевых фреймов.
+  * Интеграция вызова генератора `/lib/wifi/hostapd_config.sh all` и запуск инстансов hostapd с файлом энтропии `/var/run/entropy.bin`, PID-файлами и сокетами `/var/run/hostapd/ath*`.
+* **Пакет `kmod-qca-wifi-lowmem-profile`**:
+  * Преобразование скрипта `/etc/init.d/load_cnss2` в сервис под супервизором `procd` (`START=11`, `STOP=89`, `USE_PROCD=1`, `respawn`) для управления демоном `/usr/bin/cnssdaemon -n -s` и загрузки модуля `ipq_cnss2.ko` с аргументами `cnss2` из `/proc/cmdline`.
+  * Отключение автозапуска устаревших тестовых утилит `qcawifi-config-cmd` и `diag_socket_app` (очистка `START=`).
 
 ---
 
-## 4. Архитектура сервисов и последовательность автозапуска
+## 4. Интеграция с OpenWrt 24 (UCI, Netifd, LuCI)
+
+### 1. Конфигурация UCI Wireless (`/etc/config/wireless`)
+* `radio0` (2.4 GHz): тип `mac80211`, каналы 1–13 (`auto`/`6`), ширина полосы `HE40`, регуляторный домен `CN`.
+* `radio1` (5.0 GHz): тип `mac80211`, каналы 36–64 (`auto`/`44`), ширина полосы `HE160`, регуляторный домен `CN`.
+* Интерфейсы `default_radio0` (`ath0`) и `default_radio1` (`ath1`): привязка к мосту `lan`, режим `ap`, SSID `OpenWrt_RD15_2.4G` и `OpenWrt_RD15_5G`, шифрование `psk2+ccmp` / `sae`.
+
+### 2. Динамический транслятор `/lib/wifi/hostapd_config.sh`
+Преобразует параметры UCI в файлы конфигурации `/var/run/hostapd-ath0.conf` и `/var/run/hostapd-ath1.conf`:
+* Расчет центральных частот сегментов для 160 МГц (`vht_oper_centr_freq_seg0_idx`, `he_oper_centr_freq_seg0_idx`, `eht_oper_centr_freq_seg0_idx`).
+* Включение стандартов 802.11ax (`ieee80211ax=1`, `he_oper_chwidth=2`) и 802.11be (`ieee80211be=1`, `eht_oper_chwidth=2`).
+* Формирование параметров WPA2-PSK / WPA3-SAE / Transition Mode с PMF (`ieee80211w=1` / `ieee80211w=2`).
+* Отключение `ieee80211d` для исключения конфликтов регуляторных доменов с аппаратными калибровками в `0:ART`.
+
+### 3. Интеграция с Netifd (`/lib/netifd/wireless/mac80211.sh`)
+* Обработка событий `setup` и `teardown` от `netifd`.
+* Создание виртуальных интерфейсов `ath0` и `ath1` через `iw` (`iw phy phy1 interface add ath0 type __ap`).
+* Привязка к мосту `br-lan` и перевод интерфейсов в UP.
+* Поддержка независимого перезапуска радиомодулей без обрыва проводных соединений моста `br-lan`.
+
+### 4. Системная утилита `/sbin/wifi`
+Стандартный CLI-интерфейс OpenWrt с файловой блокировкой `/var/run/wifi.lock`:
+* `/sbin/wifi up [radio]` — включение и инициализация радиомодулей.
+* `/sbin/wifi down [radio]` — корректная остановка hostapd и удаление VAP.
+* `/sbin/wifi reload [radio]` — бесшовное применение изменений конфигурации.
+* `/sbin/wifi status` — вывод JSON-статуса радиомодулей и интерфейсов.
+
+---
+
+## 5. Последовательность инициализации и автозапуск служб
+
+Запуск служб осуществляется под супервизором процессов `procd`:
 
 ```text
-S11load_cnss2     -> Платформенный демон cnssdaemon (инициализирует PCIe шину радиомодуля QCN6432)
-S12qca-wifi       -> Стек беспроводных драйверов (cfg80211, mem_manager, qdf, umac, qca_ol, wifi_3_0)
-S18qca-nss-dp     -> Проводной сетевой драйвер NSS (eth0, eth1)
-S19dnsmasq/ecm    -> DHCP/DNS сервер + аппаратное ускорение PPE/ECM
-S20network        -> Сетевой стек OpenWrt (netifd) инициализирует постоянный мост br-lan (192.168.1.1)
-S21qca-hostapd    -> Создание VAP ath0/ath1, привязка к br-lan, старт hostapd под procd
+1. S11load_cnss2     -> Инициализация шины PCIe и запуск cnssdaemon
+2. S12qca-wifi       -> Загрузка стека модулей ядра Direct Connect и ecm-wifi-plugin
+3. S18qca-nss-dp     -> Инициализация проводных интерфейсов NSS (eth0, eth1)
+4. S19qca-nss-ecm    -> Старт аппаратного оффлоада Qualcomm ECM / PPE
+5. S20network        -> Сетевой стек netifd создает мост br-lan (192.168.1.1)
+6. S21qca-hostapd    -> Создание ath0/ath1, привязка к br-lan, генерация конфигов и запуск hostapd
 ```
 
 ---
 
-## 5. Инструкция по проверке и диагностике
+## 6. Команды управления и мониторинга
 
 ### 1. Проверка состояния беспроводного стека:
 ```sh
 /sbin/wifi status
 ```
 
-### 2. Проверка запущенных процессов hostapd:
-```sh
-ps | grep hostapd
-hostapd_cli -p /var/run/hostapd -i ath0 status
-hostapd_cli -p /var/run/hostapd -i ath1 status
-```
-
-### 3. Проверка через утилиту iwinfo:
+### 2. Информация об интерфейсах и активных станциях (libiwinfo):
 ```sh
 iwinfo ath0 info
 iwinfo ath1 info
@@ -103,17 +147,10 @@ iwinfo ath0 assoclist
 iwinfo ath1 assoclist
 ```
 
-### 4. Тестирование пропускной способности (iperf3):
-На роутере:
+### 3. Прямое управление через hostapd_cli:
 ```sh
-iperf3 -s -D
+hostapd_cli -p /var/run/hostapd -i ath0 status
+hostapd_cli -p /var/run/hostapd -i ath1 status
+hostapd_cli -p /var/run/hostapd -i ath0 all_sta
+hostapd_cli -p /var/run/hostapd -i ath1 all_sta
 ```
-На клиентском ПК/смартфоне:
-```sh
-iperf3 -c 192.168.1.1 -P 4
-```
-В другой SSH-сессии на роутере:
-```sh
-htop
-```
-*(Загрузка CPU должна оставаться около 0–5% благодаря аппаратному ускорению Qualcomm NSS ECM / PPE).*

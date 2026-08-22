@@ -44,30 +44,10 @@ fi
 ADD_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$PACKAGES_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
 IGNORE_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$IGNORED_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
 
-# Validate that all required packages from required.list are present
-while IFS= read -r req_pkg || [ -n "$req_pkg" ]; do
-	req_pkg=$(echo "$req_pkg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-	[ -z "$req_pkg" ] && continue
-	case "$req_pkg" in \#*) continue ;; esac
-	found=0
-	for p in $ADD_VENDOR_PACKAGES; do
-		if [ "$p" = "$req_pkg" ]; then
-			found=1
-			break
-		fi
-	done
-	if [ "$found" -eq 0 ]; then
-		echo "Error: Required package '$req_pkg' from $REQUIRED_LIST is missing in $PACKAGES_LIST!" >&2
-		exit 1
-	fi
-done < "$REQUIRED_LIST"
-
-# Prepare temporary and feed directories
+# Prepare temporary directory
 TMP_DIR="./tmp"
 FEED_DIR="./vendor_feed"
 mkdir -p "$TMP_DIR"
-rm -rf "$FEED_DIR"
-mkdir -p "$FEED_DIR"
 
 # Extract UBI images using ubireader_extract_images
 echo "Extracting UBI images from $FW_FILE to $TMP_DIR..."
@@ -123,15 +103,15 @@ KMOD_DEPS_JSON="$TMP_DIR/kmod_deps.json"
 echo "Extracting kernel module dependencies from binaries to $KMOD_DEPS_JSON..."
 python3 ./vendor_scripts/extract_kmod_deps.py "$EXTRACTED_ROOTFS" "$KMOD_DEPS_JSON"
 
-# Resolve package list and generate vendor feed using external python script
+# Resolve package list, validate required dependencies, and generate vendor feed
 STATUS_FILE="$EXTRACTED_ROOTFS/usr/lib/opkg/status"
 if [ ! -f "$STATUS_FILE" ]; then
 	echo "Error: opkg status file not found at $STATUS_FILE" >&2
 	exit 1
 fi
 
-echo "Generating vendor feed in $FEED_DIR..."
-python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON"
+echo "Resolving dependencies and generating vendor feed in $FEED_DIR..."
+python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON" "$REQUIRED_LIST"
 echo "Vendor feed generation complete: $FEED_DIR"
 
 # Run patch script for each generated package

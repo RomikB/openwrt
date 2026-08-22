@@ -4,7 +4,7 @@
 # Usage: ./upload_ubi_rd15.sh [HOST]
 #
 
-HOST="${1:-192.168.11.46}"
+HOST="${1:-192.168.31.1}"
 FILE="bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi"
 
 # Auto-detect if exact file path isn't found

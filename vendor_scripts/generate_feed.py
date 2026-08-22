@@ -18,7 +18,17 @@ extracted_rootfs = sys.argv[2]
 feed_dir = sys.argv[3]
 add_pkgs = sys.argv[4].split()
 ignore_pkgs = set(sys.argv[5].split())
-deps_json_file = sys.argv[6] if len(sys.argv) > 6 else os.path.join(os.path.dirname(feed_dir), "tmp/kmod_deps.json")
+deps_json_file = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] != "" else os.path.join(os.path.dirname(feed_dir), "tmp/kmod_deps.json")
+required_list_file = sys.argv[7] if len(sys.argv) > 7 else None
+
+# Load required packages list if provided
+required_pkgs = []
+if required_list_file and os.path.isfile(required_list_file):
+    with open(required_list_file, 'r') as rf:
+        for line in rf:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                required_pkgs.append(line)
 
 # Load kernel module dependencies extracted from .ko binaries
 extra_kmod_deps = {}
@@ -72,7 +82,20 @@ while to_visit:
         if dep not in ignore_pkgs and dep not in visited:
             to_visit.append(dep)
 
-# Create output feed directory
+# Validate that all required packages are present in the resolved dependency graph before creating feed
+if required_pkgs:
+    resolved_set = set(resolved)
+    missing_required = [p for p in required_pkgs if p not in resolved_set]
+    if missing_required:
+        print(f"Error: The following required packages from {required_list_file} were not resolved in dependency tree:", file=sys.stderr)
+        for mp in missing_required:
+            print(f"  - {mp}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Validation successful: all {len(required_pkgs)} required packages are present in resolved dependency tree.")
+
+# Clean and create output feed directory only after successful dependency resolution and validation
+if os.path.exists(feed_dir):
+    shutil.rmtree(feed_dir)
 os.makedirs(feed_dir, exist_ok=True)
 
 # Generate package directories, copy prebuilt files, and build Makefiles

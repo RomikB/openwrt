@@ -34,26 +34,27 @@
 В настоящее время в `vendor_feed` и сборочную конфигурацию включены 102 модуля ядра:
 
 ```text
-ath_pktlog.ko            ecm.ko                   l2tp_netlink.ko          qca-nss-ppe-vlan.ko      xt_comment.ko
-bootconfig.ko            ecm_ae_select.ko         l2tp_ppp.ko              qca-nss-ppe-vp.ko        xt_connbytes.ko
-cfg80211.ko              ecm_sfe_l2.ko            leds-gpio.ko             qca-nss-ppe-vxlanmgr.ko  xt_connlimit.ko
-crc-ccitt.ko             emesh-sp.ko              mem_manager.ko           qca-nss-ppe.ko           xt_connmark.ko
-gpio-button-hotplug.ko   ip6_tables.ko            monitor.ko               qca-nss-sfe.ko           xt_conntrack.ko
-ip6_udp_tunnel.ko        ip6t_NPT.ko              nat46.ko                 qca-ssdk.ko              xt_dscp.ko
-ip6t_REJECT.ko           ip6table_filter.ko       nf_conncount.ko          qca_ol.ko                xt_DSCP.ko
-ip6table_mangle.ko       ip6table_nat.ko          nf_conntrack_rtcache.ko  qdf.ko                   xt_ecn.ko
-ip_gre.ko                ip_tables.ko             nf_log_common.ko         udp_tunnel.ko            xt_helper.ko
-ip_tunnel.ko             ipq_cnss2.ko             nf_log_ipv4.ko           umac.ko                  xt_hl.ko
-ipt_ECN.ko               ipt_REJECT.ko            nf_log_ipv6.ko           vxlan.ko                 xt_HL.ko
-iptable_filter.ko        iptable_mangle.ko        nf_nat.ko                wifi_3_0.ko              xt_length.ko
-iptable_nat.ko           iptable_raw.ko           nf_reject_ipv4.ko        x_tables.ko              xt_limit.ko
-l2tp_core.ko             nf_reject_ipv6.ko        ppp_async.ko             xt_CLASSIFY.ko           xt_LOG.ko
-pwm-rgb.ko               qca-mcs.ko               qca-nss-dp.ko            xt_CT.ko                 xt_mac.ko
-qca-nss-ppe-bridge-mgr.ko qca-nss-ppe-ds.ko       qca-nss-ppe-lag.ko       xt_FLOWOFFLOAD.ko        xt_mark.ko
-qca-nss-ppe-pppoe-mgr.ko qca-nss-ppe-rule.ko      qca-nss-ppe-tun.ko       xt_MASQUERADE.ko         xt_multiport.ko
-xt_nat.ko                xt_owner.ko              xt_pkttype.ko            xt_quota.ko              xt_recent.ko
-xt_REDIRECT.ko           xt_state.ko              xt_statistic.ko          xt_string.ko             xt_TCPMSS.ko
-xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_phy_module.ko         yt_switch.ko
+ath_pktlog.ko            ecm.ko                   l2tp_netlink.ko          qca-nss-ppe-vlan.ko      xt_connbytes.ko
+bootconfig.ko            ecm_ae_select.ko         l2tp_ppp.ko              qca-nss-ppe-vp.ko        xt_connlimit.ko
+cfg80211.ko              ecm_sfe_l2.ko            mem_manager.ko           qca-nss-ppe-vxlanmgr.ko  xt_connmark.ko
+crc-ccitt.ko             emesh-sp.ko              monitor.ko               qca-nss-ppe.ko           xt_conntrack.ko
+ecm-wifi-plugin.ko       ip6_tables.ko            nat46.ko                 qca-nss-sfe.ko           xt_dscp.ko
+gpio-button-hotplug.ko   ip6_udp_tunnel.ko        nf_conncount.ko          qca-ssdk.ko              xt_DSCP.ko
+ip6t_NPT.ko              ip6t_REJECT.ko           nf_conntrack_rtcache.ko  qca_ol.ko                xt_ecn.ko
+ip6table_filter.ko       ip6table_mangle.ko       nf_log_common.ko         qdf.ko                   xt_helper.ko
+ip6table_nat.ko          ip_gre.ko                nf_log_ipv4.ko           udp_tunnel.ko            xt_hl.ko
+ip_tables.ko             ip_tunnel.ko             nf_log_ipv6.ko           umac.ko                  xt_HL.ko
+ipq_cnss2.ko             ipt_ECN.ko               nf_nat.ko                vxlan.ko                 xt_length.ko
+ipt_REJECT.ko            iptable_filter.ko        nf_reject_ipv4.ko        wifi_3_0.ko              xt_limit.ko
+iptable_mangle.ko        iptable_nat.ko           nf_reject_ipv6.ko        x_tables.ko              xt_LOG.ko
+iptable_raw.ko           l2tp_core.ko             ppp_async.ko             xt_CLASSIFY.ko           xt_mac.ko
+pwm-rgb.ko               qca-mcs.ko               qca-nss-dp.ko            xt_CT.ko                 xt_mark.ko
+qca-nss-ppe-bridge-mgr.ko qca-nss-ppe-ds.ko       qca-nss-ppe-lag.ko       xt_FLOWOFFLOAD.ko        xt_multiport.ko
+qca-nss-ppe-pppoe-mgr.ko qca-nss-ppe-rule.ko      qca-nss-ppe-tun.ko       xt_MASQUERADE.ko         xt_nat.ko
+xt_REDIRECT.ko           xt_TCPMSS.ko             xt_addrtype.ko           xt_bpf.ko                xt_owner.ko
+xt_pkttype.ko            xt_quota.ko              xt_recent.ko             xt_state.ko              xt_statistic.ko
+xt_string.ko             xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_phy_module.ko
+yt_switch.ko             xt_comment.ko
 ```
 
 ### Назначение групп активных модулей:
@@ -63,14 +64,15 @@ xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_ph
    * `yt_phy_module.ko` — драйвер Ethernet PHY Motorcomm.
    * `bootconfig.ko` — чтение параметров загрузчика U-Boot / factory.
    * `pwm-rgb.ko` — управление RGB светодиодом индикации (`/sys/class/leds/rgb`).
-   * `leds-gpio.ko` — управление GPIO индикаторами.
    * `gpio-button-hotplug.ko` — диспетчер нажатия кнопок Reset и Mesh.
-2. **Аппаратный оффлоад Qualcomm PPE / NSS ECM (Line Rate 2.5 Gbps)**:
+2. **Аппаратный оффлоад Qualcomm PPE / NSS ECM (Line Rate 2.5 Gbps) и Wi-Fi Offload**:
    * Драйверы PPE: `qca-ssdk.ko`, `qca-nss-ppe.ko`, `qca-nss-ppe-rule.ko`, `qca-nss-ppe-vp.ko`, `qca-nss-ppe-bridge-mgr.ko`, `qca-nss-ppe-vlan.ko`, `qca-nss-ppe-tun.ko`, `qca-nss-ppe-vxlanmgr.ko`, `qca-nss-ppe-pppoe-mgr.ko`, `qca-nss-ppe-ds.ko`, `qca-nss-ppe-lag.ko`, `qca-nss-sfe.ko`.
-   * Диспетчер соединений: `ecm.ko`, `ecm_ae_select.ko`, `ecm_sfe_l2.ko`, `emesh-sp.ko`, `qca-mcs.ko`.
+   * Диспетчер соединений ECM: `ecm.ko`, `ecm_ae_select.ko`, `ecm_sfe_l2.ko`, `emesh-sp.ko`, `qca-mcs.ko`.
+   * Ускорение Wi-Fi: `ecm-wifi-plugin.ko` — плагин интеграции ECM с радиодрайвером Direct Connect (FSE — Flow Search Engine, иерархическая классификация и QoS MSCS).
 3. **Беспроводной стек Qualcomm Direct Connect (Wi-Fi 6/7)**:
    * `ipq_cnss2.ko` — платформенный драйвер шины PCIe для радиомодуля QCN6432.
    * Драйверы радио: `mem_manager.ko`, `qdf.ko`, `umac.ko`, `qca_ol.ko`, `wifi_3_0.ko`, `cfg80211.ko`, `ath_pktlog.ko`, `monitor.ko`.
+   * Аппаратный оффлоад потоков: `ecm-wifi-plugin.ko`.
 4. **Сетевые туннели и протоколы**:
    * `ppp_async.ko`, `crc-ccitt.ko` (PPPoE / PPP стек).
    * `l2tp_core.ko`, `l2tp_netlink.ko`, `l2tp_ppp.ko`, `ip_gre.ko`, `ip_tunnel.ko`, `udp_tunnel.ko`, `ip6_udp_tunnel.ko`, `vxlan.ko`, `nat46.ko`.
@@ -78,7 +80,7 @@ xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_ph
    * `ip_tables.ko`, `iptable_filter.ko`, `iptable_nat.ko`, `iptable_mangle.ko`, `iptable_raw.ko`, `ipt_REJECT.ko`, `ipt_ECN.ko`.
    * `ip6_tables.ko`, `ip6table_filter.ko`, `ip6table_nat.ko`, `ip6table_mangle.ko`, `ip6t_REJECT.ko`, `ip6t_NPT.ko`.
    * `nf_nat.ko`, `nf_conncount.ko`, `nf_conntrack_rtcache.ko`, `nf_reject_ipv4.ko`, `nf_reject_ipv6.ko`, `nf_log_common.ko`, `nf_log_ipv4.ko`, `nf_log_ipv6.ko`.
-   * Библиотека матчей `xt_*` (34 модуля).
+   * Библиотека матчей `xt_*` (34 модуля, включая `xt_addrtype.ko`, `xt_bpf.ko`, `xt_FLOWOFFLOAD.ko`, `xt_MASQUERADE.ko`, `xt_CT.ko` и др.).
 
 ---
 
@@ -276,7 +278,7 @@ xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_ph
 
 ---
 
-### ❌ Категория 11: Тестовые, отладочные и вспомогательные модули — 15 модулей
+### ❌ Категория 11: Тестовые, отладочные и вспомогательные модули — 14 модулей
 
 | Модуль `.ko` | Вендорный пакет | Описание функционала | Необходимость |
 | :--- | :--- | :--- | :---: |
@@ -286,7 +288,6 @@ xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_ph
 | `input-core.ko` | `kmod-input-core` | Ядро подсистемы ввода Linux (клавиатуры/джойстики). | ❌ **Нулевая** |
 | `md5.ko` | `kmod-crypto-md5` | Хеширование MD5 (уже встроено в криптоядро). | ❌ **Нулевая** |
 | `qca-nss-nsm.ko` | `kmod-qca-nss-nsm` | Network Service Manager NSS (отладочный модуль). | ❌ **Нулевая** |
-| `ecm-wifi-plugin.ko` | `kmod-qca-nss-ecm-wifi-plugin` | Плагин интеграции ECM ускорения (FSE & MSCS QoS) для Wi-Fi Direct Connect. | ✅ **Интегрирован (Wi-Fi)** |
 | `compat_xtables.ko` | `kmod-ipt-compat-xtables` | Слой совместимости xtables. | ❌ **Нулевая** |
 | `nfnlq-extension.ko` | `kmod-nfnlq-extension` | Расширение netlink queue. | ❌ **Нулевая** |
 

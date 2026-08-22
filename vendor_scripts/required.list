@@ -1,5 +1,11 @@
 kmod-bootconfig
-kmod-qca-nss-dp
+kmod-gpio-button-hotplug
+kmod-ipt-conntrack-extra
+kmod-ipt-ipopt
+kmod-ipt-offload
+kmod-pwm-rgb
+kmod-qca-nss-ecm-premium
+kmod-qca-nss-ppe-pppoe-mgr
 kmod-yt-9215s-driver
 kmod-yt-phy-driver
 nvram

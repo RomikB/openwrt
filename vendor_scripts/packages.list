@@ -8,12 +8,9 @@ kmod-ipt-nat6
 kmod-ipt-offload
 kmod-ipt-raw
 kmod-pwm-rgb
-kmod-qca-nss-dp
-kmod-qca-nss-ecm-premium
 kmod-qca-nss-ecm-wifi-plugin
 kmod-qca-nss-ppe-lag-mgr
 kmod-qca-nss-ppe-pppoe-mgr
-kmod-qca-wifi-lowmem-profile
 kmod-yt-9215s-driver
 kmod-yt-phy-driver
 nvram
