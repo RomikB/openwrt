@@ -8,7 +8,7 @@ DEFAULT_PACKAGES += \
 	-procd-ujail \
 	-firewall4 -nftables -kmod-nft-offload \
 	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
-	luci iperf3 htop iw \
+	luci iperf3 htop iw iwinfo \
 	kmod-bootconfig-vendor kmod-qca-nss-dp-vendor \
 	kmod-yt-9215s-driver-vendor kmod-yt-phy-driver-vendor \
 	kmod-pwm-rgb-vendor kmod-gpio-button-hotplug-vendor \
@@ -17,7 +17,7 @@ DEFAULT_PACKAGES += \
 	kmod-ipt-offload-vendor kmod-ipt-filter-vendor kmod-ipt-extra-vendor kmod-ipt-nat6-vendor \
 	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
 	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
-	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor \
+	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor kmod-qca-nss-ecm-wifi-plugin-vendor \
 	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli-vendor qca-wpa-cli-vendor
 
 

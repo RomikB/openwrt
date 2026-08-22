@@ -11,16 +11,25 @@
  
  	if (!fp)
  		return 0;
-@@ -1632,6 +1636,8 @@
+@@ -1632,6 +1636,17 @@
  	return NL_SKIP;
  }
  
++static const char *get_hostapd_sock_name(const char *ifname)
++{
++	if (strstr(ifname, "ath1") || strstr(ifname, "radio1") || strstr(ifname, "phy2") || strstr(ifname, "wifi1"))
++		return "ath1";
++	if (strstr(ifname, "ath0") || strstr(ifname, "radio0") || strstr(ifname, "phy1") || strstr(ifname, "wifi0"))
++		return "ath0";
++	return ifname;
++}
++
 +static int nl80211_get_assoclist(const char *ifname, char *buf, int *len);
 +
  static void nl80211_fill_signal(const char *ifname, struct nl80211_rssi_rate *r)
  {
  	DIR *d;
-@@ -1654,6 +1660,32 @@
+@@ -1654,6 +1669,32 @@
  
  		closedir(d);
  	}
@@ -53,7 +62,7 @@
  }
  
  static int nl80211_get_bitrate(const char *ifname, int *buf)
-@@ -1664,11 +1696,12 @@
+@@ -1664,11 +1705,12 @@
  
  	if (rr.rate_samples)
  	{
@@ -68,11 +77,11 @@
  }
  
  static int nl80211_get_signal(const char *ifname, int *buf)
-@@ -2037,6 +2070,53 @@
+@@ -2037,6 +2079,53 @@
  		return 0;
  	}
  
-+	/* Fallback: Query hostapd control socket for AP mode */
++	/* Fallback: Query hostapd control socket directly */
 +	{
 +		struct sockaddr_un local = { 0 }, remote = { 0 };
 +		int sock;
@@ -83,7 +92,7 @@
 +		sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 +		if (sock >= 0) {
 +			remote.sun_family = AF_UNIX;
-+			snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", ifname);
++			snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", get_hostapd_sock_name(ifname));
 +			local.sun_family = AF_UNIX;
 +			snprintf(local.sun_path, sizeof(local.sun_path), "/var/run/iwinfo-enc-%s-%d", ifname, getpid());
 +			unlink(local.sun_path);
@@ -122,7 +131,7 @@
  
  	return -1;
  }
-@@ -2440,9 +2520,108 @@
+@@ -2440,9 +2529,113 @@
  
  		closedir(d);
  
@@ -143,7 +152,7 @@
 +			sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 +			if (sock >= 0) {
 +				remote.sun_family = AF_UNIX;
-+				snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", ifname);
++				snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", get_hostapd_sock_name(ifname));
 +				local.sun_family = AF_UNIX;
 +				snprintf(local.sun_path, sizeof(local.sun_path), "/var/run/iwinfo-sta-%s-%d", ifname, getpid());
 +				unlink(local.sun_path);
@@ -195,7 +204,12 @@
 +								} else if (!strncmp(line, "tx_bytes=", 9)) {
 +									cur.tx_bytes = (uint64_t)strtoull(line + 9, NULL, 10);
 +								} else if (!strncmp(line, "flags=", 6)) {
-+									if (strstr(line, "[HE]")) {
++									if (strstr(line, "[EHT]") || strstr(line, "[BE]")) {
++										cur.rx_rate.is_he = cur.tx_rate.is_he = 1;
++										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
++										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2882000 : 688000);
++										cur.rx_rate.mcs = cur.tx_rate.mcs = 13;
++									} else if (strstr(line, "[HE]")) {
 +										cur.rx_rate.is_he = cur.tx_rate.is_he = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2402000 : 574000);
@@ -205,7 +219,7 @@
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 80 : 20);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 866700 : 173300);
 +										cur.rx_rate.mcs = cur.tx_rate.mcs = 9;
-+									} else if (strstr(line, "[HT]")) {
++								} else if (strstr(line, "[HT]")) {
 +										cur.rx_rate.is_ht = cur.tx_rate.is_ht = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 40 : 20);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 300000 : 144400);

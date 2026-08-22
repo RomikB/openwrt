@@ -189,7 +189,9 @@ def patch_vendor_package(pkg_dir: Path) -> None:
         content = init_ecm.read_text()
         if "#!/bin/sh  /etc/rc.common" in content:
             content = content.replace("#!/bin/sh  /etc/rc.common", "#!/bin/sh /etc/rc.common")
-            init_ecm.write_text(content)
+        if "[ -f /tmp/.wifi-config-done ]" in content:
+            content = content.replace("[ -f /tmp/.wifi-config-done ]", "[ -d /sys/module/wifi_3_0 ]")
+        init_ecm.write_text(content)
 
     # Configure init scripts for kmod-qca-wifi-lowmem-profile
     if orig_pkg_name == "kmod-qca-wifi-lowmem-profile":
@@ -309,29 +311,31 @@ start() {
 \tconfig_get_bool r0_disabled "radio0" disabled 0
 \tconfig_get_bool r1_disabled "radio1" disabled 0
 
-\t# 2.4 GHz hostapd instance
-\tif [ "$r0_disabled" -eq 0 ] && [ -f /var/run/hostapd-ath0.conf ]; then
-\t\tlocal pids0=$(pgrep -f "hostapd-ath0.conf")
-\t\tlocal ping0=$(hostapd_cli -p /var/run/hostapd -i ath0 ping 2>/dev/null | grep "PONG")
-\t\tif [ -z "$pids0" ] || [ -z "$ping0" ]; then
-\t\t\t[ -n "$pids0" ] && kill -9 $pids0 2>/dev/null || true
-\t\t\trm -f /var/run/hostapd-ath0.pid /var/run/hostapd/ath0
-\t\t\t/usr/sbin/hostapd -B -P /var/run/hostapd-ath0.pid -e /var/run/entropy.bin /var/run/hostapd-ath0.conf
-\t\t\tcp -f /var/run/hostapd-ath0.conf /var/run/hostapd-ath0.conf.active 2>/dev/null || true
-\t\tfi
-\tfi
+\tstart_ap() {
+\t\tlocal ifname="$1"
+\t\tlocal conf="/var/run/hostapd-${ifname}.conf"
+\t\tlocal pid_file="/var/run/hostapd-${ifname}.pid"
+\t\tlocal sock_file="/var/run/hostapd/${ifname}"
+\t\t[ -f "$conf" ] || return 0
 
-\t# 5.0 GHz hostapd instance
-\tif [ "$r1_disabled" -eq 0 ] && [ -f /var/run/hostapd-ath1.conf ]; then
-\t\tlocal pids1=$(pgrep -f "hostapd-ath1.conf")
-\t\tlocal ping1=$(hostapd_cli -p /var/run/hostapd -i ath1 ping 2>/dev/null | grep "PONG")
-\t\tif [ -z "$pids1" ] || [ -z "$ping1" ]; then
-\t\t\t[ -n "$pids1" ] && kill -9 $pids1 2>/dev/null || true
-\t\t\trm -f /var/run/hostapd-ath1.pid /var/run/hostapd/ath1
-\t\t\t/usr/sbin/hostapd -B -P /var/run/hostapd-ath1.pid -e /var/run/entropy.bin /var/run/hostapd-ath1.conf
-\t\t\tcp -f /var/run/hostapd-ath1.conf /var/run/hostapd-ath1.conf.active 2>/dev/null || true
+\t\tlocal pids=$(pgrep -f "hostapd-${ifname}.conf")
+\t\tif [ -n "$pids" ] && [ -S "$sock_file" ]; then
+\t\t\treturn 0
 \t\tfi
-\tfi
+
+\t\tif [ -n "$pids" ]; then
+\t\t\tkill -15 $pids 2>/dev/null || true
+\t\t\tsleep 1
+\t\t\tkill -9 $pids 2>/dev/null || true
+\t\tfi
+\t\trm -f "$pid_file" "$sock_file" "/var/run/hostapd-${ifname}.conf.active"
+\t\tmkdir -p /var/run/hostapd
+\t\t/usr/sbin/hostapd -B -P "$pid_file" -e /var/run/entropy.bin "$conf" 2>/dev/null || true
+\t\tcp -f "$conf" "/var/run/hostapd-${ifname}.conf.active" 2>/dev/null || true
+\t}
+
+\t[ "$r0_disabled" -eq 0 ] && start_ap "ath0"
+\t[ "$r1_disabled" -eq 0 ] && start_ap "ath1"
 }
 
 stop() {

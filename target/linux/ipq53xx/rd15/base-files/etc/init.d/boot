@@ -31,20 +31,7 @@ boot() {
 	[ -d /sys/fs/pstore ] && grep -q pstore /proc/filesystems && /bin/mount -o noatime -t pstore pstore /sys/fs/pstore
 	[ "$FAILSAFE" = "true" ] && touch /tmp/.failsafe
 
-	[ "0" = "$(cat /proc/xiaoqiang/ft_mode)" -a -f "/etc/config/wireless" ] && {
-		uci set wireless.wifi0.disabled='0'
-		uci set wireless.wifi1.disabled='0'
-		uci commit wireless
-	}
-
-	if [ "$(uci -q get misc.features.detect_delay)" = "1" ]; then
-		nice -n -19 /sbin/kmodloader
-		echo "wifi detect delay" > /dev/console
-	else
-		echo "wifi detect normal" > /dev/console
-
-		/sbin/kmodloader
-	fi
+	/sbin/kmodloader
 
 	[ -f /etc/diag.sh ] && { . /etc/diag.sh; set_state booting; }
 

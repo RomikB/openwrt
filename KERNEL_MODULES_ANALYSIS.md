@@ -286,7 +286,7 @@ xt_tcpmss.ko             xt_tcpudp.ko             xt_time.ko               yt_ph
 | `input-core.ko` | `kmod-input-core` | Ядро подсистемы ввода Linux (клавиатуры/джойстики). | ❌ **Нулевая** |
 | `md5.ko` | `kmod-crypto-md5` | Хеширование MD5 (уже встроено в криптоядро). | ❌ **Нулевая** |
 | `qca-nss-nsm.ko` | `kmod-qca-nss-nsm` | Network Service Manager NSS (отладочный модуль). | ❌ **Нулевая** |
-| `ecm-wifi-plugin.ko` | `kmod-qca-nss-ecm-wifi-plugin` | Плагин интеграции ECM ускорения для Wi-Fi Direct Connect. | 🟡 **Потребуется на этапе Wi-Fi** |
+| `ecm-wifi-plugin.ko` | `kmod-qca-nss-ecm-wifi-plugin` | Плагин интеграции ECM ускорения (FSE & MSCS QoS) для Wi-Fi Direct Connect. | ✅ **Интегрирован (Wi-Fi)** |
 | `compat_xtables.ko` | `kmod-ipt-compat-xtables` | Слой совместимости xtables. | ❌ **Нулевая** |
 | `nfnlq-extension.ko` | `kmod-nfnlq-extension` | Расширение netlink queue. | ❌ **Нулевая** |
 

@@ -83,10 +83,10 @@ generate_hostapd_conf() {
 	[ -z "$key" ] && key="12345678"
 	config_get_bool isolate "$iface" isolate 0
 	config_get_bool hidden "$iface" hidden 0
-	config_get bridge "$iface" network "lan"
 	config_get ifname "$iface" ifname "$iface"
 	config_get_bool if_disabled "$iface" disabled 0
 
+	[ -z "$ifname" ] && return 0
 	[ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ] && return 0
 
 	local conf_file="${CONF_DIR}/hostapd-${ifname}.conf"
@@ -176,11 +176,21 @@ generate_hostapd_conf() {
 			esac
 
 			case "$htmode" in
-				*EHT*|*eht*)
+				*EHT160*|*eht160*)
 					local seg0=$(get_160mhz_center "$channel")
 					echo "ieee80211be=1"
 					echo "eht_oper_chwidth=2"
 					echo "eht_oper_centr_freq_seg0_idx=${seg0}"
+					;;
+				*EHT80*|*eht80*)
+					local seg0=$(get_80mhz_center "$channel")
+					echo "ieee80211be=1"
+					echo "eht_oper_chwidth=1"
+					echo "eht_oper_centr_freq_seg0_idx=${seg0}"
+					;;
+				*EHT*|*eht*)
+					echo "ieee80211be=1"
+					echo "eht_oper_chwidth=0"
 					;;
 			esac
 		else
@@ -190,7 +200,13 @@ generate_hostapd_conf() {
 			echo "ieee80211ax=1"
 
 			case "$htmode" in
-				*40*|*HE40*|*HT40*)
+				*EHT*|*eht*)
+					echo "ieee80211be=1"
+					;;
+			esac
+
+			case "$htmode" in
+				*40*|*EHT40*|*HE40*|*HT40*)
 					local ht_cap=$(get_ht40_capab "$band" "$channel")
 					[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
 					;;

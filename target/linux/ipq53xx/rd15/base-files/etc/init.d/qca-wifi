@@ -68,10 +68,15 @@ load_modules() {
 	[ -d /sys/module/ath_pktlog ] || {
 		insmod /lib/modules/5.4.213/ath_pktlog.ko 2>/dev/null || true
 	}
+
+	# 10. Load ECM Wi-Fi acceleration plugin (FSE / MSCS)
+	[ -d /sys/module/ecm ] && [ -f /lib/modules/5.4.213/ecm-wifi-plugin.ko ] && {
+		[ -d /sys/module/ecm_wifi_plugin ] || insmod /lib/modules/5.4.213/ecm-wifi-plugin.ko 2>/dev/null || true
+	}
 }
 
 unload_modules() {
-	for mod in ath_pktlog monitor wifi_3_0 qca_ol umac qdf mem_manager; do
+	for mod in ecm_wifi_plugin ath_pktlog monitor wifi_3_0 qca_ol umac qdf mem_manager; do
 		[ -d "/sys/module/${mod}" ] && rmmod "${mod}" 2>/dev/null || true
 	done
 }

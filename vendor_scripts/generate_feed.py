@@ -64,9 +64,9 @@ while to_visit:
         continue
     visited.add(pkg)
     resolved.append(pkg)
-    deps = list(pkg_info.get(pkg, {}).get('depends', []))
+    deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if d in pkg_info]
     for extra in extra_kmod_deps.get(pkg, []):
-        if extra not in deps:
+        if extra not in deps and extra in pkg_info:
             deps.append(extra)
     for dep in deps:
         if dep not in ignore_pkgs and dep not in visited:
@@ -112,10 +112,9 @@ for pkg in resolved:
         pkg_version = full_version
         pkg_release = '1'
 
-    raw_deps = pkg_info.get(pkg, {}).get('depends', [])
-    filtered_deps = [d for d in raw_deps if d not in ignore_pkgs]
+    filtered_deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if d in pkg_info and d not in ignore_pkgs]
     for extra_dep in extra_kmod_deps.get(pkg, []):
-        if extra_dep not in filtered_deps and extra_dep not in ignore_pkgs:
+        if extra_dep not in filtered_deps and extra_dep in pkg_info and extra_dep not in ignore_pkgs:
             filtered_deps.append(extra_dep)
     depends_str = ' '.join(f"+{d}-vendor" for d in filtered_deps)
 
