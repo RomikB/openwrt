@@ -56,20 +56,12 @@ make4.1+ perl python3.7+ rsync subversion unzip which
 3. Run `./scripts/feeds update -a` to obtain all the latest package definitions
    defined in feeds.conf / feeds.conf.default
 
-4. Run `python3 ./vendor_scripts/patch_feeds.py` to apply compatibility patches to system feeds.
+4. Run `./vendor_scripts/patch_feeds.py` to apply compatibility patches to system feeds.
 
 5. Run `./scripts/feeds install -a` to install symlinks for all obtained
    packages into package/feeds/
 
-6. Configure target system and apply `defconfig`:
-   ```bash
-   cat << 'EOF' > .config
-   CONFIG_TARGET_ipq53xx=y
-   CONFIG_TARGET_ipq53xx_rd15=y
-   CONFIG_TARGET_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild=y
-   EOF
-   make defconfig
-   ```
+6. Run `./vendor_scripts/prepare_config.sh` to prepare the target configuration and apply `defconfig`.
 
 7. Run `make menuconfig` to select your preferred configuration for the
    toolchain, target system & firmware packages.
