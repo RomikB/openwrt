@@ -2,9 +2,12 @@
 ARCH:=arm
 SUBTARGET:=rd15
 BOARDNAME:=Xiaomi Router BE3600
-FEATURES:=squashfs fpu nand
+FEATURES:=squashfs fpu nand small_flash
 CPU_TYPE:=cortex-a7
+KERNEL_PATCHVER:=5.4
+
 DEFAULT_PACKAGES += \
+	-kmod-mac80211 \
 	-procd-ujail \
 	-firewall4 -nftables -kmod-nft-offload \
 	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \

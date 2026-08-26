@@ -1,6 +1,10 @@
-#define Image/BuildKernel
-#	@echo "-=RB=-Image/BuildKernel"
-#endef
+define Image/Prepare
+	@echo "-=RB=-Image/Prepare"
+endef
+
+define Image/BuildKernel
+	@echo "-=RB=-Image/BuildKernel"
+endef
 
 define Image/BuildKernel/Initramfs
 	@echo "-=RB=-Image/BuildKernel/Initramfs"

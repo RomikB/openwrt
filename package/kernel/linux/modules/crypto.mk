@@ -911,7 +911,7 @@ $(eval $(call KernelPackage,crypto-rmd160))
 
 define KernelPackage/crypto-rng
   TITLE:=CryptoAPI random number generation
-  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +kmod-crypto-sha512 +kmod-crypto-sha3
+  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +!TARGET_ipq53xx:kmod-crypto-sha512 +!TARGET_ipq53xx:kmod-crypto-sha3
   KCONFIG:= \
 	CONFIG_CRYPTO_DRBG \
 	CONFIG_CRYPTO_DRBG_HMAC=y \
@@ -945,7 +945,7 @@ $(eval $(call KernelPackage,crypto-geniv))
 
 define KernelPackage/crypto-seqiv
   TITLE:=CryptoAPI Sequence Number IV Generator
-  DEPENDS:=+kmod-crypto-aead +kmod-crypto-rng +kmod-crypto-geniv
+  DEPENDS:=+kmod-crypto-aead +kmod-crypto-rng +!TARGET_ipq53xx:kmod-crypto-geniv
   KCONFIG:=CONFIG_CRYPTO_SEQIV
   FILES:=$(LINUX_DIR)/crypto/seqiv.ko
   AUTOLOAD:=$(call AutoLoad,09,seqiv)

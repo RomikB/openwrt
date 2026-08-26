@@ -157,10 +157,11 @@
 Главным инструментом создания вендорного фида является скрипт **[vendor_scripts/prepare_feed.sh](vendor_scripts/prepare_feed.sh)**. Он полностью автоматизирует сборочный конвейер:
 1. Распаковывает UBI-образ стоковой прошивки (`ubireader_extract_images` и `unsquashfs`).
 2. Извлекает стоковый образ ядра в `target/linux/ipq53xx/rd15/kernel`.
-3. Запускает автоматический анализ зависимостей модулей ядра (`extract_kmod_deps.py`).
-4. Формирует структуру фида с предварительной валидацией в памяти (`generate_feed.py`).
-5. Пропатчивает сгенерированные пакеты (`patch_package.py`).
-6. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
+3. Извлекает встроенный `IKCONFIG` ядра и генерирует `config-5.4` и `modules.builtin` (`extract_kernel_data.py`).
+4. Запускает автоматический анализ зависимостей модулей ядра (`extract_kmod_deps.py`).
+5. Формирует структуру фида с предварительной валидацией в памяти (`generate_feed.py`).
+6. Пропатчивает сгенерированные пакеты (`patch_package.py`).
+7. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
 
 ### 1. Обязательный минимум проводного роутера с оффлоадом ([vendor_scripts/required.list](vendor_scripts/required.list)):
 Список из **13 пакетов**, необходимых для гарантированной работы роутера как проводного маршрутизатора с аппаратным ускорением:
@@ -214,6 +215,7 @@ yt-9215s-client
 *Пакеты `kmod-qca-nss-dp`, `kmod-qca-nss-ecm-premium` и `kmod-qca-wifi-lowmem-profile` автоматически разрешаются и генерируются через транзитивные зависимости.*
 
 ### 3. Вспомогательные скрипты генерации фида:
+- **`vendor_scripts/extract_kernel_data.py`**: Извлекает из FIT-образа стокового ядра LZMA-поток, сжатый `IKCONFIG` (`.config`), формирует полный `config-5.4` и файл `modules.builtin` на базе правил `KernelPackage` из OpenWrt.
 - **`vendor_scripts/extract_kmod_deps.py`**: Выполняет бинарный анализ экспортируемых и импортируемых символов всех `.ko` файлов распакованного rootfs и формирует карту зависимостей `tmp/kmod_deps.json`.
 - **`vendor_scripts/generate_feed.py`**: Считывает `opkg status` и `kmod_deps.json`, строит полный граф зависимостей в памяти, проверяет наличие всех 13 пакетов из `required.list` и генерирует дерево пакетов в `vendor_feed/`.
 - **`vendor_scripts/patch_package.py`**: Обрабатывает каждый пакет в сгенерированном фиде — выполняет ELF-версионирование библиотек (`v_l*.so`), перенаправляет интерпертатор на `ld-vendor.so.1` и патчит сервисные init-скрипты (`qca-nss-ecm`, `load_cnss2`, `qca-hostapd`).
