@@ -1,0 +1,152 @@
+--- a/drivers/tty/serial/Kconfig
++++ b/drivers/tty/serial/Kconfig
+@@ -742,7 +742,7 @@
+ 	  Y to this option.
+ 
+ config SERIAL_CORE
+-	tristate
++	bool
+ 
+ config SERIAL_CORE_CONSOLE
+ 	bool
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -15,7 +15,7 @@
+ if NEW_LEDS
+ 
+ config LEDS_CLASS
+-	tristate "LED Class Support"
++	bool "LED Class Support"
+ 	help
+ 	  This option enables the led sysfs class in /sys/class/leds.  You'll
+ 	  need this to do anything useful with LEDs.  If unsure, say N.
+--- a/drivers/leds/trigger/Kconfig
++++ b/drivers/leds/trigger/Kconfig
+@@ -10,7 +10,7 @@
+ if LEDS_TRIGGERS
+ 
+ config LEDS_TRIGGER_TIMER
+-	tristate "LED Timer Trigger"
++	bool "LED Timer Trigger"
+ 	help
+ 	  This allows LEDs to be controlled by a programmable timer
+ 	  via sysfs. Some LED hardware can be programmed to start
+@@ -47,7 +47,7 @@
+ 	  If unsure, say N.
+ 
+ config LEDS_TRIGGER_HEARTBEAT
+-	tristate "LED Heartbeat Trigger"
++	bool "LED Heartbeat Trigger"
+ 	help
+ 	  This allows LEDs to be controlled by a CPU load average.
+ 	  The flash frequency is a hyperbolic function of the 1-minute
+@@ -92,7 +92,7 @@
+ 	  If unsure, say N.
+ 
+ config LEDS_TRIGGER_DEFAULT_ON
+-	tristate "LED Default ON Trigger"
++	bool "LED Default ON Trigger"
+ 	help
+ 	  This allows LEDs to be initialised in the ON state.
+ 	  If unsure, say Y.
+@@ -124,7 +124,7 @@
+ 	  If unsure, say Y.
+ 
+ config LEDS_TRIGGER_NETDEV
+-	tristate "LED Netdev Trigger"
++	bool "LED Netdev Trigger"
+ 	depends on NET
+ 	help
+ 	  This allows LEDs to be controlled by network device activity.
+--- a/drivers/base/firmware_loader/Kconfig
++++ b/drivers/base/firmware_loader/Kconfig
+@@ -2,7 +2,7 @@
+ menu "Firmware loader"
+ 
+ config FW_LOADER
+-	tristate "Firmware loading facility" if EXPERT
++	bool "Firmware loading facility" if EXPERT
+ 	default y
+ 	help
+ 	  This enables the firmware loading facility in the kernel. The kernel
+--- a/crypto/Kconfig
++++ b/crypto/Kconfig
+@@ -14,7 +14,7 @@
+ # Cryptographic API Configuration
+ #
+ menuconfig CRYPTO
+-	tristate "Cryptographic API"
++	bool "Cryptographic API"
+ 	help
+ 	  This option provides the core Cryptographic API.
+ 
+@@ -39,7 +39,7 @@
+ 	  This option provides the API for cryptographic algorithms.
+ 
+ config CRYPTO_ALGAPI2
+-	tristate
++	bool
+ 
+ config CRYPTO_AEAD
+ 	tristate
+@@ -58,7 +58,7 @@
+ 	select CRYPTO_ALGAPI
+ 
+ config CRYPTO_BLKCIPHER2
+-	tristate
++	bool
+ 	select CRYPTO_ALGAPI2
+ 	select CRYPTO_RNG2
+ 
+@@ -94,7 +94,7 @@
+ 	select CRYPTO_ALGAPI
+ 
+ config CRYPTO_KPP2
+-	tristate
++	bool
+ 	select CRYPTO_ALGAPI2
+ 
+ config CRYPTO_KPP
+@@ -1020,10 +1020,10 @@
+ comment "Ciphers"
+ 
+ config CRYPTO_LIB_AES
+-	tristate
++	bool
+ 
+ config CRYPTO_AES
+-	tristate "AES cipher algorithms"
++	bool "AES cipher algorithms"
+ 	select CRYPTO_ALGAPI
+ 	select CRYPTO_LIB_AES
+ 	help
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -37,7 +37,7 @@
+ 	  When in doubt, say N.
+ 
+ config BITREVERSE
+-	tristate
++	bool
+ 
+ config HAVE_ARCH_BITREVERSE
+ 	bool
+@@ -129,7 +129,7 @@
+ 	  functions require M here.
+ 
+ config CRC32
+-	tristate "CRC32/CRC32c functions"
++	bool "CRC32/CRC32c functions"
+ 	default y
+ 	select BITREVERSE
+ 	help
+--- a/lib/xz/Kconfig
++++ b/lib/xz/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config XZ_DEC
+-	tristate "XZ decompression support"
++	bool "XZ decompression support"
+ 	select CRC32
+ 	help
+ 	  LZMA2 compression algorithm and BCJ filters are supported using

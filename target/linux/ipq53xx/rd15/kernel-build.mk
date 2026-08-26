@@ -1,11 +1,6 @@
 define Kernel/Patch
-	@echo "-=RB=-Kernel/Patch"
-endef
-
-define Kernel/CompileModules
-	@echo "-=RB=-Kernel/CompileModules"
-	mkdir -p $(LINUX_DIR)
-	[ -f $(TOPDIR)/target/linux/ipq53xx/rd15/modules.builtin ] && cp -f $(TOPDIR)/target/linux/ipq53xx/rd15/modules.builtin $(LINUX_DIR)/modules.builtin || true
+	$(Kernel/Patch/Default)
+	$(call PatchDir,$(LINUX_DIR),$(TOPDIR)/target/linux/ipq53xx/rd15/patches-5.4,subtarget/)
 endef
 
 define Kernel/CompileImage

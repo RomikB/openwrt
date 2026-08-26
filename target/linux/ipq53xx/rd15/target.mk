@@ -27,3 +27,9 @@ DEFAULT_PACKAGES += \
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.
 endef
+
+KERNEL_TOOLCHAIN_DIR_NAME:=toolchain-arm_cortex-a7+neon-vfpv4_gcc-7.5.0_kernel
+KERNEL_TOOLCHAIN_DIR:=$(TOPDIR)/staging_dir/$(KERNEL_TOOLCHAIN_DIR_NAME)
+kernel_iremap = -iremap $(1):$(2)
+KERNEL_CROSS:=$(KERNEL_TOOLCHAIN_DIR)/bin/arm-openwrt-linux-muslgnueabi-
+KERNEL_CC:=$(KERNEL_CROSS)gcc
