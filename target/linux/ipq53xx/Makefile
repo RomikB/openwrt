@@ -15,4 +15,6 @@ KERNEL_PATCHVER:=6.6
 
 include $(INCLUDE_DIR)/target.mk
 
+-include $(SUBTARGET)/kernel-build.mk
+
 $(eval $(call BuildTarget))

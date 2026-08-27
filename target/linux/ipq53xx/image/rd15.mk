@@ -1,6 +1,13 @@
-#define Image/BuildKernel
-#	@echo "-=RB=-Image/BuildKernel"
-#endef
+define Image/Prepare
+	@echo "-=RB=-Image/Prepare: Cleaning up modules.builtin* for rd15"
+	rm -f $(TARGET_DIR)/lib/modules/*/modules.builtin*
+	rm -f $(KDIR)/target-dir-*/lib/modules/*/modules.builtin*
+	rm -f $(KDIR)/root.*/lib/modules/*/modules.builtin*
+endef
+
+define Image/BuildKernel
+	@echo "-=RB=-Image/BuildKernel"
+endef
 
 define Image/BuildKernel/Initramfs
 	@echo "-=RB=-Image/BuildKernel/Initramfs"

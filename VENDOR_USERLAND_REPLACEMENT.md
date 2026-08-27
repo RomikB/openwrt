@@ -4,6 +4,7 @@
 
 Проект переводит маршрутизатор **Xiaomi Router BE3600 (RD15)** (SoC Qualcomm IPQ5332, свитч Motorcomm YT9215S, ядро 5.4.213) на стандартный открытый стек **OpenWrt 24 (master / 24.10)** с полным сохранением аппаратных возможностей:
 - **Оригинальное ядро Linux 5.4.213** и все проприетарные модули ядра (`qca-nss-dp`, `qca-ssdk`, `qca-nss-ppe`, `yt_switch`, `yt_phy_module`, `ecm`, `umac`, `wifi_3_0`).
+- **Сборка внешних модулей ядра (`kmod-*`)** — генерация заголовочных файлов и сборочного окружения на базе официальных исходников **Qualcomm CodeLinaro QSDK 12.4 (`linux-ipq-5.4`)**, обеспечивающая 100% бинарную и ABI-совместимость со стоковым ядром (точное совпадение смещений `struct net_device`, `struct device`, модель памяти `VMSPLIT_2G`).
 - **Аппаратное ускорение маршрутизации (Qualcomm PPE / NSS ECM)** — Line Rate 2.5 Gbps при околонулевой нагрузке на CPU (~0–1%).
 - **Беспроводной стек Wi-Fi 6 / 7 (Qualcomm Direct Connect)** — полоса 160 МГц (`HE160` / `EHT160`), WPA2/WPA3 Mixed с PMF, аппаратный оффлоад Wi-Fi трафика.
 - **Изоляция вендорного окружения** через механизм динамического версионирования библиотек (`ld-vendor.so.1`, `v_lc.so`, `v_lssl.so.1.1` и др.), исключающий конфликты между Musl libc / OpenSSL 3.x в OpenWrt 24 и стоковыми бинарниками.
@@ -150,6 +151,11 @@
   * Замена условия ожидания Wi-Fi `[ -f /tmp/.wifi-config-done ]` на проверку загрузки модуля ядра `[ -d /sys/module/wifi_3_0 ]`.
 *(Патчи служб Wi-Fi `qca-hostap` и `load_cnss2` описаны в [WIFI_ROADMAP.md](WIFI_ROADMAP.md)).*
 
+### 5. Сборка внешних модулей ядра (Out-of-tree `kmod-*`) на базе исходников CodeLinaro QSDK 12.4:
+* **Исходники ядра QSDK 12.4**: Система сборки ядра для сабтаргета `rd15` (`target/linux/ipq53xx/rd15/kernel-build.mk`) переведена на официальный репозиторий Qualcomm CodeLinaro QSDK 12.4 (`https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4.git`, коммит `668bf957bfdcc05253bc3767c149c258ae49f323`).
+* **Точность ABI и смещений структур**: Генерация заголовочных файлов ядра (`user_headers`), дерева конфигурации и `Module.symvers` на базе исходников QSDK 12.4 гарантирует 100% совпадение смещений полей структур ядра (`net_device.netdev_ops` = 296, `net_device.flags` = 316, `net_device.type` = 348, `net_device.dev_addr` = 508, `net_device._tx` = 640, `net_device.dev` = 816, `sizeof(struct device)` = 456). Это позволяет компилировать сторонние модули ядра (например, `kmod-amneziawg`) с абсолютной стабильностью без искусственных ABI-патчей.
+* **Изоляция сборочного пайплайна**: Хук `Kernel/Patch` сабтаргета изолирован от наложения несовместимых файлов из `generic/files` (ядро QSDK уже содержит нативные 5.4-реализации `swconfig`, `mtdsplit` и подсистем Qualcomm).
+
 ---
 
 ## 7. Состав вендорного фида и механизм генерации
@@ -157,10 +163,11 @@
 Главным инструментом создания вендорного фида является скрипт **[vendor_scripts/prepare_feed.sh](vendor_scripts/prepare_feed.sh)**. Он полностью автоматизирует сборочный конвейер:
 1. Распаковывает UBI-образ стоковой прошивки (`ubireader_extract_images` и `unsquashfs`).
 2. Извлекает стоковый образ ядра в `target/linux/ipq53xx/rd15/kernel`.
-3. Запускает автоматический анализ зависимостей модулей ядра (`extract_kmod_deps.py`).
-4. Формирует структуру фида с предварительной валидацией в памяти (`generate_feed.py`).
-5. Пропатчивает сгенерированные пакеты (`patch_package.py`).
-6. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
+3. Извлекает встроенный `IKCONFIG` ядра и генерирует `config-5.4` и `modules.builtin` (`extract_kernel_data.py`).
+4. Запускает автоматический анализ зависимостей модулей ядра (`extract_kmod_deps.py`).
+5. Формирует структуру фида с предварительной валидацией в памяти (`generate_feed.py`).
+6. Пропатчивает сгенерированные пакеты (`patch_package.py`).
+7. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
 
 ### 1. Обязательный минимум проводного роутера с оффлоадом ([vendor_scripts/required.list](vendor_scripts/required.list)):
 Список из **13 пакетов**, необходимых для гарантированной работы роутера как проводного маршрутизатора с аппаратным ускорением:
@@ -214,6 +221,7 @@ yt-9215s-client
 *Пакеты `kmod-qca-nss-dp`, `kmod-qca-nss-ecm-premium` и `kmod-qca-wifi-lowmem-profile` автоматически разрешаются и генерируются через транзитивные зависимости.*
 
 ### 3. Вспомогательные скрипты генерации фида:
+- **`vendor_scripts/extract_kernel_data.py`**: Извлекает из FIT-образа стокового ядра LZMA-поток, сжатый `IKCONFIG` (`.config`), формирует полный `config-5.4` и файл `modules.builtin` на базе правил `KernelPackage` из OpenWrt.
 - **`vendor_scripts/extract_kmod_deps.py`**: Выполняет бинарный анализ экспортируемых и импортируемых символов всех `.ko` файлов распакованного rootfs и формирует карту зависимостей `tmp/kmod_deps.json`.
 - **`vendor_scripts/generate_feed.py`**: Считывает `opkg status` и `kmod_deps.json`, строит полный граф зависимостей в памяти, проверяет наличие всех 13 пакетов из `required.list` и генерирует дерево пакетов в `vendor_feed/`.
 - **`vendor_scripts/patch_package.py`**: Обрабатывает каждый пакет в сгенерированном фиде — выполняет ELF-версионирование библиотек (`v_l*.so`), перенаправляет интерпертатор на `ld-vendor.so.1` и патчит сервисные init-скрипты (`qca-nss-ecm`, `load_cnss2`, `qca-hostapd`).
@@ -253,6 +261,7 @@ yt-9215s-client
 | **`iperf3` / `htop`** | Бенчмарк & Мониторинг | ✅ Работает | Нативные `iperf3` (3.17.1) и `htop` (3.4.1) |
 | **`kmod-qca-nss-ppe*` / `ecm`** | Аппаратный оффлоад | ✅ Работает | Qualcomm PPE / NSS ECM, Line Rate 2.5G (~0% CPU) |
 | **`kmod-qca-wifi` / `hostapd`** | Wi-Fi 6 / 7 & UCI | ✅ Работает | Qualcomm Direct Connect, `hostapd`, HE160, LuCI UI |
+| **`kmod-amneziawg` / `awg`** | VPN AmneziaWG (Kernel) | ✅ Работает | Нативные заголовки ядра QSDK 12.4, awg tools, LuCI |
 
 ---
 
@@ -289,6 +298,7 @@ yt-9215s-client
 │ • Аппаратный Wi-Fi оффлоад kmod-qca-nss-ecm-wifi-plugin (FSE/MSCS)     │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 🔄 Шаг 6: Расширенный функционал и пакеты экосистемы OpenWrt           │
+│ • [x] AmneziaWG VPN (модуль kmod-amneziawg на QSDK 12.4, awg, LuCI)    │
 │ • [ ] Интеграция модулей IPset (kmod-ipt-ipset) для списков обхода     │
 │ • [ ] Интеграция TPROXY (kmod-ipt-tproxy) для прозрачного прокси       │
 │ • [ ] Интеграция Traffic Control / QoS (kmod-sched) для SQM CAKE       │
