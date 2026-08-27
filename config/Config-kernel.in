@@ -1150,10 +1150,14 @@ if KERNEL_IP_MROUTE
 		def_bool y
 
 	config KERNEL_IP_PIMSM_V1
-		def_bool y
+		bool "Enable IPv4 PIM-SM v1" if LINUX_5_4
+		default y if !LINUX_5_4
+		default n
 
 	config KERNEL_IP_PIMSM_V2
-		def_bool y
+		bool "Enable IPv4 PIM-SM v2" if LINUX_5_4
+		default y if !LINUX_5_4
+		default n
 
 endif
 
@@ -1182,10 +1186,14 @@ if KERNEL_IPV6
 	if KERNEL_IPV6_MROUTE
 
 		config KERNEL_IPV6_MROUTE_MULTIPLE_TABLES
-			def_bool y
+			bool "Enable IPv6 Multicast multiple routing tables" if LINUX_5_4
+			default y if !LINUX_5_4
+			default n
 
 		config KERNEL_IPV6_PIMSM_V2
-			def_bool y
+			bool "Enable IPv6 PIM-SM v2" if LINUX_5_4
+			default y if !LINUX_5_4
+			default n
 
 	endif
 
