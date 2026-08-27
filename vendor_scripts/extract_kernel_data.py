@@ -198,7 +198,7 @@ def main():
     configs_y = parse_configs_y(config_text)
     print(f"Extracted kernel config: {len(config_text.splitlines())} lines, {len(configs_y)} built-in (=y) options")
 
-    config_out = os.path.join(output_dir, "config-5.4")
+    config_out = os.path.join(output_dir, "config-5.4.vendor")
     with open(config_out, "w", encoding="utf-8") as f:
         f.write(config_text)
     print(f"Saved kernel config to: {config_out}")
@@ -206,7 +206,7 @@ def main():
     print("Scanning OpenWrt module definitions to build modules.builtin...")
     builtin_modules = find_builtin_modules(configs_y, openwrt_root)
 
-    builtin_out = os.path.join(output_dir, "modules.builtin")
+    builtin_out = os.path.join(output_dir, "modules.builtin.vendor")
     with open(builtin_out, "w", encoding="utf-8") as f:
         for mod in builtin_modules:
             f.write(f"{mod}\n")

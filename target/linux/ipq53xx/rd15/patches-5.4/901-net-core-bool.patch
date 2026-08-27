@@ -62,17 +62,6 @@
  	---help---
  	  If you say Y here, you will include support for Unix domain sockets;
  	  sockets are the standard Unix mechanism for establishing and
---- a/net/rfkill/Kconfig
-+++ b/net/rfkill/Kconfig
-@@ -3,7 +3,7 @@
- # RF switch subsystem configuration
- #
- menuconfig RFKILL
--	tristate "RF switch subsystem support"
-+	bool "RF switch subsystem support"
- 	help
- 	  Say Y here if you want to have control over RF switches
- 	  found on many WiFi and Bluetooth cards.
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
 @@ -471,7 +471,7 @@
