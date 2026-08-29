@@ -20,6 +20,7 @@ add_pkgs = sys.argv[4].split()
 ignore_pkgs = set(sys.argv[5].split())
 deps_json_file = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] != "" else os.path.join(os.path.dirname(feed_dir), "tmp/kmod_deps.json")
 required_list_file = sys.argv[7] if len(sys.argv) > 7 else None
+native_list_arg = sys.argv[8] if len(sys.argv) > 8 else None
 
 # Load required packages list if provided
 required_pkgs = []
@@ -29,6 +30,20 @@ if required_list_file and os.path.isfile(required_list_file):
             line = line.strip()
             if line and not line.startswith('#'):
                 required_pkgs.append(line)
+
+# Load native packages list if provided
+native_pkgs = set()
+if native_list_arg:
+    if os.path.isfile(native_list_arg):
+        with open(native_list_arg, 'r') as nf:
+            for line in nf:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    native_pkgs.add(line)
+    else:
+        native_pkgs = set(native_list_arg.split())
+if native_pkgs:
+    print(f"Loaded {len(native_pkgs)} native OpenWrt packages to map without -vendor suffix")
 
 # Load kernel module dependencies extracted from .ko binaries
 extra_kmod_deps = {}
@@ -70,7 +85,7 @@ to_visit = list(add_pkgs)
 resolved = []
 while to_visit:
     pkg = to_visit.pop(0)
-    if pkg in ignore_pkgs or pkg in visited:
+    if pkg in ignore_pkgs or pkg in native_pkgs or pkg in visited:
         continue
     visited.add(pkg)
     resolved.append(pkg)
@@ -79,13 +94,13 @@ while to_visit:
         if extra not in deps and extra in pkg_info:
             deps.append(extra)
     for dep in deps:
-        if dep not in ignore_pkgs and dep not in visited:
+        if dep not in ignore_pkgs and dep not in native_pkgs and dep not in visited:
             to_visit.append(dep)
 
 # Validate that all required packages are present in the resolved dependency graph before creating feed
 if required_pkgs:
     resolved_set = set(resolved)
-    missing_required = [p for p in required_pkgs if p not in resolved_set]
+    missing_required = [p for p in required_pkgs if p not in resolved_set and p not in native_pkgs]
     if missing_required:
         print(f"Error: The following required packages from {required_list_file} were not resolved in dependency tree:", file=sys.stderr)
         for mp in missing_required:
@@ -135,11 +150,18 @@ for pkg in resolved:
         pkg_version = full_version
         pkg_release = '1'
 
-    filtered_deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if d in pkg_info and d not in ignore_pkgs]
+    raw_deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if (d in pkg_info or d in native_pkgs) and d not in ignore_pkgs]
     for extra_dep in extra_kmod_deps.get(pkg, []):
-        if extra_dep not in filtered_deps and extra_dep in pkg_info and extra_dep not in ignore_pkgs:
-            filtered_deps.append(extra_dep)
-    depends_str = ' '.join(f"+{d}-vendor" for d in filtered_deps)
+        if extra_dep not in raw_deps and (extra_dep in pkg_info or extra_dep in native_pkgs) and extra_dep not in ignore_pkgs:
+            raw_deps.append(extra_dep)
+
+    filtered_deps = []
+    for d in raw_deps:
+        if d in native_pkgs:
+            filtered_deps.append(f"+{d}")
+        else:
+            filtered_deps.append(f"+{d}-vendor")
+    depends_str = ' '.join(filtered_deps)
 
     conffiles = pkg_info.get(pkg, {}).get('conffiles', [])
     conffiles_block = ""

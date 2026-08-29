@@ -50,14 +50,14 @@ endef
 
 define Package/ppp
 $(call Package/ppp/Default)
-  DEPENDS:=+libgcc +kmod-ppp-vendor
+  DEPENDS:=+libgcc +kmod-ppp
   TITLE:=PPP daemon
   VARIANT:=default
 endef
 
 define Package/ppp-multilink
 $(call Package/ppp/Default)
-  DEPENDS:=+libgcc +kmod-ppp-vendor
+  DEPENDS:=+libgcc +kmod-ppp
   TITLE:=PPP daemon (with multilink support)
   VARIANT:=multilink
 endef
@@ -88,7 +88,7 @@ endef
 
 define Package/ppp-mod-pppoe
 $(call Package/ppp/Default)
-  DEPENDS:=@(PACKAGE_ppp||PACKAGE_ppp-multilink) +libgcc +kmod-pppoe-vendor
+  DEPENDS:=@(PACKAGE_ppp||PACKAGE_ppp-multilink) +libgcc +kmod-pppoe
   TITLE:=PPPoE plugin
 endef
 

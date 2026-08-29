@@ -25,6 +25,7 @@ echo "Using firmware image: $FW_FILE"
 PACKAGES_LIST="vendor_scripts/packages.list"
 REQUIRED_LIST="vendor_scripts/required.list"
 IGNORED_LIST="vendor_scripts/ignored.list"
+NATIVE_LIST="vendor_scripts/native.list"
 
 if [ ! -f "$PACKAGES_LIST" ]; then
 	echo "Error: Packages list file not found at $PACKAGES_LIST" >&2
@@ -43,6 +44,10 @@ fi
 
 ADD_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$PACKAGES_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
 IGNORE_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$IGNORED_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
+NATIVE_VENDOR_PACKAGES=""
+if [ -f "$NATIVE_LIST" ]; then
+	NATIVE_VENDOR_PACKAGES=$(grep -v '^[[:space:]]*#' "$NATIVE_LIST" | grep -v '^[[:space:]]*$' | tr '\n' ' ')
+fi
 
 # Prepare temporary directory
 TMP_DIR="./tmp"
@@ -113,7 +118,7 @@ if [ ! -f "$STATUS_FILE" ]; then
 fi
 
 echo "Resolving dependencies and generating vendor feed in $FEED_DIR..."
-python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON" "$REQUIRED_LIST"
+python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON" "$REQUIRED_LIST" "$NATIVE_VENDOR_PACKAGES"
 echo "Vendor feed generation complete: $FEED_DIR"
 
 # Run patch script for each generated package

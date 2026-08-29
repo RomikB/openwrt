@@ -821,7 +821,7 @@ $(eval $(call KernelPackage,ipt-cluster))
 
 define KernelPackage/ipt-extra
   TITLE:=Extra modules
-  KCONFIG:=$(KCONFIG_IPT_EXTRA)
+  KCONFIG:=$(filter-out CONFIG_NETFILTER_XT_MATCH_CGROUP,$(KCONFIG_IPT_EXTRA)) CONFIG_NETFILTER_XT_MATCH_CGROUP@ne5.4
   FILES:=$(foreach mod,$(IPT_EXTRA-m),$(LINUX_DIR)/net/$(mod).ko)
   AUTOLOAD:=$(call AutoProbe,$(notdir $(IPT_EXTRA-m)))
   $(call AddDepends/ipt)

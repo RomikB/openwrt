@@ -30,6 +30,28 @@
 #include <linux/gpio_keys.h>
 #include <linux/gpio/consumer.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+static int dev_err_probe(const struct device *dev, int err, const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+
+	if (err != -EPROBE_DEFER) {
+		va_start(args, fmt);
+		vaf.fmt = fmt;
+		vaf.va = &args;
+		dev_err(dev, "error %d: %pV\n", err, &vaf);
+		va_end(args);
+	}
+	return err;
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 12, 0)
+#define devm_fwnode_gpiod_get(dev, fwnode, con_id, flags, label) \
+	devm_fwnode_get_gpiod_from_child(dev, con_id, fwnode, flags, label)
+#endif
+
 #define BH_SKB_SIZE	2048
 
 #define DRV_NAME	"gpio-keys"

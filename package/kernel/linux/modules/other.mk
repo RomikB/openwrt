@@ -27,6 +27,22 @@ endef
 $(eval $(call KernelPackage,6lowpan))
 
 
+define KernelPackage/bootconfig
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Bootconfig partition for failsafe
+  DEPENDS:=@TARGET_ipq53xx_rd15
+  KCONFIG:=CONFIG_BOOTCONFIG_PARTITION
+  FILES:=$(LINUX_DIR)/drivers/platform/ipq/bootconfig.ko
+  AUTOLOAD:=$(call AutoLoad,56,bootconfig,1)
+endef
+
+define KernelPackage/bootconfig/description
+  Kernel module for Qualcomm / IPQ bootconfig partition access and failsafe boot info.
+endef
+
+$(eval $(call KernelPackage,bootconfig))
+
+
 define KernelPackage/bluetooth
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Bluetooth support

@@ -11,12 +11,12 @@ DEFAULT_PACKAGES += \
 	-firewall4 -nftables -kmod-nft-offload \
 	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
 	luci iperf3 htop iw iwinfo \
-	kmod-bootconfig-vendor kmod-qca-nss-dp-vendor \
+	kmod-bootconfig kmod-qca-nss-dp-vendor \
 	kmod-yt-9215s-driver-vendor kmod-yt-phy-driver-vendor \
-	kmod-pwm-rgb-vendor kmod-gpio-button-hotplug-vendor \
+	kmod-pwm-rgb kmod-gpio-button-hotplug \
 	nvram-vendor qca-ssdk-shell-vendor yt-9215s-client-vendor \
-	kmod-ipt-conntrack-extra-vendor kmod-ipt-raw-vendor kmod-ipt-ipopt-vendor \
-	kmod-ipt-offload-vendor kmod-ipt-filter-vendor kmod-ipt-extra-vendor kmod-ipt-nat6-vendor \
+	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
+	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
 	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
 	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
 	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor kmod-qca-nss-ecm-wifi-plugin-vendor \

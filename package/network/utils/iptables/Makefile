@@ -48,7 +48,7 @@ endef
 define Package/xtables-legacy
 $(call Package/iptables/Default)
   TITLE:=IP firewall administration tool
-  DEPENDS+= +kmod-ipt-core-vendor +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables
+  DEPENDS+= +kmod-ipt-core +libip4tc +IPV6:libip6tc +libiptext +IPV6:libiptext6 +libxtables
 endef
 
 define Package/iptables-zz-legacy
@@ -457,7 +457,7 @@ endef
 
 define Package/ip6tables-zz-legacy
 $(call Package/iptables/Default)
-  DEPENDS:=@IPV6 +kmod-ip6tables-vendor +xtables-legacy
+  DEPENDS:=@IPV6 +kmod-ip6tables +xtables-legacy
   CATEGORY:=Network
   TITLE:=IPv6 firewall administration tool
   PROVIDES:=ip6tables ip6tables-legacy
