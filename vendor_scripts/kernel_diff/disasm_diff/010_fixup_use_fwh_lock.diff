@@ -1,0 +1,92 @@
+# Функция: fixup_use_fwh_lock
+# Адрес (наш):    0x80452fb4
+# Адрес (vendor): 0x40452fb4
+# Размер:         48 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452fb4 <fixup_use_fwh_lock>:
+80452fb4:	e92d4010 	push	{r4, lr}
+80452fb8:	e1a04000 	mov	r4, r0
+80452fbc:	e59f0014 	ldr	r0, [pc, #20]	; 80452fd8 <fixup_use_fwh_lock+0x24>
+80452fc0:	ebf44bb5 	bl	80165e9c <printk>
+80452fc4:	e59f3010 	ldr	r3, [pc, #16]	; 80452fdc <fixup_use_fwh_lock+0x28>
+80452fc8:	e58430a0 	str	r3, [r4, #160]	; 0xa0
+80452fcc:	e59f300c 	ldr	r3, [pc, #12]	; 80452fe0 <fixup_use_fwh_lock+0x2c>
+80452fd0:	e58430a4 	str	r3, [r4, #164]	; 0xa4
+80452fd4:	e8bd8010 	pop	{r4, pc}
+80452fd8:	807cbbe1 	.word	0x807cbbe1
+80452fdc:	80453c10 	.word	0x80453c10
+80452fe0:	80453bb0 	.word	0x80453bb0
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452fb4 <.data+0x44afb4>:
+40452fb4:	eb0aa2eb 	bl	0x406fbb68
+40452fb8:	e3550002 	cmp	r5, #2
+40452fbc:	0a000004 	beq	0x40452fd4
+40452fc0:	e3550004 	cmp	r5, #4
+40452fc4:	0a000009 	beq	0x40452ff0
+40452fc8:	e3550001 	cmp	r5, #1
+40452fcc:	0a00000a 	beq	0x40452ffc
+40452fd0:	ea00000f 	b	0x40453014
+40452fd4:	e5973014 	ldr	r3, [r7, #20]
+40452fd8:	e3530001 	cmp	r3, #1
+40452fdc:	9a000006 	bls	0x40452ffc
+40452fe0:	e3530003 	cmp	r3, #3
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,19 +1,19 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452fb4 <fixup_use_fwh_lock>:
+-e92d4010 	push	{r4, lr}
+-e1a04000 	mov	r4, r0
+-e59f0014 	ldr	r0, [pc, #20]	; 80452fd8 <fixup_use_fwh_lock+0x24>
+-ebf44bb5 	bl	80165e9c <printk>
+-e59f3010 	ldr	r3, [pc, #16]	; 80452fdc <fixup_use_fwh_lock+0x28>
+-e58430a0 	str	r3, [r4, #160]	; 0xa0
+-e59f300c 	ldr	r3, [pc, #12]	; 80452fe0 <fixup_use_fwh_lock+0x2c>
+-e58430a4 	str	r3, [r4, #164]	; 0xa4
+-e8bd8010 	pop	{r4, pc}
+-807cbbe1 	.word	0xADDR
+-80453c10 	.word	0xADDR
+-80453bb0 	.word	0xADDR
++40452fb4 <.data+0xADDR>:
++eb0aa2eb 	bl	0xADDR
++e3550002 	cmp	r5, #2
++0a000004 	beq	0xADDR
++e3550004 	cmp	r5, #4
++0a000009 	beq	0xADDR
++e3550001 	cmp	r5, #1
++0a00000a 	beq	0xADDR
++ea00000f 	b	0xADDR
++e5973014 	ldr	r3, [r7, #20]
++e3530001 	cmp	r3, #1
++9a000006 	bls	0xADDR
++e3530003 	cmp	r3, #3

@@ -1,0 +1,291 @@
+# Функция: show_softirqs
+# Адрес (наш):    0x8029e514
+# Адрес (vendor): 0x4029e514
+# Размер:         268 байт
+# Изменённых байт:528766
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8029e514 <show_softirqs>:
+8029e514:	e92d4ff8 	push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+8029e518:	e1a05000 	mov	r5, r0
+8029e51c:	e59f60d8 	ldr	r6, [pc, #216]	; 8029e5fc <show_softirqs+0xe8>
+8029e520:	e3e04000 	mvn	r4, #0
+8029e524:	e59f10d4 	ldr	r1, [pc, #212]	; 8029e600 <show_softirqs+0xec>
+8029e528:	ebff017b 	bl	8025eb1c <seq_puts>
+8029e52c:	e59f80d0 	ldr	r8, [pc, #208]	; 8029e604 <show_softirqs+0xf0>
+8029e530:	e1a07006 	mov	r7, r6
+8029e534:	ea000003 	b	8029e548 <show_softirqs+0x34>
+8029e538:	e1a02004 	mov	r2, r4
+8029e53c:	e59f10c4 	ldr	r1, [pc, #196]	; 8029e608 <show_softirqs+0xf4>
+8029e540:	e1a00005 	mov	r0, r5
+8029e544:	ebff0085 	bl	8025e760 <seq_printf>
+8029e548:	e1a00004 	mov	r0, r4
+8029e54c:	e1a01008 	mov	r1, r8
+8029e550:	eb116759 	bl	806f82bc <cpumask_next>
+8029e554:	e5963000 	ldr	r3, [r6]
+8029e558:	e1500003 	cmp	r0, r3
+8029e55c:	e1a04000 	mov	r4, r0
+8029e560:	3afffff4 	bcc	8029e538 <show_softirqs+0x24>
+8029e564:	e3a0100a 	mov	r1, #10
+8029e568:	e1a00005 	mov	r0, r5
+8029e56c:	ebfeffc2 	bl	8025e47c <seq_putc>
+8029e570:	e59f8094 	ldr	r8, [pc, #148]	; 8029e60c <show_softirqs+0xf8>
+8029e574:	e3a04000 	mov	r4, #0
+8029e578:	e59f3090 	ldr	r3, [pc, #144]	; 8029e610 <show_softirqs+0xfc>
+8029e57c:	e1a00005 	mov	r0, r5
+8029e580:	e59f108c 	ldr	r1, [pc, #140]	; 8029e614 <show_softirqs+0x100>
+8029e584:	e1a0a104 	lsl	sl, r4, #2
+8029e588:	e3e06000 	mvn	r6, #0
+8029e58c:	e59f9070 	ldr	r9, [pc, #112]	; 8029e604 <show_softirqs+0xf0>
+8029e590:	e7932104 	ldr	r2, [r3, r4, lsl #2]
+8029e594:	ebff0071 	bl	8025e760 <seq_printf>
+8029e598:	e59fb078 	ldr	fp, [pc, #120]	; 8029e618 <show_softirqs+0x104>
+8029e59c:	ea000007 	b	8029e5c0 <show_softirqs+0xac>
+8029e5a0:	e79b3106 	ldr	r3, [fp, r6, lsl #2]
+8029e5a4:	e1a02008 	mov	r2, r8
+8029e5a8:	e0833002 	add	r3, r3, r2
+8029e5ac:	e59f1068 	ldr	r1, [pc, #104]	; 8029e61c <show_softirqs+0x108>
+8029e5b0:	e083300a 	add	r3, r3, sl
+8029e5b4:	e1a00005 	mov	r0, r5
+8029e5b8:	e5932004 	ldr	r2, [r3, #4]
+8029e5bc:	ebff0067 	bl	8025e760 <seq_printf>
+8029e5c0:	e1a00006 	mov	r0, r6
+8029e5c4:	e1a01009 	mov	r1, r9
+8029e5c8:	eb11673b 	bl	806f82bc <cpumask_next>
+8029e5cc:	e5973000 	ldr	r3, [r7]
+8029e5d0:	e1500003 	cmp	r0, r3
+8029e5d4:	e1a06000 	mov	r6, r0
+8029e5d8:	3afffff0 	bcc	8029e5a0 <show_softirqs+0x8c>
+8029e5dc:	e3a0100a 	mov	r1, #10
+8029e5e0:	e1a00005 	mov	r0, r5
+8029e5e4:	e2844001 	add	r4, r4, #1
+8029e5e8:	ebfeffa3 	bl	8025e47c <seq_putc>
+8029e5ec:	e354000a 	cmp	r4, #10
+8029e5f0:	1affffe0 	bne	8029e578 <show_softirqs+0x64>
+8029e5f4:	e3a00000 	mov	r0, #0
+8029e5f8:	e8bd8ff8 	pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+8029e5fc:	80a07fb0 	.word	0x80a07fb0
+8029e600:	80755dc1 	.word	0x80755dc1
+8029e604:	80a07ef0 	.word	0x80a07ef0
+8029e608:	807409c3 	.word	0x807409c3
+8029e60c:	80942348 	.word	0x80942348
+8029e610:	8073c0e4 	.word	0x8073c0e4
+8029e614:	80755dd6 	.word	0x80755dd6
+8029e618:	80a08044 	.word	0x80a08044
+8029e61c:	80755ddc 	.word	0x80755ddc
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4029e514 <.data+0x296514>:
+4029e514:	e3a04000 	mov	r4, #0
+4029e518:	e59f3090 	ldr	r3, [pc, #144]	; 0x4029e5b0
+4029e51c:	e1a00005 	mov	r0, r5
+4029e520:	e59f108c 	ldr	r1, [pc, #140]	; 0x4029e5b4
+4029e524:	e1a0a104 	lsl	sl, r4, #2
+4029e528:	e3e06000 	mvn	r6, #0
+4029e52c:	e59f9070 	ldr	r9, [pc, #112]	; 0x4029e5a4
+4029e530:	e7932104 	ldr	r2, [r3, r4, lsl #2]
+4029e534:	ebff0085 	bl	0x4025e750
+4029e538:	e59fb078 	ldr	fp, [pc, #120]	; 0x4029e5b8
+4029e53c:	ea000007 	b	0x4029e560
+4029e540:	e79b3106 	ldr	r3, [fp, r6, lsl #2]
+4029e544:	e1a02008 	mov	r2, r8
+4029e548:	e0833002 	add	r3, r3, r2
+4029e54c:	e59f1068 	ldr	r1, [pc, #104]	; 0x4029e5bc
+4029e550:	e083300a 	add	r3, r3, sl
+4029e554:	e1a00005 	mov	r0, r5
+4029e558:	e5932004 	ldr	r2, [r3, #4]
+4029e55c:	ebff007b 	bl	0x4025e750
+4029e560:	e1a00006 	mov	r0, r6
+4029e564:	e1a01009 	mov	r1, r9
+4029e568:	eb117ba3 	bl	0x406fd3fc
+4029e56c:	e5973000 	ldr	r3, [r7]
+4029e570:	e1500003 	cmp	r0, r3
+4029e574:	e1a06000 	mov	r6, r0
+4029e578:	3afffff0 	bcc	0x4029e540
+4029e57c:	e3a0100a 	mov	r1, #10
+4029e580:	e1a00005 	mov	r0, r5
+4029e584:	e2844001 	add	r4, r4, #1
+4029e588:	ebfeffb7 	bl	0x4025e46c
+4029e58c:	e354000a 	cmp	r4, #10
+4029e590:	1affffe0 	bne	0x4029e518
+4029e594:	e3a00000 	mov	r0, #0
+4029e598:	e8bd8ff8 	pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+4029e59c:	80a07fb0 	strhthi	r7, [r0], r0
+4029e5a0:	8075ae41 	rsbshi	sl, r5, r1, asr #28
+4029e5a4:	80a07ef0 	strdhi	r7, [r0], r0	; <UNPREDICTABLE>
+4029e5a8:	80745a23 	rsbshi	r5, r4, r3, lsr #20
+4029e5ac:	80943348 	addshi	r3, r4, r8, asr #6
+4029e5b0:	80741150 	rsbshi	r1, r4, r0, asr r1
+4029e5b4:	8075ae56 	rsbshi	sl, r5, r6, asr lr
+4029e5b8:	80a08044 	adchi	r8, r0, r4, asr #32
+4029e5bc:	8075ae5c 	rsbshi	sl, r5, ip, asr lr
+4029e5c0:	e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+4029e5c4:	e1a05000 	mov	r5, r0
+4029e5c8:	e1a07002 	mov	r7, r2
+4029e5cc:	e590005c 	ldr	r0, [r0, #92]	; 0x5c
+4029e5d0:	e30a21ff 	movw	r2, #41471	; 0xa1ff
+4029e5d4:	e1a06001 	mov	r6, r1
+4029e5d8:	ebffe8af 	bl	0x4029889c
+4029e5dc:	e2504000 	subs	r4, r0, #0
+4029e5e0:	0a00000c 	beq	0x4029e618
+4029e5e4:	e59f3034 	ldr	r3, [pc, #52]	; 0x4029e620
+4029e5e8:	e1a01004 	mov	r1, r4
+4029e5ec:	e1a00006 	mov	r0, r6
+4029e5f0:	e5047008 	str	r7, [r4, #-8]
+4029e5f4:	e5843010 	str	r3, [r4, #16]
+4029e5f8:	ebffe954 	bl	0x40298b50
+4029e5fc:	e1a00005 	mov	r0, r5
+4029e600:	e59f101c 	ldr	r1, [pc, #28]	; 0x4029e624
+4029e604:	ebfec82c 	bl	0x402506bc
+4029e608:	e1a01005 	mov	r1, r5
+4029e60c:	e1a00004 	mov	r0, r4
+4029e610:	e8bd41f0 	pop	{r4, r5, r6, r7, r8, lr}
+4029e614:	eafed5ff 	b	0x40253e18
+4029e618:	e3e00001 	mvn	r0, #1
+4029e61c:	e8bd81f0 	pop	{r4, r5, r6, r7, r8, pc}
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,74 +1,74 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8029e514 <show_softirqs>:
+-e92d4ff8 	push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+-e1a05000 	mov	r5, r0
+-e59f60d8 	ldr	r6, [pc, #216]	; 8029e5fc <show_softirqs+0xe8>
+-e3e04000 	mvn	r4, #0
+-e59f10d4 	ldr	r1, [pc, #212]	; 8029e600 <show_softirqs+0xec>
+-ebff017b 	bl	8025eb1c <seq_puts>
+-e59f80d0 	ldr	r8, [pc, #208]	; 8029e604 <show_softirqs+0xf0>
+-e1a07006 	mov	r7, r6
+-ea000003 	b	8029e548 <show_softirqs+0x34>
+-e1a02004 	mov	r2, r4
+-e59f10c4 	ldr	r1, [pc, #196]	; 8029e608 <show_softirqs+0xf4>
++4029e514 <.data+0xADDR>:
++e3a04000 	mov	r4, #0
++e59f3090 	ldr	r3, [pc, #144]	; 0xADDR
+ e1a00005 	mov	r0, r5
+-ebff0085 	bl	8025e760 <seq_printf>
+-e1a00004 	mov	r0, r4
+-e1a01008 	mov	r1, r8
+-eb116759 	bl	806f82bc <cpumask_next>
+-e5963000 	ldr	r3, [r6]
+-e1500003 	cmp	r0, r3
+-e1a04000 	mov	r4, r0
+-3afffff4 	bcc	8029e538 <show_softirqs+0x24>
+-e3a0100a 	mov	r1, #10
+-e1a00005 	mov	r0, r5
+-ebfeffc2 	bl	8025e47c <seq_putc>
+-e59f8094 	ldr	r8, [pc, #148]	; 8029e60c <show_softirqs+0xf8>
+-e3a04000 	mov	r4, #0
+-e59f3090 	ldr	r3, [pc, #144]	; 8029e610 <show_softirqs+0xfc>
+-e1a00005 	mov	r0, r5
+-e59f108c 	ldr	r1, [pc, #140]	; 8029e614 <show_softirqs+0x100>
++e59f108c 	ldr	r1, [pc, #140]	; 0xADDR
+ e1a0a104 	lsl	sl, r4, #2
+ e3e06000 	mvn	r6, #0
+-e59f9070 	ldr	r9, [pc, #112]	; 8029e604 <show_softirqs+0xf0>
++e59f9070 	ldr	r9, [pc, #112]	; 0xADDR
+ e7932104 	ldr	r2, [r3, r4, lsl #2]
+-ebff0071 	bl	8025e760 <seq_printf>
+-e59fb078 	ldr	fp, [pc, #120]	; 8029e618 <show_softirqs+0x104>
+-ea000007 	b	8029e5c0 <show_softirqs+0xac>
++ebff0085 	bl	0xADDR
++e59fb078 	ldr	fp, [pc, #120]	; 0xADDR
++ea000007 	b	0xADDR
+ e79b3106 	ldr	r3, [fp, r6, lsl #2]
+ e1a02008 	mov	r2, r8
+ e0833002 	add	r3, r3, r2
+-e59f1068 	ldr	r1, [pc, #104]	; 8029e61c <show_softirqs+0x108>
++e59f1068 	ldr	r1, [pc, #104]	; 0xADDR
+ e083300a 	add	r3, r3, sl
+ e1a00005 	mov	r0, r5
+ e5932004 	ldr	r2, [r3, #4]
+-ebff0067 	bl	8025e760 <seq_printf>
++ebff007b 	bl	0xADDR
+ e1a00006 	mov	r0, r6
+ e1a01009 	mov	r1, r9
+-eb11673b 	bl	806f82bc <cpumask_next>
++eb117ba3 	bl	0xADDR
+ e5973000 	ldr	r3, [r7]
+ e1500003 	cmp	r0, r3
+ e1a06000 	mov	r6, r0
+-3afffff0 	bcc	8029e5a0 <show_softirqs+0x8c>
++3afffff0 	bcc	0xADDR
+ e3a0100a 	mov	r1, #10
+ e1a00005 	mov	r0, r5
+ e2844001 	add	r4, r4, #1
+-ebfeffa3 	bl	8025e47c <seq_putc>
++ebfeffb7 	bl	0xADDR
+ e354000a 	cmp	r4, #10
+-1affffe0 	bne	8029e578 <show_softirqs+0x64>
++1affffe0 	bne	0xADDR
+ e3a00000 	mov	r0, #0
+ e8bd8ff8 	pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+-80a07fb0 	.word	0xADDR
+-80755dc1 	.word	0xADDR
+-80a07ef0 	.word	0xADDR
+-807409c3 	.word	0xADDR
+-80942348 	.word	0xADDR
+-8073c0e4 	.word	0xADDR
+-80755dd6 	.word	0xADDR
+-80a08044 	.word	0xADDR
+-80755ddc 	.word	0xADDR
++80a07fb0 	strhthi	r7, [r0], r0
++8075ae41 	rsbshi	sl, r5, r1, asr #28
++80a07ef0 	strdhi	r7, [r0], r0	; <UNPREDICTABLE>
++80745a23 	rsbshi	r5, r4, r3, lsr #20
++80943348 	addshi	r3, r4, r8, asr #6
++80741150 	rsbshi	r1, r4, r0, asr r1
++8075ae56 	rsbshi	sl, r5, r6, asr lr
++80a08044 	adchi	r8, r0, r4, asr #32
++8075ae5c 	rsbshi	sl, r5, ip, asr lr
++e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
++e1a05000 	mov	r5, r0
++e1a07002 	mov	r7, r2
++e590005c 	ldr	r0, [r0, #92]	; 0x5c
++e30a21ff 	movw	r2, #41471	; 0xa1ff
++e1a06001 	mov	r6, r1
++ebffe8af 	bl	0xADDR
++e2504000 	subs	r4, r0, #0
++0a00000c 	beq	0xADDR
++e59f3034 	ldr	r3, [pc, #52]	; 0xADDR
++e1a01004 	mov	r1, r4
++e1a00006 	mov	r0, r6
++e5047008 	str	r7, [r4, #-8]
++e5843010 	str	r3, [r4, #16]
++ebffe954 	bl	0xADDR
++e1a00005 	mov	r0, r5
++e59f101c 	ldr	r1, [pc, #28]	; 0xADDR
++ebfec82c 	bl	0xADDR
++e1a01005 	mov	r1, r5
++e1a00004 	mov	r0, r4
++e8bd41f0 	pop	{r4, r5, r6, r7, r8, lr}
++eafed5ff 	b	0xADDR
++e3e00001 	mvn	r0, #1
++e8bd81f0 	pop	{r4, r5, r6, r7, r8, pc}

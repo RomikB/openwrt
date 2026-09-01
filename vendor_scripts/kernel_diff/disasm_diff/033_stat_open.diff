@@ -1,0 +1,99 @@
+# Функция: stat_open
+# Адрес (наш):    0x8029db38
+# Адрес (vendor): 0x4029db38
+# Размер:         56 байт
+# Изменённых байт:528766
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8029db38 <stat_open>:
+8029db38:	e59f3024 	ldr	r3, [pc, #36]	; 8029db64 <stat_open+0x2c>
+8029db3c:	e1a00001 	mov	r0, r1
+8029db40:	e59f1020 	ldr	r1, [pc, #32]	; 8029db68 <stat_open+0x30>
+8029db44:	e5932000 	ldr	r2, [r3]
+8029db48:	e59f301c 	ldr	r3, [pc, #28]	; 8029db6c <stat_open+0x34>
+8029db4c:	e2822008 	add	r2, r2, #8
+8029db50:	e5933000 	ldr	r3, [r3]
+8029db54:	e1a03083 	lsl	r3, r3, #1
+8029db58:	e0833382 	add	r3, r3, r2, lsl #7
+8029db5c:	e3a02000 	mov	r2, #0
+8029db60:	eaff03a3 	b	8025e9f4 <single_open_size>
+8029db64:	80a07ef4 	.word	0x80a07ef4
+8029db68:	8029dc58 	.word	0x8029dc58
+8029db6c:	80a11820 	.word	0x80a11820
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4029db38 <.data+0x295b38>:
+4029db38:	e3130001 	tst	r3, #1
+4029db3c:	1a000001 	bne	0x4029db48
+4029db40:	e1c422d8 	ldrd	r2, [r4, #40]	; 0x28
+4029db44:	ea00000a 	b	0x4029db74
+4029db48:	e1a00001 	mov	r0, r1
+4029db4c:	e3a01000 	mov	r1, #0
+4029db50:	ebfbcc5e 	bl	0x40190cd0
+4029db54:	e3e03000 	mvn	r3, #0
+4029db58:	e3e02000 	mvn	r2, #0
+4029db5c:	e1510003 	cmp	r1, r3
+4029db60:	01500002 	cmpeq	r0, r2
+4029db64:	0afffff5 	beq	0x4029db40
+4029db68:	e3a0cffa 	mov	ip, #1000	; 0x3e8
+4029db6c:	e0832c90 	umull	r2, r3, r0, ip
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,21 +1,21 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8029db38 <stat_open>:
+-e59f3024 	ldr	r3, [pc, #36]	; 8029db64 <stat_open+0x2c>
++4029db38 <.data+0xADDR>:
++e3130001 	tst	r3, #1
++1a000001 	bne	0xADDR
++e1c422d8 	ldrd	r2, [r4, #40]	; 0x28
++ea00000a 	b	0xADDR
+ e1a00001 	mov	r0, r1
+-e59f1020 	ldr	r1, [pc, #32]	; 8029db68 <stat_open+0x30>
+-e5932000 	ldr	r2, [r3]
+-e59f301c 	ldr	r3, [pc, #28]	; 8029db6c <stat_open+0x34>
+-e2822008 	add	r2, r2, #8
+-e5933000 	ldr	r3, [r3]
+-e1a03083 	lsl	r3, r3, #1
+-e0833382 	add	r3, r3, r2, lsl #7
+-e3a02000 	mov	r2, #0
+-eaff03a3 	b	8025e9f4 <single_open_size>
+-80a07ef4 	.word	0xADDR
+-8029dc58 	.word	0xADDR
+-80a11820 	.word	0xADDR
++e3a01000 	mov	r1, #0
++ebfbcc5e 	bl	0xADDR
++e3e03000 	mvn	r3, #0
++e3e02000 	mvn	r2, #0
++e1510003 	cmp	r1, r3
++01500002 	cmpeq	r0, r2
++0afffff5 	beq	0xADDR
++e3a0cffa 	mov	ip, #1000	; 0x3e8
++e0832c90 	umull	r2, r3, r0, ip

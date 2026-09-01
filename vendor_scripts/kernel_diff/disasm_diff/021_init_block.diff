@@ -1,0 +1,172 @@
+# Функция: init_block
+# Адрес (наш):    0x803851a0
+# Адрес (vendor): 0x403851a0
+# Размер:         128 байт
+# Изменённых байт:739851
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+803851a0 <init_block>:
+803851a0:	e2802e47 	add	r2, r0, #1136	; 0x470
+803851a4:	e1a03000 	mov	r3, r0
+803851a8:	e2822008 	add	r2, r2, #8
+803851ac:	e3a01000 	mov	r1, #0
+803851b0:	e1c318bc 	strh	r1, [r3, #140]	; 0x8c
+803851b4:	e2833004 	add	r3, r3, #4
+803851b8:	e1530002 	cmp	r3, r2
+803851bc:	1afffffb 	bne	803851b0 <init_block+0x10>
+803851c0:	e3a03000 	mov	r3, #0
+803851c4:	e1a01003 	mov	r1, r3
+803851c8:	e2832d26 	add	r2, r3, #2432	; 0x980
+803851cc:	e2833004 	add	r3, r3, #4
+803851d0:	e3530078 	cmp	r3, #120	; 0x78
+803851d4:	e18010b2 	strh	r1, [r0, r2]
+803851d8:	1afffffa 	bne	803851c8 <init_block+0x28>
+803851dc:	e3a02000 	mov	r2, #0
+803851e0:	e300ca74 	movw	ip, #2676	; 0xa74
+803851e4:	e1a03002 	mov	r3, r2
+803851e8:	e082100c 	add	r1, r2, ip
+803851ec:	e2822004 	add	r2, r2, #4
+803851f0:	e352004c 	cmp	r2, #76	; 0x4c
+803851f4:	e18030b1 	strh	r3, [r0, r1]
+803851f8:	1afffffa 	bne	803851e8 <init_block+0x48>
+803851fc:	e300248c 	movw	r2, #1164	; 0x48c
+80385200:	e3a01001 	mov	r1, #1
+80385204:	e18010b2 	strh	r1, [r0, r2]
+80385208:	e2800a01 	add	r0, r0, #4096	; 0x1000
+8038520c:	e58036a4 	str	r3, [r0, #1700]	; 0x6a4
+80385210:	e58036a0 	str	r3, [r0, #1696]	; 0x6a0
+80385214:	e58036ac 	str	r3, [r0, #1708]	; 0x6ac
+80385218:	e5803698 	str	r3, [r0, #1688]	; 0x698
+8038521c:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+403851a0 <.data+0x37d1a0>:
+403851a0:	e5843054 	str	r3, [r4, #84]	; 0x54
+403851a4:	ebfffe4e 	bl	0x40384ae4
+403851a8:	e5943064 	ldr	r3, [r4, #100]	; 0x64
+403851ac:	e2833001 	add	r3, r3, #1
+403851b0:	e5843064 	str	r3, [r4, #100]	; 0x64
+403851b4:	e594306c 	ldr	r3, [r4, #108]	; 0x6c
+403851b8:	e2433001 	sub	r3, r3, #1
+403851bc:	e584306c 	str	r3, [r4, #108]	; 0x6c
+403851c0:	e5943000 	ldr	r3, [r4]
+403851c4:	e5933010 	ldr	r3, [r3, #16]
+403851c8:	e3530000 	cmp	r3, #0
+403851cc:	1affff45 	bne	0x40384ee8
+403851d0:	ea000027 	b	0x40385274
+403851d4:	e594306c 	ldr	r3, [r4, #108]	; 0x6c
+403851d8:	e2811001 	add	r1, r1, #1
+403851dc:	e5849060 	str	r9, [r4, #96]	; 0x60
+403851e0:	e2433001 	sub	r3, r3, #1
+403851e4:	e5841064 	str	r1, [r4, #100]	; 0x64
+403851e8:	e584306c 	str	r3, [r4, #108]	; 0x6c
+403851ec:	eaffff3d 	b	0x40384ee8
+403851f0:	e5943060 	ldr	r3, [r4, #96]	; 0x60
+403851f4:	e3530000 	cmp	r3, #0
+403851f8:	0a000007 	beq	0x4038521c
+403851fc:	e5942064 	ldr	r2, [r4, #100]	; 0x64
+40385200:	e1a0100a 	mov	r1, sl
+40385204:	e5943030 	ldr	r3, [r4, #48]	; 0x30
+40385208:	e1a00004 	mov	r0, r4
+4038520c:	e0833002 	add	r3, r3, r2
+40385210:	e5532001 	ldrb	r2, [r3, #-1]
+40385214:	eb000a83 	bl	0x40387c28
+40385218:	e584a060 	str	sl, [r4, #96]	; 0x60
+4038521c:	e5942054 	ldr	r2, [r4, #84]	; 0x54
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,39 +1,39 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-803851a0 <init_block>:
+-e2802e47 	add	r2, r0, #1136	; 0x470
+-e1a03000 	mov	r3, r0
+-e2822008 	add	r2, r2, #8
+-e3a01000 	mov	r1, #0
+-e1c318bc 	strh	r1, [r3, #140]	; 0x8c
+-e2833004 	add	r3, r3, #4
+-e1530002 	cmp	r3, r2
+-1afffffb 	bne	803851b0 <init_block+0x10>
+-e3a03000 	mov	r3, #0
+-e1a01003 	mov	r1, r3
+-e2832d26 	add	r2, r3, #2432	; 0x980
+-e2833004 	add	r3, r3, #4
+-e3530078 	cmp	r3, #120	; 0x78
+-e18010b2 	strh	r1, [r0, r2]
+-1afffffa 	bne	803851c8 <init_block+0x28>
+-e3a02000 	mov	r2, #0
+-e300ca74 	movw	ip, #2676	; 0xa74
+-e1a03002 	mov	r3, r2
+-e082100c 	add	r1, r2, ip
+-e2822004 	add	r2, r2, #4
+-e352004c 	cmp	r2, #76	; 0x4c
+-e18030b1 	strh	r3, [r0, r1]
+-1afffffa 	bne	803851e8 <init_block+0x48>
+-e300248c 	movw	r2, #1164	; 0x48c
+-e3a01001 	mov	r1, #1
+-e18010b2 	strh	r1, [r0, r2]
+-e2800a01 	add	r0, r0, #4096	; 0x1000
+-e58036a4 	str	r3, [r0, #1700]	; 0x6a4
+-e58036a0 	str	r3, [r0, #1696]	; 0x6a0
+-e58036ac 	str	r3, [r0, #1708]	; 0x6ac
+-e5803698 	str	r3, [r0, #1688]	; 0x698
+-e12fff1e 	bx	lr
++403851a0 <.data+0xADDR>:
++e5843054 	str	r3, [r4, #84]	; 0x54
++ebfffe4e 	bl	0xADDR
++e5943064 	ldr	r3, [r4, #100]	; 0x64
++e2833001 	add	r3, r3, #1
++e5843064 	str	r3, [r4, #100]	; 0x64
++e594306c 	ldr	r3, [r4, #108]	; 0x6c
++e2433001 	sub	r3, r3, #1
++e584306c 	str	r3, [r4, #108]	; 0x6c
++e5943000 	ldr	r3, [r4]
++e5933010 	ldr	r3, [r3, #16]
++e3530000 	cmp	r3, #0
++1affff45 	bne	0xADDR
++ea000027 	b	0xADDR
++e594306c 	ldr	r3, [r4, #108]	; 0x6c
++e2811001 	add	r1, r1, #1
++e5849060 	str	r9, [r4, #96]	; 0x60
++e2433001 	sub	r3, r3, #1
++e5841064 	str	r1, [r4, #100]	; 0x64
++e584306c 	str	r3, [r4, #108]	; 0x6c
++eaffff3d 	b	0xADDR
++e5943060 	ldr	r3, [r4, #96]	; 0x60
++e3530000 	cmp	r3, #0
++0a000007 	beq	0xADDR
++e5942064 	ldr	r2, [r4, #100]	; 0x64
++e1a0100a 	mov	r1, sl
++e5943030 	ldr	r3, [r4, #48]	; 0x30
++e1a00004 	mov	r0, r4
++e0833002 	add	r3, r3, r2
++e5532001 	ldrb	r2, [r3, #-1]
++eb000a83 	bl	0xADDR
++e584a060 	str	sl, [r4, #96]	; 0x60
++e5942054 	ldr	r2, [r4, #84]	; 0x54

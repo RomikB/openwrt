@@ -1,0 +1,168 @@
+# Функция: xfrm_find_acq
+# Адрес (наш):    0x80680a7c
+# Адрес (vendor): 0x40680a7c
+# Размер:         124 байт
+# Изменённых байт:681752
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80680a7c <xfrm_find_acq>:
+80680a7c:	e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+80680a80:	e2804d2f 	add	r4, r0, #3008	; 0xbc0
+80680a84:	e24dd018 	sub	sp, sp, #24
+80680a88:	e1a05000 	mov	r5, r0
+80680a8c:	e1a00004 	mov	r0, r4
+80680a90:	e1a07002 	mov	r7, r2
+80680a94:	e1a08003 	mov	r8, r3
+80680a98:	e1a06001 	mov	r6, r1
+80680a9c:	eb024d94 	bl	807140f4 <_raw_spin_lock_bh>
+80680aa0:	e1a01006 	mov	r1, r6
+80680aa4:	e1a00005 	mov	r0, r5
+80680aa8:	e59d3040 	ldr	r3, [sp, #64]	; 0x40
+80680aac:	e1dd24b4 	ldrh	r2, [sp, #68]	; 0x44
+80680ab0:	e58d8000 	str	r8, [sp]
+80680ab4:	e58d3014 	str	r3, [sp, #20]
+80680ab8:	e59d303c 	ldr	r3, [sp, #60]	; 0x3c
+80680abc:	e58d3010 	str	r3, [sp, #16]
+80680ac0:	e59d3038 	ldr	r3, [sp, #56]	; 0x38
+80680ac4:	e58d300c 	str	r3, [sp, #12]
+80680ac8:	e5dd3034 	ldrb	r3, [sp, #52]	; 0x34
+80680acc:	e58d3008 	str	r3, [sp, #8]
+80680ad0:	e59d3030 	ldr	r3, [sp, #48]	; 0x30
+80680ad4:	e58d3004 	str	r3, [sp, #4]
+80680ad8:	e1a03007 	mov	r3, r7
+80680adc:	ebfffe3c 	bl	806803d4 <__find_acq_core>
+80680ae0:	e1a05000 	mov	r5, r0
+80680ae4:	e1a00004 	mov	r0, r4
+80680ae8:	eb024e6d 	bl	807144a4 <_raw_spin_unlock_bh>
+80680aec:	e1a00005 	mov	r0, r5
+80680af0:	e28dd018 	add	sp, sp, #24
+80680af4:	e8bd81f0 	pop	{r4, r5, r6, r7, r8, pc}
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40680a7c <.data+0x678a7c>:
+40680a7c:	e0433001 	sub	r3, r3, r1
+40680a80:	e0233e61 	eor	r3, r3, r1, ror #28
+40680a84:	e081100a 	add	r1, r1, sl
+40680a88:	e35e0003 	cmp	lr, #3
+40680a8c:	e1a0b008 	mov	fp, r8
+40680a90:	e288800c 	add	r8, r8, #12
+40680a94:	8affffe2 	bhi	0x40680a24
+40680a98:	e35e0002 	cmp	lr, #2
+40680a9c:	0a000006 	beq	0x40680abc
+40680aa0:	e35e0003 	cmp	lr, #3
+40680aa4:	0a000002 	beq	0x40680ab4
+40680aa8:	e35e0001 	cmp	lr, #1
+40680aac:	1a000014 	bne	0x40680b04
+40680ab0:	ea000003 	b	0x40680ac4
+40680ab4:	e59be008 	ldr	lr, [fp, #8]
+40680ab8:	e083300e 	add	r3, r3, lr
+40680abc:	e59be004 	ldr	lr, [fp, #4]
+40680ac0:	e081100e 	add	r1, r1, lr
+40680ac4:	e59be000 	ldr	lr, [fp]
+40680ac8:	e0233001 	eor	r3, r3, r1
+40680acc:	e0433961 	sub	r3, r3, r1, ror #18
+40680ad0:	e08aa00e 	add	sl, sl, lr
+40680ad4:	e02aa003 	eor	sl, sl, r3
+40680ad8:	e04aaae3 	sub	sl, sl, r3, ror #21
+40680adc:	e021100a 	eor	r1, r1, sl
+40680ae0:	e04113ea 	sub	r1, r1, sl, ror #7
+40680ae4:	e0233001 	eor	r3, r3, r1
+40680ae8:	e0438861 	sub	r8, r3, r1, ror #16
+40680aec:	e02aa008 	eor	sl, sl, r8
+40680af0:	e04aae68 	sub	sl, sl, r8, ror #28
+40680af4:	e021100a 	eor	r1, r1, sl
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,38 +1,38 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80680a7c <xfrm_find_acq>:
+-e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+-e2804d2f 	add	r4, r0, #3008	; 0xbc0
+-e24dd018 	sub	sp, sp, #24
+-e1a05000 	mov	r5, r0
+-e1a00004 	mov	r0, r4
+-e1a07002 	mov	r7, r2
+-e1a08003 	mov	r8, r3
+-e1a06001 	mov	r6, r1
+-eb024d94 	bl	807140f4 <_raw_spin_lock_bh>
+-e1a01006 	mov	r1, r6
+-e1a00005 	mov	r0, r5
+-e59d3040 	ldr	r3, [sp, #64]	; 0x40
+-e1dd24b4 	ldrh	r2, [sp, #68]	; 0x44
+-e58d8000 	str	r8, [sp]
+-e58d3014 	str	r3, [sp, #20]
+-e59d303c 	ldr	r3, [sp, #60]	; 0x3c
+-e58d3010 	str	r3, [sp, #16]
+-e59d3038 	ldr	r3, [sp, #56]	; 0x38
+-e58d300c 	str	r3, [sp, #12]
+-e5dd3034 	ldrb	r3, [sp, #52]	; 0x34
+-e58d3008 	str	r3, [sp, #8]
+-e59d3030 	ldr	r3, [sp, #48]	; 0x30
+-e58d3004 	str	r3, [sp, #4]
+-e1a03007 	mov	r3, r7
+-ebfffe3c 	bl	806803d4 <__find_acq_core>
+-e1a05000 	mov	r5, r0
+-e1a00004 	mov	r0, r4
+-eb024e6d 	bl	807144a4 <_raw_spin_unlock_bh>
+-e1a00005 	mov	r0, r5
+-e28dd018 	add	sp, sp, #24
+-e8bd81f0 	pop	{r4, r5, r6, r7, r8, pc}
++40680a7c <.data+0xADDR>:
++e0433001 	sub	r3, r3, r1
++e0233e61 	eor	r3, r3, r1, ror #28
++e081100a 	add	r1, r1, sl
++e35e0003 	cmp	lr, #3
++e1a0b008 	mov	fp, r8
++e288800c 	add	r8, r8, #12
++8affffe2 	bhi	0xADDR
++e35e0002 	cmp	lr, #2
++0a000006 	beq	0xADDR
++e35e0003 	cmp	lr, #3
++0a000002 	beq	0xADDR
++e35e0001 	cmp	lr, #1
++1a000014 	bne	0xADDR
++ea000003 	b	0xADDR
++e59be008 	ldr	lr, [fp, #8]
++e083300e 	add	r3, r3, lr
++e59be004 	ldr	lr, [fp, #4]
++e081100e 	add	r1, r1, lr
++e59be000 	ldr	lr, [fp]
++e0233001 	eor	r3, r3, r1
++e0433961 	sub	r3, r3, r1, ror #18
++e08aa00e 	add	sl, sl, lr
++e02aa003 	eor	sl, sl, r3
++e04aaae3 	sub	sl, sl, r3, ror #21
++e021100a 	eor	r1, r1, sl
++e04113ea 	sub	r1, r1, sl, ror #7
++e0233001 	eor	r3, r3, r1
++e0438861 	sub	r8, r3, r1, ror #16
++e02aa008 	eor	sl, sl, r8
++e04aae68 	sub	sl, sl, r8, ror #28
++e021100a 	eor	r1, r1, sl

@@ -1,0 +1,156 @@
+# Функция: get_iowait_time
+# Адрес (наш):    0x8029dbe4
+# Адрес (vendor): 0x4029dbe4
+# Размер:         116 байт
+# Изменённых байт:528766
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8029dbe4 <get_iowait_time>:
+8029dbe4:	e3510000 	cmp	r1, #0
+8029dbe8:	e281301f 	add	r3, r1, #31
+8029dbec:	e59f2060 	ldr	r2, [pc, #96]	; 8029dc54 <get_iowait_time+0x70>
+8029dbf0:	a1a03001 	movge	r3, r1
+8029dbf4:	e1a032c3 	asr	r3, r3, #5
+8029dbf8:	e92d4010 	push	{r4, lr}
+8029dbfc:	e1a04000 	mov	r4, r0
+8029dc00:	e7923103 	ldr	r3, [r2, r3, lsl #2]
+8029dc04:	e201201f 	and	r2, r1, #31
+8029dc08:	e1a03233 	lsr	r3, r3, r2
+8029dc0c:	e3130001 	tst	r3, #1
+8029dc10:	1a000001 	bne	8029dc1c <get_iowait_time+0x38>
+8029dc14:	e1c423d0 	ldrd	r2, [r4, #48]	; 0x30
+8029dc18:	ea00000a 	b	8029dc48 <get_iowait_time+0x64>
+8029dc1c:	e1a00001 	mov	r0, r1
+8029dc20:	e3a01000 	mov	r1, #0
+8029dc24:	ebfbcc75 	bl	80190e00 <get_cpu_iowait_time_us>
+8029dc28:	e3e03000 	mvn	r3, #0
+8029dc2c:	e3e02000 	mvn	r2, #0
+8029dc30:	e1510003 	cmp	r1, r3
+8029dc34:	01500002 	cmpeq	r0, r2
+8029dc38:	0afffff5 	beq	8029dc14 <get_iowait_time+0x30>
+8029dc3c:	e3a0cffa 	mov	ip, #1000	; 0x3e8
+8029dc40:	e0832c90 	umull	r2, r3, r0, ip
+8029dc44:	e023319c 	mla	r3, ip, r1, r3
+8029dc48:	e1a00002 	mov	r0, r2
+8029dc4c:	e1a01003 	mov	r1, r3
+8029dc50:	e8bd8010 	pop	{r4, pc}
+8029dc54:	80a07ee8 	.word	0x80a07ee8
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4029dbe4 <.data+0x295be4>:
+4029dbe4:	e023319c 	mla	r3, ip, r1, r3
+4029dbe8:	e1a00002 	mov	r0, r2
+4029dbec:	e1a01003 	mov	r1, r3
+4029dbf0:	e8bd8010 	pop	{r4, pc}
+4029dbf4:	80a07ee8 	adchi	r7, r0, r8, ror #29
+4029dbf8:	e59f3670 	ldr	r3, [pc, #1648]	; 0x4029e270
+4029dbfc:	e3a02028 	mov	r2, #40	; 0x28
+4029dc00:	e92d4ff0 	push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+4029dc04:	e24dd0bc 	sub	sp, sp, #188	; 0xbc
+4029dc08:	e5933000 	ldr	r3, [r3]
+4029dc0c:	e3a01000 	mov	r1, #0
+4029dc10:	e1a04000 	mov	r4, r0
+4029dc14:	e28d008c 	add	r0, sp, #140	; 0x8c
+4029dc18:	e3e05000 	mvn	r5, #0
+4029dc1c:	e59fa650 	ldr	sl, [pc, #1616]	; 0x4029e274
+4029dc20:	e58d30b4 	str	r3, [sp, #180]	; 0xb4
+4029dc24:	eb1179f5 	bl	0x406fc400
+4029dc28:	e59fb648 	ldr	fp, [pc, #1608]	; 0x4029e278
+4029dc2c:	e28d0078 	add	r0, sp, #120	; 0x78
+4029dc30:	ebfb99e6 	bl	0x401843d0
+4029dc34:	e3a02000 	mov	r2, #0
+4029dc38:	e3a03000 	mov	r3, #0
+4029dc3c:	e1cd27f0 	strd	r2, [sp, #112]	; 0x70
+4029dc40:	e1cd26f8 	strd	r2, [sp, #104]	; 0x68
+4029dc44:	e1cd26f0 	strd	r2, [sp, #96]	; 0x60
+4029dc48:	e1cd25f8 	strd	r2, [sp, #88]	; 0x58
+4029dc4c:	e1cd25f0 	strd	r2, [sp, #80]	; 0x50
+4029dc50:	e1cd24f8 	strd	r2, [sp, #72]	; 0x48
+4029dc54:	e1cd24f0 	strd	r2, [sp, #64]	; 0x40
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,36 +1,36 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8029dbe4 <get_iowait_time>:
+-e3510000 	cmp	r1, #0
+-e281301f 	add	r3, r1, #31
+-e59f2060 	ldr	r2, [pc, #96]	; 8029dc54 <get_iowait_time+0x70>
+-a1a03001 	movge	r3, r1
+-e1a032c3 	asr	r3, r3, #5
+-e92d4010 	push	{r4, lr}
+-e1a04000 	mov	r4, r0
+-e7923103 	ldr	r3, [r2, r3, lsl #2]
+-e201201f 	and	r2, r1, #31
+-e1a03233 	lsr	r3, r3, r2
+-e3130001 	tst	r3, #1
+-1a000001 	bne	8029dc1c <get_iowait_time+0x38>
+-e1c423d0 	ldrd	r2, [r4, #48]	; 0x30
+-ea00000a 	b	8029dc48 <get_iowait_time+0x64>
+-e1a00001 	mov	r0, r1
+-e3a01000 	mov	r1, #0
+-ebfbcc75 	bl	80190e00 <get_cpu_iowait_time_us>
+-e3e03000 	mvn	r3, #0
+-e3e02000 	mvn	r2, #0
+-e1510003 	cmp	r1, r3
+-01500002 	cmpeq	r0, r2
+-0afffff5 	beq	8029dc14 <get_iowait_time+0x30>
+-e3a0cffa 	mov	ip, #1000	; 0x3e8
+-e0832c90 	umull	r2, r3, r0, ip
++4029dbe4 <.data+0xADDR>:
+ e023319c 	mla	r3, ip, r1, r3
+ e1a00002 	mov	r0, r2
+ e1a01003 	mov	r1, r3
+ e8bd8010 	pop	{r4, pc}
+-80a07ee8 	.word	0xADDR
++80a07ee8 	adchi	r7, r0, r8, ror #29
++e59f3670 	ldr	r3, [pc, #1648]	; 0xADDR
++e3a02028 	mov	r2, #40	; 0x28
++e92d4ff0 	push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
++e24dd0bc 	sub	sp, sp, #188	; 0xbc
++e5933000 	ldr	r3, [r3]
++e3a01000 	mov	r1, #0
++e1a04000 	mov	r4, r0
++e28d008c 	add	r0, sp, #140	; 0x8c
++e3e05000 	mvn	r5, #0
++e59fa650 	ldr	sl, [pc, #1616]	; 0xADDR
++e58d30b4 	str	r3, [sp, #180]	; 0xb4
++eb1179f5 	bl	0xADDR
++e59fb648 	ldr	fp, [pc, #1608]	; 0xADDR
++e28d0078 	add	r0, sp, #120	; 0x78
++ebfb99e6 	bl	0xADDR
++e3a02000 	mov	r2, #0
++e3a03000 	mov	r3, #0
++e1cd27f0 	strd	r2, [sp, #112]	; 0x70
++e1cd26f8 	strd	r2, [sp, #104]	; 0x68
++e1cd26f0 	strd	r2, [sp, #96]	; 0x60
++e1cd25f8 	strd	r2, [sp, #88]	; 0x58
++e1cd25f0 	strd	r2, [sp, #80]	; 0x50
++e1cd24f8 	strd	r2, [sp, #72]	; 0x48
++e1cd24f0 	strd	r2, [sp, #64]	; 0x40

@@ -1,0 +1,134 @@
+# Функция: zlib_deflateEnd
+# Адрес (наш):    0x803850f8
+# Адрес (vendor): 0x403850f8
+# Размер:         92 байт
+# Изменённых байт:739851
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+803850f8 <zlib_deflateEnd>:
+803850f8:	e3500000 	cmp	r0, #0
+803850fc:	0a000012 	beq	8038514c <zlib_deflateEnd+0x54>
+80385100:	e590301c 	ldr	r3, [r0, #28]
+80385104:	e3530000 	cmp	r3, #0
+80385108:	0a00000f 	beq	8038514c <zlib_deflateEnd+0x54>
+8038510c:	e5933004 	ldr	r3, [r3, #4]
+80385110:	e300129a 	movw	r1, #666	; 0x29a
+80385114:	e353002a 	cmp	r3, #42	; 0x2a
+80385118:	13530071 	cmpne	r3, #113	; 0x71
+8038511c:	13a02001 	movne	r2, #1
+80385120:	03a02000 	moveq	r2, #0
+80385124:	e1530001 	cmp	r3, r1
+80385128:	03a02000 	moveq	r2, #0
+8038512c:	12022001 	andne	r2, r2, #1
+80385130:	e3520000 	cmp	r2, #0
+80385134:	1a000004 	bne	8038514c <zlib_deflateEnd+0x54>
+80385138:	e3530071 	cmp	r3, #113	; 0x71
+8038513c:	e580201c 	str	r2, [r0, #28]
+80385140:	03e00002 	mvneq	r0, #2
+80385144:	13a00000 	movne	r0, #0
+80385148:	e12fff1e 	bx	lr
+8038514c:	e3e00001 	mvn	r0, #1
+80385150:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+403850f8 <.data+0x37d0f8>:
+403850f8:	e3500000 	cmp	r0, #0
+403850fc:	e5841060 	str	r1, [r4, #96]	; 0x60
+40385100:	e2822001 	add	r2, r2, #1
+40385104:	e5847058 	str	r7, [r4, #88]	; 0x58
+40385108:	e5842064 	str	r2, [r4, #100]	; 0x64
+4038510c:	0affff75 	beq	0x40384ee8
+40385110:	e5940054 	ldr	r0, [r4, #84]	; 0x54
+40385114:	e3a03000 	mov	r3, #0
+40385118:	e3500000 	cmp	r0, #0
+4038511c:	e0422000 	sub	r2, r2, r0
+40385120:	a5941030 	ldrge	r1, [r4, #48]	; 0x30
+40385124:	a0811000 	addge	r1, r1, r0
+40385128:	e1a00004 	mov	r0, r4
+4038512c:	eb000950 	bl	0x40387674
+40385130:	e5943064 	ldr	r3, [r4, #100]	; 0x64
+40385134:	e5940000 	ldr	r0, [r4]
+40385138:	e5843054 	str	r3, [r4, #84]	; 0x54
+4038513c:	ebfffe68 	bl	0x40384ae4
+40385140:	ea00001e 	b	0x403851c0
+40385144:	e5943060 	ldr	r3, [r4, #96]	; 0x60
+40385148:	e3530000 	cmp	r3, #0
+4038514c:	0a000020 	beq	0x403851d4
+40385150:	e5943030 	ldr	r3, [r4, #48]	; 0x30
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,30 +1,30 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-803850f8 <zlib_deflateEnd>:
++403850f8 <.data+0xADDR>:
+ e3500000 	cmp	r0, #0
+-0a000012 	beq	8038514c <zlib_deflateEnd+0x54>
+-e590301c 	ldr	r3, [r0, #28]
++e5841060 	str	r1, [r4, #96]	; 0x60
++e2822001 	add	r2, r2, #1
++e5847058 	str	r7, [r4, #88]	; 0x58
++e5842064 	str	r2, [r4, #100]	; 0x64
++0affff75 	beq	0xADDR
++e5940054 	ldr	r0, [r4, #84]	; 0x54
++e3a03000 	mov	r3, #0
++e3500000 	cmp	r0, #0
++e0422000 	sub	r2, r2, r0
++a5941030 	ldrge	r1, [r4, #48]	; 0x30
++a0811000 	addge	r1, r1, r0
++e1a00004 	mov	r0, r4
++eb000950 	bl	0xADDR
++e5943064 	ldr	r3, [r4, #100]	; 0x64
++e5940000 	ldr	r0, [r4]
++e5843054 	str	r3, [r4, #84]	; 0x54
++ebfffe68 	bl	0xADDR
++ea00001e 	b	0xADDR
++e5943060 	ldr	r3, [r4, #96]	; 0x60
+ e3530000 	cmp	r3, #0
+-0a00000f 	beq	8038514c <zlib_deflateEnd+0x54>
+-e5933004 	ldr	r3, [r3, #4]
+-e300129a 	movw	r1, #666	; 0x29a
+-e353002a 	cmp	r3, #42	; 0x2a
+-13530071 	cmpne	r3, #113	; 0x71
+-13a02001 	movne	r2, #1
+-03a02000 	moveq	r2, #0
+-e1530001 	cmp	r3, r1
+-03a02000 	moveq	r2, #0
+-12022001 	andne	r2, r2, #1
+-e3520000 	cmp	r2, #0
+-1a000004 	bne	8038514c <zlib_deflateEnd+0x54>
+-e3530071 	cmp	r3, #113	; 0x71
+-e580201c 	str	r2, [r0, #28]
+-03e00002 	mvneq	r0, #2
+-13a00000 	movne	r0, #0
+-e12fff1e 	bx	lr
+-e3e00001 	mvn	r0, #1
+-e12fff1e 	bx	lr
++0a000020 	beq	0xADDR
++e5943030 	ldr	r3, [r4, #48]	; 0x30

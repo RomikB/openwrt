@@ -1,0 +1,207 @@
+# Функция: sock_filter_is_valid_access
+# Адрес (наш):    0x805cf920
+# Адрес (vendor): 0x405cf920
+# Размер:         164 байт
+# Изменённых байт:454670
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+805cf920 <sock_filter_is_valid_access>:
+805cf920:	e92d4070 	push	{r4, r5, r6, lr}
+805cf924:	e1a06003 	mov	r6, r3
+805cf928:	e59d3010 	ldr	r3, [sp, #16]
+805cf92c:	e1a04000 	mov	r4, r0
+805cf930:	e1a05002 	mov	r5, r2
+805cf934:	ebffffbd 	bl	805cf830 <bpf_sock_is_valid_access>
+805cf938:	e3500000 	cmp	r0, #0
+805cf93c:	08bd8070 	popeq	{r4, r5, r6, pc}
+805cf940:	e354001b 	cmp	r4, #27
+805cf944:	e5960008 	ldr	r0, [r6, #8]
+805cf948:	ca000008 	bgt	805cf970 <sock_filter_is_valid_access+0x50>
+805cf94c:	e3540018 	cmp	r4, #24
+805cf950:	aa00000d 	bge	805cf98c <sock_filter_is_valid_access+0x6c>
+805cf954:	e3540010 	cmp	r4, #16
+805cf958:	0a000009 	beq	805cf984 <sock_filter_is_valid_access+0x64>
+805cf95c:	e3540014 	cmp	r4, #20
+805cf960:	0a000007 	beq	805cf984 <sock_filter_is_valid_access+0x64>
+805cf964:	e3540000 	cmp	r4, #0
+805cf968:	1a00000f 	bne	805cf9ac <sock_filter_is_valid_access+0x8c>
+805cf96c:	ea000004 	b	805cf984 <sock_filter_is_valid_access+0x64>
+805cf970:	e354002b 	cmp	r4, #43	; 0x2b
+805cf974:	da000006 	ble	805cf994 <sock_filter_is_valid_access+0x74>
+805cf978:	e354002f 	cmp	r4, #47	; 0x2f
+805cf97c:	da000007 	ble	805cf9a0 <sock_filter_is_valid_access+0x80>
+805cf980:	ea000009 	b	805cf9ac <sock_filter_is_valid_access+0x8c>
+805cf984:	e3500002 	cmp	r0, #2
+805cf988:	ea000008 	b	805cf9b0 <sock_filter_is_valid_access+0x90>
+805cf98c:	e350000c 	cmp	r0, #12
+805cf990:	ea000000 	b	805cf998 <sock_filter_is_valid_access+0x78>
+805cf994:	e350000d 	cmp	r0, #13
+805cf998:	0a000003 	beq	805cf9ac <sock_filter_is_valid_access+0x8c>
+805cf99c:	ea000006 	b	805cf9bc <sock_filter_is_valid_access+0x9c>
+805cf9a0:	e240000c 	sub	r0, r0, #12
+805cf9a4:	e3500001 	cmp	r0, #1
+805cf9a8:	8a000003 	bhi	805cf9bc <sock_filter_is_valid_access+0x9c>
+805cf9ac:	e3550001 	cmp	r5, #1
+805cf9b0:	13a00000 	movne	r0, #0
+805cf9b4:	03a00001 	moveq	r0, #1
+805cf9b8:	e8bd8070 	pop	{r4, r5, r6, pc}
+805cf9bc:	e3a00000 	mov	r0, #0
+805cf9c0:	e8bd8070 	pop	{r4, r5, r6, pc}
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+405cf920 <.data+0x5c7920>:
+405cf920:	8074d610 	rsbshi	sp, r4, r0, lsl r6
+405cf924:	80817f64 	addhi	r7, r1, r4, ror #30
+405cf928:	80817ea4 	addhi	r7, r1, r4, lsr #29
+405cf92c:	e3500049 	cmp	r0, #73	; 0x49
+405cf930:	0a000000 	beq	0x405cf938
+405cf934:	eaffffc8 	b	0x405cf85c
+405cf938:	e59f0000 	ldr	r0, [pc]	; 0x405cf940
+405cf93c:	e12fff1e 	bx	lr
+405cf940:	80817b10 	addhi	r7, r1, r0, lsl fp
+405cf944:	eaffffc4 	b	0x405cf85c
+405cf948:	e3500017 	cmp	r0, #23
+405cf94c:	e1a03000 	mov	r3, r0
+405cf950:	0a000023 	beq	0x405cf9e4
+405cf954:	8a00000e 	bhi	0x405cf994
+405cf958:	e350000b 	cmp	r0, #11
+405cf95c:	0a00002e 	beq	0x405cfa1c
+405cf960:	8a000004 	bhi	0x405cf978
+405cf964:	e3500009 	cmp	r0, #9
+405cf968:	0a000025 	beq	0x405cfa04
+405cf96c:	e350000a 	cmp	r0, #10
+405cf970:	0a000027 	beq	0x405cfa14
+405cf974:	ea00002e 	b	0x405cfa34
+405cf978:	e3500014 	cmp	r0, #20
+405cf97c:	0a00002e 	beq	0x405cfa3c
+405cf980:	e3500015 	cmp	r0, #21
+405cf984:	0a000015 	beq	0x405cf9e0
+405cf988:	e350000d 	cmp	r0, #13
+405cf98c:	1a000028 	bne	0x405cfa34
+405cf990:	ea000015 	b	0x405cf9ec
+405cf994:	e3500028 	cmp	r0, #40	; 0x28
+405cf998:	0a00001b 	beq	0x405cfa0c
+405cf99c:	8a000006 	bhi	0x405cf9bc
+405cf9a0:	e350001e 	cmp	r0, #30
+405cf9a4:	0a00000d 	beq	0x405cf9e0
+405cf9a8:	e3500026 	cmp	r0, #38	; 0x26
+405cf9ac:	0a000010 	beq	0x405cf9f4
+405cf9b0:	e350001d 	cmp	r0, #29
+405cf9b4:	1a00001e 	bne	0x405cfa34
+405cf9b8:	ea000006 	b	0x405cf9d8
+405cf9bc:	e350002b 	cmp	r0, #43	; 0x2b
+405cf9c0:	0a00000d 	beq	0x405cf9fc
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,48 +1,48 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-805cf920 <sock_filter_is_valid_access>:
+-e92d4070 	push	{r4, r5, r6, lr}
+-e1a06003 	mov	r6, r3
+-e59d3010 	ldr	r3, [sp, #16]
+-e1a04000 	mov	r4, r0
+-e1a05002 	mov	r5, r2
+-ebffffbd 	bl	805cf830 <bpf_sock_is_valid_access>
+-e3500000 	cmp	r0, #0
+-08bd8070 	popeq	{r4, r5, r6, pc}
+-e354001b 	cmp	r4, #27
+-e5960008 	ldr	r0, [r6, #8]
+-ca000008 	bgt	805cf970 <sock_filter_is_valid_access+0x50>
+-e3540018 	cmp	r4, #24
+-aa00000d 	bge	805cf98c <sock_filter_is_valid_access+0x6c>
+-e3540010 	cmp	r4, #16
+-0a000009 	beq	805cf984 <sock_filter_is_valid_access+0x64>
+-e3540014 	cmp	r4, #20
+-0a000007 	beq	805cf984 <sock_filter_is_valid_access+0x64>
+-e3540000 	cmp	r4, #0
+-1a00000f 	bne	805cf9ac <sock_filter_is_valid_access+0x8c>
+-ea000004 	b	805cf984 <sock_filter_is_valid_access+0x64>
+-e354002b 	cmp	r4, #43	; 0x2b
+-da000006 	ble	805cf994 <sock_filter_is_valid_access+0x74>
+-e354002f 	cmp	r4, #47	; 0x2f
+-da000007 	ble	805cf9a0 <sock_filter_is_valid_access+0x80>
+-ea000009 	b	805cf9ac <sock_filter_is_valid_access+0x8c>
+-e3500002 	cmp	r0, #2
+-ea000008 	b	805cf9b0 <sock_filter_is_valid_access+0x90>
+-e350000c 	cmp	r0, #12
+-ea000000 	b	805cf998 <sock_filter_is_valid_access+0x78>
++405cf920 <.data+0xADDR>:
++8074d610 	rsbshi	sp, r4, r0, lsl r6
++80817f64 	addhi	r7, r1, r4, ror #30
++80817ea4 	addhi	r7, r1, r4, lsr #29
++e3500049 	cmp	r0, #73	; 0x49
++0a000000 	beq	0xADDR
++eaffffc8 	b	0xADDR
++e59f0000 	ldr	r0, [pc]	; 0xADDR
++e12fff1e 	bx	lr
++80817b10 	addhi	r7, r1, r0, lsl fp
++eaffffc4 	b	0xADDR
++e3500017 	cmp	r0, #23
++e1a03000 	mov	r3, r0
++0a000023 	beq	0xADDR
++8a00000e 	bhi	0xADDR
++e350000b 	cmp	r0, #11
++0a00002e 	beq	0xADDR
++8a000004 	bhi	0xADDR
++e3500009 	cmp	r0, #9
++0a000025 	beq	0xADDR
++e350000a 	cmp	r0, #10
++0a000027 	beq	0xADDR
++ea00002e 	b	0xADDR
++e3500014 	cmp	r0, #20
++0a00002e 	beq	0xADDR
++e3500015 	cmp	r0, #21
++0a000015 	beq	0xADDR
+ e350000d 	cmp	r0, #13
+-0a000003 	beq	805cf9ac <sock_filter_is_valid_access+0x8c>
+-ea000006 	b	805cf9bc <sock_filter_is_valid_access+0x9c>
+-e240000c 	sub	r0, r0, #12
+-e3500001 	cmp	r0, #1
+-8a000003 	bhi	805cf9bc <sock_filter_is_valid_access+0x9c>
+-e3550001 	cmp	r5, #1
+-13a00000 	movne	r0, #0
+-03a00001 	moveq	r0, #1
+-e8bd8070 	pop	{r4, r5, r6, pc}
+-e3a00000 	mov	r0, #0
+-e8bd8070 	pop	{r4, r5, r6, pc}
++1a000028 	bne	0xADDR
++ea000015 	b	0xADDR
++e3500028 	cmp	r0, #40	; 0x28
++0a00001b 	beq	0xADDR
++8a000006 	bhi	0xADDR
++e350001e 	cmp	r0, #30
++0a00000d 	beq	0xADDR
++e3500026 	cmp	r0, #38	; 0x26
++0a000010 	beq	0xADDR
++e350001d 	cmp	r0, #29
++1a00001e 	bne	0xADDR
++ea000006 	b	0xADDR
++e350002b 	cmp	r0, #43	; 0x2b
++0a00000d 	beq	0xADDR

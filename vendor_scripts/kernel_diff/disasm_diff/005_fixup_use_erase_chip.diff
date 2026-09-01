@@ -1,0 +1,96 @@
+# Функция: fixup_use_erase_chip
+# Адрес (наш):    0x80452c64
+# Адрес (vendor): 0x40452c64
+# Размер:         52 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452c64 <fixup_use_erase_chip>:
+80452c64:	e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+80452c68:	e5933044 	ldr	r3, [r3, #68]	; 0x44
+80452c6c:	e5933020 	ldr	r3, [r3, #32]
+80452c70:	e5d3201c 	ldrb	r2, [r3, #28]
+80452c74:	e3520001 	cmp	r2, #1
+80452c78:	112fff1e 	bxne	lr
+80452c7c:	e593301d 	ldr	r3, [r3, #29]
+80452c80:	e6ff3073 	uxth	r3, r3
+80452c84:	e3530000 	cmp	r3, #0
+80452c88:	059f3004 	ldreq	r3, [pc, #4]	; 80452c94 <fixup_use_erase_chip+0x30>
+80452c8c:	05803060 	streq	r3, [r0, #96]	; 0x60
+80452c90:	e12fff1e 	bx	lr
+80452c94:	80455b98 	.word	0x80455b98
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452c64 <.data+0x44ac64>:
+40452c64:	e15630b6 	ldrh	r3, [r6, #-6]
+40452c68:	e1530007 	cmp	r3, r7
+40452c6c:	0a000002 	beq	0x40452c7c
+40452c70:	e5951028 	ldr	r1, [r5, #40]	; 0x28
+40452c74:	e1530001 	cmp	r3, r1
+40452c78:	1a000001 	bne	0x40452c84
+40452c7c:	e1a00005 	mov	r0, r5
+40452c80:	e12fff32 	blx	r2
+40452c84:	e2866008 	add	r6, r6, #8
+40452c88:	e5162004 	ldr	r2, [r6, #-4]
+40452c8c:	e3520000 	cmp	r2, #0
+40452c90:	1affffed 	bne	0x40452c4c
+40452c94:	e5951028 	ldr	r1, [r5, #40]	; 0x28
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,20 +1,20 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452c64 <fixup_use_erase_chip>:
+-e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+-e5933044 	ldr	r3, [r3, #68]	; 0x44
+-e5933020 	ldr	r3, [r3, #32]
+-e5d3201c 	ldrb	r2, [r3, #28]
+-e3520001 	cmp	r2, #1
+-112fff1e 	bxne	lr
+-e593301d 	ldr	r3, [r3, #29]
+-e6ff3073 	uxth	r3, r3
+-e3530000 	cmp	r3, #0
+-059f3004 	ldreq	r3, [pc, #4]	; 80452c94 <fixup_use_erase_chip+0x30>
+-05803060 	streq	r3, [r0, #96]	; 0x60
+-e12fff1e 	bx	lr
+-80455b98 	.word	0xADDR
++40452c64 <.data+0xADDR>:
++e15630b6 	ldrh	r3, [r6, #-6]
++e1530007 	cmp	r3, r7
++0a000002 	beq	0xADDR
++e5951028 	ldr	r1, [r5, #40]	; 0x28
++e1530001 	cmp	r3, r1
++1a000001 	bne	0xADDR
++e1a00005 	mov	r0, r5
++e12fff32 	blx	r2
++e2866008 	add	r6, r6, #8
++e5162004 	ldr	r2, [r6, #-4]
++e3520000 	cmp	r2, #0
++1affffed 	bne	0xADDR
++e5951028 	ldr	r1, [r5, #40]	; 0x28

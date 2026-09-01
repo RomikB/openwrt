@@ -1,0 +1,84 @@
+# Функция: fixup_use_atmel_lock
+# Адрес (наш):    0x80452c98
+# Адрес (vendor): 0x40452c98
+# Размер:         40 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452c98 <fixup_use_atmel_lock>:
+80452c98:	e59f3018 	ldr	r3, [pc, #24]	; 80452cb8 <fixup_use_atmel_lock+0x20>
+80452c9c:	e58030a0 	str	r3, [r0, #160]	; 0xa0
+80452ca0:	e59f3014 	ldr	r3, [pc, #20]	; 80452cbc <fixup_use_atmel_lock+0x24>
+80452ca4:	e58030a4 	str	r3, [r0, #164]	; 0xa4
+80452ca8:	e5903004 	ldr	r3, [r0, #4]
+80452cac:	e3833a02 	orr	r3, r3, #8192	; 0x2000
+80452cb0:	e5803004 	str	r3, [r0, #4]
+80452cb4:	e12fff1e 	bx	lr
+80452cb8:	80453b9c 	.word	0x80453b9c
+80452cbc:	80453b88 	.word	0x80453b88
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452c98 <.data+0x44ac98>:
+40452c98:	e595300c 	ldr	r3, [r5, #12]
+40452c9c:	e59f0068 	ldr	r0, [pc, #104]	; 0x40452d0c
+40452ca0:	e58d100c 	str	r1, [sp, #12]
+40452ca4:	e5951024 	ldr	r1, [r5, #36]	; 0x24
+40452ca8:	e1a03183 	lsl	r3, r3, #3
+40452cac:	e58d1008 	str	r1, [sp, #8]
+40452cb0:	e5941018 	ldr	r1, [r4, #24]
+40452cb4:	e58d2000 	str	r2, [sp]
+40452cb8:	e5952008 	ldr	r2, [r5, #8]
+40452cbc:	e1a01181 	lsl	r1, r1, #3
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,17 +1,17 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452c98 <fixup_use_atmel_lock>:
+-e59f3018 	ldr	r3, [pc, #24]	; 80452cb8 <fixup_use_atmel_lock+0x20>
+-e58030a0 	str	r3, [r0, #160]	; 0xa0
+-e59f3014 	ldr	r3, [pc, #20]	; 80452cbc <fixup_use_atmel_lock+0x24>
+-e58030a4 	str	r3, [r0, #164]	; 0xa4
+-e5903004 	ldr	r3, [r0, #4]
+-e3833a02 	orr	r3, r3, #8192	; 0x2000
+-e5803004 	str	r3, [r0, #4]
+-e12fff1e 	bx	lr
+-80453b9c 	.word	0xADDR
+-80453b88 	.word	0xADDR
++40452c98 <.data+0xADDR>:
++e595300c 	ldr	r3, [r5, #12]
++e59f0068 	ldr	r0, [pc, #104]	; 0xADDR
++e58d100c 	str	r1, [sp, #12]
++e5951024 	ldr	r1, [r5, #36]	; 0x24
++e1a03183 	lsl	r3, r3, #3
++e58d1008 	str	r1, [sp, #8]
++e5941018 	ldr	r1, [r4, #24]
++e58d2000 	str	r2, [sp]
++e5952008 	ldr	r2, [r5, #8]
++e1a01181 	lsl	r1, r1, #3

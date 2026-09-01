@@ -1,0 +1,92 @@
+# Функция: fixup_quirks
+# Адрес (наш):    0x80452cc0
+# Адрес (vendor): 0x40452cc0
+# Размер:         48 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452cc0 <fixup_quirks>:
+80452cc0:	e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+80452cc4:	e5933044 	ldr	r3, [r3, #68]	; 0x44
+80452cc8:	e5932024 	ldr	r2, [r3, #36]	; 0x24
+80452ccc:	e3520001 	cmp	r2, #1
+80452cd0:	112fff1e 	bxne	lr
+80452cd4:	e5931028 	ldr	r1, [r3, #40]	; 0x28
+80452cd8:	e3002c01 	movw	r2, #3073	; 0xc01
+80452cdc:	e1510002 	cmp	r1, r2
+80452ce0:	0593203c 	ldreq	r2, [r3, #60]	; 0x3c
+80452ce4:	03822001 	orreq	r2, r2, #1
+80452ce8:	0583203c 	streq	r2, [r3, #60]	; 0x3c
+80452cec:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452cc0 <.data+0x44acc0>:
+40452cc0:	e58d1004 	str	r1, [sp, #4]
+40452cc4:	e5941000 	ldr	r1, [r4]
+40452cc8:	ebf44c73 	bl	0x40165e9c
+40452ccc:	e3a0a001 	mov	sl, #1
+40452cd0:	e59d3014 	ldr	r3, [sp, #20]
+40452cd4:	e1a0000a 	mov	r0, sl
+40452cd8:	e59d201c 	ldr	r2, [sp, #28]
+40452cdc:	e5933000 	ldr	r3, [r3]
+40452ce0:	e1520003 	cmp	r2, r3
+40452ce4:	0a000000 	beq	0x40452cec
+40452ce8:	ebf334d2 	bl	0x40120038
+40452cec:	e28dd024 	add	sp, sp, #36	; 0x24
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,19 +1,19 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452cc0 <fixup_quirks>:
+-e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+-e5933044 	ldr	r3, [r3, #68]	; 0x44
+-e5932024 	ldr	r2, [r3, #36]	; 0x24
+-e3520001 	cmp	r2, #1
+-112fff1e 	bxne	lr
+-e5931028 	ldr	r1, [r3, #40]	; 0x28
+-e3002c01 	movw	r2, #3073	; 0xc01
+-e1510002 	cmp	r1, r2
+-0593203c 	ldreq	r2, [r3, #60]	; 0x3c
+-03822001 	orreq	r2, r2, #1
+-0583203c 	streq	r2, [r3, #60]	; 0x3c
+-e12fff1e 	bx	lr
++40452cc0 <.data+0xADDR>:
++e58d1004 	str	r1, [sp, #4]
++e5941000 	ldr	r1, [r4]
++ebf44c73 	bl	0xADDR
++e3a0a001 	mov	sl, #1
++e59d3014 	ldr	r3, [sp, #20]
++e1a0000a 	mov	r0, sl
++e59d201c 	ldr	r2, [sp, #28]
++e5933000 	ldr	r3, [r3]
++e1520003 	cmp	r2, r3
++0a000000 	beq	0xADDR
++ebf334d2 	bl	0xADDR
++e28dd024 	add	sp, sp, #36	; 0x24

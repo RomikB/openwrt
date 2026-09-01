@@ -1,0 +1,72 @@
+# Функция: register_gifconf
+# Адрес (наш):    0x805cfbe0
+# Адрес (vendor): 0x405cfbe0
+# Размер:         28 байт
+# Изменённых байт:454670
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+805cfbe0 <register_gifconf>:
+805cfbe0:	e350002d 	cmp	r0, #45	; 0x2d
+805cfbe4:	959f300c 	ldrls	r3, [pc, #12]	; 805cfbf8 <register_gifconf+0x18>
+805cfbe8:	97831100 	strls	r1, [r3, r0, lsl #2]
+805cfbec:	93a00000 	movls	r0, #0
+805cfbf0:	83e00015 	mvnhi	r0, #21
+805cfbf4:	e12fff1e 	bx	lr
+805cfbf8:	80a998ec 	.word	0x80a998ec
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+405cfbe0 <.data+0x5c7be0>:
+405cfbe0:	ea000013 	b	0x405cfc34
+405cfbe4:	e3500054 	cmp	r0, #84	; 0x54
+405cfbe8:	0a00001f 	beq	0x405cfc6c
+405cfbec:	8a000006 	bhi	0x405cfc0c
+405cfbf0:	e3500034 	cmp	r0, #52	; 0x34
+405cfbf4:	0a000016 	beq	0x405cfc54
+405cfbf8:	e3500048 	cmp	r0, #72	; 0x48
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,14 +1,14 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-805cfbe0 <register_gifconf>:
+-e350002d 	cmp	r0, #45	; 0x2d
+-959f300c 	ldrls	r3, [pc, #12]	; 805cfbf8 <register_gifconf+0x18>
+-97831100 	strls	r1, [r3, r0, lsl #2]
+-93a00000 	movls	r0, #0
+-83e00015 	mvnhi	r0, #21
+-e12fff1e 	bx	lr
+-80a998ec 	.word	0xADDR
++405cfbe0 <.data+0xADDR>:
++ea000013 	b	0xADDR
++e3500054 	cmp	r0, #84	; 0x54
++0a00001f 	beq	0xADDR
++8a000006 	bhi	0xADDR
++e3500034 	cmp	r0, #52	; 0x34
++0a000016 	beq	0xADDR
++e3500048 	cmp	r0, #72	; 0x48

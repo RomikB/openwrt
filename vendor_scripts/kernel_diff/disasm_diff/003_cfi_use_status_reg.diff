@@ -1,0 +1,92 @@
+# Функция: cfi_use_status_reg
+# Адрес (наш):    0x80452c20
+# Адрес (vendor): 0x40452c20
+# Размер:         48 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452c20 <cfi_use_status_reg>:
+80452c20:	e5900004 	ldr	r0, [r0, #4]
+80452c24:	e3500000 	cmp	r0, #0
+80452c28:	012fff1e 	bxeq	lr
+80452c2c:	e5d03004 	ldrb	r3, [r0, #4]
+80452c30:	e3530034 	cmp	r3, #52	; 0x34
+80452c34:	85d00013 	ldrbhi	r0, [r0, #19]
+80452c38:	82000003 	andhi	r0, r0, #3
+80452c3c:	82400001 	subhi	r0, r0, #1
+80452c40:	816f0f10 	clzhi	r0, r0
+80452c44:	81a002a0 	lsrhi	r0, r0, #5
+80452c48:	93a00000 	movls	r0, #0
+80452c4c:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452c20 <.data+0x44ac20>:
+40452c20:	06bf0f30 	reveq	r0, r0
+40452c24:	e6ef0070 	uxtb	r0, r0
+40452c28:	e1800006 	orr	r0, r0, r6
+40452c2c:	e5850028 	str	r0, [r5, #40]	; 0x28
+40452c30:	e1a02005 	mov	r2, r5
+40452c34:	e1a01004 	mov	r1, r4
+40452c38:	e3a00000 	mov	r0, #0
+40452c3c:	e59f60c4 	ldr	r6, [pc, #196]	; 0x40452d08
+40452c40:	eb0001ab 	bl	0x404532f4
+40452c44:	e30f7fff 	movw	r7, #65535	; 0xffff
+40452c48:	ea00000e 	b	0x40452c88
+40452c4c:	e15630b8 	ldrh	r3, [r6, #-8]
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,19 +1,19 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452c20 <cfi_use_status_reg>:
+-e5900004 	ldr	r0, [r0, #4]
+-e3500000 	cmp	r0, #0
+-012fff1e 	bxeq	lr
+-e5d03004 	ldrb	r3, [r0, #4]
+-e3530034 	cmp	r3, #52	; 0x34
+-85d00013 	ldrbhi	r0, [r0, #19]
+-82000003 	andhi	r0, r0, #3
+-82400001 	subhi	r0, r0, #1
+-816f0f10 	clzhi	r0, r0
+-81a002a0 	lsrhi	r0, r0, #5
+-93a00000 	movls	r0, #0
+-e12fff1e 	bx	lr
++40452c20 <.data+0xADDR>:
++06bf0f30 	reveq	r0, r0
++e6ef0070 	uxtb	r0, r0
++e1800006 	orr	r0, r0, r6
++e5850028 	str	r0, [r5, #40]	; 0x28
++e1a02005 	mov	r2, r5
++e1a01004 	mov	r1, r4
++e3a00000 	mov	r0, #0
++e59f60c4 	ldr	r6, [pc, #196]	; 0xADDR
++eb0001ab 	bl	0xADDR
++e30f7fff 	movw	r7, #65535	; 0xffff
++ea00000e 	b	0xADDR
++e15630b8 	ldrh	r3, [r6, #-8]

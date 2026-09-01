@@ -1,0 +1,144 @@
+# Функция: xfrm_state_change_notify
+# Адрес (наш):    0x80681400
+# Адрес (vendor): 0x40681400
+# Размер:         100 байт
+# Изменённых байт:681752
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80681400 <xfrm_state_change_notify>:
+80681400:	e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+80681404:	e1a05000 	mov	r5, r0
+80681408:	e1a07001 	mov	r7, r1
+8068140c:	ebebd4f3 	bl	801767e0 <__rcu_read_lock>
+80681410:	e59f3044 	ldr	r3, [pc, #68]	; 8068145c <xfrm_state_change_notify+0x5c>
+80681414:	e59f6044 	ldr	r6, [pc, #68]	; 80681460 <xfrm_state_change_notify+0x60>
+80681418:	e5934be4 	ldr	r4, [r3, #3044]	; 0xbe4
+8068141c:	ea00000a 	b	8068144c <xfrm_state_change_notify+0x4c>
+80681420:	e5943008 	ldr	r3, [r4, #8]
+80681424:	e3530000 	cmp	r3, #0
+80681428:	0a000002 	beq	80681438 <xfrm_state_change_notify+0x38>
+8068142c:	e1a01007 	mov	r1, r7
+80681430:	e1a00005 	mov	r0, r5
+80681434:	e12fff33 	blx	r3
+80681438:	e5953018 	ldr	r3, [r5, #24]
+8068143c:	e3530000 	cmp	r3, #0
+80681440:	1a000000 	bne	80681448 <xfrm_state_change_notify+0x48>
+80681444:	e7f001f2 	.word	0xe7f001f2
+80681448:	e5944000 	ldr	r4, [r4]
+8068144c:	e1540006 	cmp	r4, r6
+80681450:	1afffff2 	bne	80681420 <xfrm_state_change_notify+0x20>
+80681454:	e8bd41f0 	pop	{r4, r5, r6, r7, r8, lr}
+80681458:	eaebe22b 	b	80179d0c <__rcu_read_unlock>
+8068145c:	80a353c0 	.word	0x80a353c0
+80681460:	80a35fa4 	.word	0x80a35fa4
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40681400 <.data+0x679400>:
+40681400:	e1a01113 	lsl	r1, r3, r1
+40681404:	e6bf3f31 	rev	r3, r1
+40681408:	e7971100 	ldr	r1, [r7, r0, lsl #2]
+4068140c:	e0011003 	and	r1, r1, r3
+40681410:	e08a3100 	add	r3, sl, r0, lsl #2
+40681414:	e1a05007 	mov	r5, r7
+40681418:	e0831001 	add	r1, r3, r1
+4068141c:	e1a02001 	mov	r2, r1
+40681420:	e1a06001 	mov	r6, r1
+40681424:	ea000018 	b	0x4068148c
+40681428:	e515300c 	ldr	r3, [r5, #-12]
+4068142c:	e2400003 	sub	r0, r0, #3
+40681430:	e0866003 	add	r6, r6, r3
+40681434:	e5153008 	ldr	r3, [r5, #-8]
+40681438:	e0822003 	add	r2, r2, r3
+4068143c:	e5153004 	ldr	r3, [r5, #-4]
+40681440:	e0811003 	add	r1, r1, r3
+40681444:	e0466001 	sub	r6, r6, r1
+40681448:	e0266e61 	eor	r6, r6, r1, ror #28
+4068144c:	e0821001 	add	r1, r2, r1
+40681450:	e0422006 	sub	r2, r2, r6
+40681454:	e0222d66 	eor	r2, r2, r6, ror #26
+40681458:	e0866001 	add	r6, r6, r1
+4068145c:	e0411002 	sub	r1, r1, r2
+40681460:	e0211c62 	eor	r1, r1, r2, ror #24
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,32 +1,32 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80681400 <xfrm_state_change_notify>:
+-e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+-e1a05000 	mov	r5, r0
+-e1a07001 	mov	r7, r1
+-ebebd4f3 	bl	801767e0 <__rcu_read_lock>
+-e59f3044 	ldr	r3, [pc, #68]	; 8068145c <xfrm_state_change_notify+0x5c>
+-e59f6044 	ldr	r6, [pc, #68]	; 80681460 <xfrm_state_change_notify+0x60>
+-e5934be4 	ldr	r4, [r3, #3044]	; 0xbe4
+-ea00000a 	b	8068144c <xfrm_state_change_notify+0x4c>
+-e5943008 	ldr	r3, [r4, #8]
+-e3530000 	cmp	r3, #0
+-0a000002 	beq	80681438 <xfrm_state_change_notify+0x38>
+-e1a01007 	mov	r1, r7
+-e1a00005 	mov	r0, r5
+-e12fff33 	blx	r3
+-e5953018 	ldr	r3, [r5, #24]
+-e3530000 	cmp	r3, #0
+-1a000000 	bne	80681448 <xfrm_state_change_notify+0x48>
+-e7f001f2 	.word	0xADDR
+-e5944000 	ldr	r4, [r4]
+-e1540006 	cmp	r4, r6
+-1afffff2 	bne	80681420 <xfrm_state_change_notify+0x20>
+-e8bd41f0 	pop	{r4, r5, r6, r7, r8, lr}
+-eaebe22b 	b	80179d0c <__rcu_read_unlock>
+-80a353c0 	.word	0xADDR
+-80a35fa4 	.word	0xADDR
++40681400 <.data+0xADDR>:
++e1a01113 	lsl	r1, r3, r1
++e6bf3f31 	rev	r3, r1
++e7971100 	ldr	r1, [r7, r0, lsl #2]
++e0011003 	and	r1, r1, r3
++e08a3100 	add	r3, sl, r0, lsl #2
++e1a05007 	mov	r5, r7
++e0831001 	add	r1, r3, r1
++e1a02001 	mov	r2, r1
++e1a06001 	mov	r6, r1
++ea000018 	b	0xADDR
++e515300c 	ldr	r3, [r5, #-12]
++e2400003 	sub	r0, r0, #3
++e0866003 	add	r6, r6, r3
++e5153008 	ldr	r3, [r5, #-8]
++e0822003 	add	r2, r2, r3
++e5153004 	ldr	r3, [r5, #-4]
++e0811003 	add	r1, r1, r3
++e0466001 	sub	r6, r6, r1
++e0266e61 	eor	r6, r6, r1, ror #28
++e0821001 	add	r1, r2, r1
++e0422006 	sub	r2, r2, r6
++e0222d66 	eor	r2, r2, r6, ror #26
++e0866001 	add	r6, r6, r1
++e0411002 	sub	r1, r1, r2
++e0211c62 	eor	r1, r1, r2, ror #24

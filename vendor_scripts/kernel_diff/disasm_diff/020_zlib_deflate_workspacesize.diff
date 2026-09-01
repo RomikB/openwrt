@@ -1,0 +1,119 @@
+# Функция: zlib_deflate_workspacesize
+# Адрес (наш):    0x80385154
+# Адрес (vendor): 0x40385154
+# Размер:         76 байт
+# Изменённых байт:739851
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80385154 <zlib_deflate_workspacesize>:
+80385154:	e3500000 	cmp	r0, #0
+80385158:	e2413001 	sub	r3, r1, #1
+8038515c:	b2600000 	rsblt	r0, r0, #0
+80385160:	e3530007 	cmp	r3, #7
+80385164:	8a000002 	bhi	80385174 <zlib_deflate_workspacesize+0x20>
+80385168:	e2403009 	sub	r3, r0, #9
+8038516c:	e3530006 	cmp	r3, #6
+80385170:	9a000000 	bls	80385178 <zlib_deflate_workspacesize+0x24>
+80385174:	e7f001f2 	.word	0xe7f001f2
+80385178:	e281c007 	add	ip, r1, #7
+8038517c:	e3a02002 	mov	r2, #2
+80385180:	e2813006 	add	r3, r1, #6
+80385184:	e3a01004 	mov	r1, #4
+80385188:	e1a01311 	lsl	r1, r1, r3
+8038518c:	e3003b66 	movw	r3, #2918	; 0xb66
+80385190:	e0830012 	add	r0, r3, r2, lsl r0
+80385194:	e0811c12 	add	r1, r1, r2, lsl ip
+80385198:	e0810080 	add	r0, r1, r0, lsl #1
+8038519c:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40385154 <.data+0x37d154>:
+40385154:	e1a00004 	mov	r0, r4
+40385158:	e0831001 	add	r1, r3, r1
+4038515c:	e5512001 	ldrb	r2, [r1, #-1]
+40385160:	e3a01000 	mov	r1, #0
+40385164:	eb000aaf 	bl	0x40387c28
+40385168:	e3500000 	cmp	r0, #0
+4038516c:	0a00000d 	beq	0x403851a8
+40385170:	e5942054 	ldr	r2, [r4, #84]	; 0x54
+40385174:	e3a03000 	mov	r3, #0
+40385178:	e5940064 	ldr	r0, [r4, #100]	; 0x64
+4038517c:	e3520000 	cmp	r2, #0
+40385180:	a5941030 	ldrge	r1, [r4, #48]	; 0x30
+40385184:	b3a01000 	movlt	r1, #0
+40385188:	a0811002 	addge	r1, r1, r2
+4038518c:	e0402002 	sub	r2, r0, r2
+40385190:	e1a00004 	mov	r0, r4
+40385194:	eb000936 	bl	0x40387674
+40385198:	e5943064 	ldr	r3, [r4, #100]	; 0x64
+4038519c:	e5940000 	ldr	r0, [r4]
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,26 +1,26 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80385154 <zlib_deflate_workspacesize>:
++40385154 <.data+0xADDR>:
++e1a00004 	mov	r0, r4
++e0831001 	add	r1, r3, r1
++e5512001 	ldrb	r2, [r1, #-1]
++e3a01000 	mov	r1, #0
++eb000aaf 	bl	0xADDR
+ e3500000 	cmp	r0, #0
+-e2413001 	sub	r3, r1, #1
+-b2600000 	rsblt	r0, r0, #0
+-e3530007 	cmp	r3, #7
+-8a000002 	bhi	80385174 <zlib_deflate_workspacesize+0x20>
+-e2403009 	sub	r3, r0, #9
+-e3530006 	cmp	r3, #6
+-9a000000 	bls	80385178 <zlib_deflate_workspacesize+0x24>
+-e7f001f2 	.word	0xADDR
+-e281c007 	add	ip, r1, #7
+-e3a02002 	mov	r2, #2
+-e2813006 	add	r3, r1, #6
+-e3a01004 	mov	r1, #4
+-e1a01311 	lsl	r1, r1, r3
+-e3003b66 	movw	r3, #2918	; 0xb66
+-e0830012 	add	r0, r3, r2, lsl r0
+-e0811c12 	add	r1, r1, r2, lsl ip
+-e0810080 	add	r0, r1, r0, lsl #1
+-e12fff1e 	bx	lr
++0a00000d 	beq	0xADDR
++e5942054 	ldr	r2, [r4, #84]	; 0x54
++e3a03000 	mov	r3, #0
++e5940064 	ldr	r0, [r4, #100]	; 0x64
++e3520000 	cmp	r2, #0
++a5941030 	ldrge	r1, [r4, #48]	; 0x30
++b3a01000 	movlt	r1, #0
++a0811002 	addge	r1, r1, r2
++e0402002 	sub	r2, r0, r2
++e1a00004 	mov	r0, r4
++eb000936 	bl	0xADDR
++e5943064 	ldr	r3, [r4, #100]	; 0x64
++e5940000 	ldr	r0, [r4]
