@@ -376,7 +376,7 @@ IPSET_MODULES:= \
 	ipset/ip_set_bitmap_ipmac \
 	ipset/ip_set_bitmap_port \
 	ipset/ip_set_hash_ip \
-	ipset/ip_set_hash_ipmac \
+	ipset/ip_set_hash_ipmac@ge6.6 \
 	ipset/ip_set_hash_ipmark \
 	ipset/ip_set_hash_ipport \
 	ipset/ip_set_hash_ipportip \
@@ -402,7 +402,7 @@ define KernelPackage/ipt-ipset
 	CONFIG_IP_SET_BITMAP_IPMAC \
 	CONFIG_IP_SET_BITMAP_PORT \
 	CONFIG_IP_SET_HASH_IP \
-	CONFIG_IP_SET_HASH_IPMAC \
+	CONFIG_IP_SET_HASH_IPMAC@ge6.6 \
 	CONFIG_IP_SET_HASH_IPMARK \
 	CONFIG_IP_SET_HASH_IPPORT \
 	CONFIG_IP_SET_HASH_IPPORTIP \
@@ -774,6 +774,21 @@ endef
 
 $(eval $(call KernelPackage,ipt-checksum))
 
+define KernelPackage/ipt-sctp
+  TITLE:=Module for sctp protocol netfilter
+  DEPENDS:=@TARGET_ipq53xx_rd15
+  KCONFIG:=CONFIG_NETFILTER_XT_MATCH_SCTP \
+	   CONFIG_NF_CT_PROTO_SCTP=y
+  FILES:= $(LINUX_DIR)/net/netfilter/xt_sctp.ko
+  AUTOLOAD:=$(call AutoLoad,50,xt_sctp)
+  $(call AddDepends/ipt)
+endef
+
+define KernelPackage/ipt-sctp/description
+  Kernel modules for sctp iptables rules
+endef
+
+$(eval $(call KernelPackage,ipt-sctp))
 
 define KernelPackage/ipt-iprange
   TITLE:=Module for matching ip ranges
@@ -1210,11 +1225,15 @@ define KernelPackage/nft-offload
   DEPENDS:=@IPV6 +kmod-nf-flow +kmod-nft-nat
   KCONFIG:= \
 	CONFIG_NF_FLOW_TABLE_INET \
+  CONFIG_NF_FLOW_TABLE_IPV4@lt6.6 \
+  CONFIG_NF_FLOW_TABLE_IPV6@lt6.6 \
 	CONFIG_NFT_FLOW_OFFLOAD
   FILES:= \
 	$(LINUX_DIR)/net/netfilter/nf_flow_table_inet.ko \
+  $(LINUX_DIR)/net/ipv4/netfilter/nf_flow_table_ipv4.ko@lt6.6 \
+  $(LINUX_DIR)/net/ipv6/netfilter/nf_flow_table_ipv6.ko@lt6.6 \
 	$(LINUX_DIR)/net/netfilter/nft_flow_offload.ko
-  AUTOLOAD:=$(call AutoProbe,nf_flow_table_inet nft_flow_offload)
+  AUTOLOAD:=$(call AutoProbe,nf_flow_table_inet nf_flow_table_ipv4@lt6.6 nf_flow_table_ipv6@lt6.6 nft_flow_offload)
 endef
 
 $(eval $(call KernelPackage,nft-offload))

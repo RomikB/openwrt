@@ -711,7 +711,7 @@ endef
 $(eval $(call KernelPackage,mppe))
 
 
-SCHED_MODULES_CORE = sch_ingress sch_hfsc sch_htb sch_tbf cls_basic cls_fw cls_route cls_flow cls_u32 em_u32 act_gact act_mirred act_skbedit cls_matchall
+SCHED_MODULES_CORE = sch_ingress sch_hfsc@ge6.6 sch_htb sch_tbf@ge6.6 cls_basic@ge6.6 cls_fw cls_route@ge6.6 cls_flow@ge6.6 cls_u32 em_u32 act_gact@ge6.6 act_mirred@ge6.6 act_skbedit@ge6.6 cls_matchall@ge6.6
 SCHED_FILES_CORE = $(foreach mod,$(SCHED_MODULES_CORE),$(LINUX_DIR)/net/sched/$(mod).ko)
 
 define KernelPackage/sched-core
@@ -719,21 +719,21 @@ define KernelPackage/sched-core
   TITLE:=Traffic schedulers
   KCONFIG:= \
 	CONFIG_NET_SCHED=y \
-	CONFIG_NET_SCH_HFSC \
+	CONFIG_NET_SCH_HFSC@ge6.6 \
 	CONFIG_NET_SCH_HTB \
-	CONFIG_NET_SCH_TBF \
+	CONFIG_NET_SCH_TBF@ge6.6 \
 	CONFIG_NET_SCH_INGRESS \
 	CONFIG_NET_CLS=y \
 	CONFIG_NET_CLS_ACT=y \
-	CONFIG_NET_CLS_BASIC \
-	CONFIG_NET_CLS_FLOW \
+	CONFIG_NET_CLS_BASIC@ge6.6 \
+	CONFIG_NET_CLS_FLOW@ge6.6 \
 	CONFIG_NET_CLS_FW \
-	CONFIG_NET_CLS_ROUTE4 \
+	CONFIG_NET_CLS_ROUTE4@ge6.6 \
 	CONFIG_NET_CLS_U32 \
-	CONFIG_NET_ACT_GACT \
-	CONFIG_NET_ACT_MIRRED \
-	CONFIG_NET_ACT_SKBEDIT \
-	CONFIG_NET_CLS_MATCHALL \
+	CONFIG_NET_ACT_GACT@ge6.6 \
+	CONFIG_NET_ACT_MIRRED@ge6.6 \
+	CONFIG_NET_ACT_SKBEDIT@ge6.6 \
+	CONFIG_NET_CLS_MATCHALL@ge6.6 \
 	CONFIG_NET_EMATCH=y \
 	CONFIG_NET_EMATCH_U32
   FILES:=$(SCHED_FILES_CORE)
@@ -1027,26 +1027,27 @@ endef
 $(eval $(call KernelPackage,bpf-test))
 
 
-SCHED_MODULES_EXTRA = sch_codel sch_gred sch_multiq sch_sfq sch_teql sch_fq sch_ets act_pedit act_simple act_skbmod act_csum em_cmp em_nbyte em_meta em_text
+SCHED_MODULES_EXTRA = sch_codel@ge6.6 sch_gred@ge6.6 sch_multiq@ge6.6 sch_sfq sch_teql@ge6.6 sch_fq@ge6.6 sch_ets@ge6.6 act_pedit@ge6.6 act_simple@ge6.6 act_skbmod@ge6.6 act_csum@ge6.6 em_cmp em_ipt@lt6.6 em_nbyte em_meta em_text
 SCHED_FILES_EXTRA = $(foreach mod,$(SCHED_MODULES_EXTRA),$(LINUX_DIR)/net/sched/$(mod).ko)
 
 define KernelPackage/sched
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Extra traffic schedulers
-  DEPENDS:=+kmod-sched-core +kmod-lib-crc32c +kmod-lib-textsearch
+  DEPENDS:=+kmod-sched-core +!TARGET_ipq53xx_rd15:kmod-lib-crc32c +!TARGET_ipq53xx_rd15:kmod-lib-textsearch +TARGET_ipq53xx_rd15:kmod-ipt-core +TARGET_ipq53xx_rd15:kmod-sched-prio
   KCONFIG:= \
-	CONFIG_NET_SCH_CODEL \
-	CONFIG_NET_SCH_GRED \
-	CONFIG_NET_SCH_MULTIQ \
+	CONFIG_NET_SCH_CODEL@ge6.6 \
+	CONFIG_NET_SCH_GRED@ge6.6 \
+	CONFIG_NET_SCH_MULTIQ@ge6.6 \
 	CONFIG_NET_SCH_SFQ \
-	CONFIG_NET_SCH_TEQL \
-	CONFIG_NET_SCH_FQ \
-	CONFIG_NET_SCH_ETS \
-	CONFIG_NET_ACT_PEDIT \
-	CONFIG_NET_ACT_SIMP \
-	CONFIG_NET_ACT_SKBMOD \
-	CONFIG_NET_ACT_CSUM \
+	CONFIG_NET_SCH_TEQL@ge6.6 \
+	CONFIG_NET_SCH_FQ@ge6.6 \
+	CONFIG_NET_SCH_ETS@ge6.6 \
+	CONFIG_NET_ACT_PEDIT@ge6.6 \
+	CONFIG_NET_ACT_SIMP@ge6.6 \
+	CONFIG_NET_ACT_SKBMOD@ge6.6 \
+	CONFIG_NET_ACT_CSUM@ge6.6 \
 	CONFIG_NET_EMATCH_CMP \
+  CONFIG_NET_EMATCH_IPT@lt6.6 \
 	CONFIG_NET_EMATCH_NBYTE \
 	CONFIG_NET_EMATCH_META \
 	CONFIG_NET_EMATCH_TEXT

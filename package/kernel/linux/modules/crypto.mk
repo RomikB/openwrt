@@ -50,10 +50,10 @@ $(eval $(call KernelPackage,crypto-aead))
 
 define KernelPackage/crypto-arc4
   TITLE:=ARC4 cipher CryptoAPI module
-  DEPENDS:=+kmod-crypto-user
+  DEPENDS:=+!TARGET_ipq53xx_rd15:kmod-crypto-user
   KCONFIG:= \
 	  CONFIG_CRYPTO_ARC4 \
-	  CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y
+	  CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y@ge6.6
   FILES:= \
 	  $(LINUX_DIR)/crypto/arc4.ko \
 	  $(LINUX_DIR)/lib/crypto/libarc4.ko
@@ -240,7 +240,7 @@ $(eval $(call KernelPackage,crypto-ecdh))
 
 define KernelPackage/crypto-echainiv
   TITLE:=Encrypted Chain IV Generator
-  DEPENDS:=+kmod-crypto-aead +kmod-crypto-geniv
+  DEPENDS:=+kmod-crypto-aead +!TARGET_ipq53xx_rd15:kmod-crypto-geniv
   KCONFIG:=CONFIG_CRYPTO_ECHAINIV
   FILES:=$(LINUX_DIR)/crypto/echainiv.ko
   AUTOLOAD:=$(call AutoLoad,09,echainiv)
@@ -310,8 +310,10 @@ define KernelPackage/crypto-gf128
   TITLE:=GF(2^128) multiplication functions CryptoAPI module
   KCONFIG:= \
 	CONFIG_CRYPTO_GF128MUL \
-	CONFIG_CRYPTO_LIB_GF128MUL
-  FILES:=$(LINUX_DIR)/lib/crypto/gf128mul.ko
+	CONFIG_CRYPTO_LIB_GF128MUL@ge6.6
+  FILES:= \
+  $(LINUX_DIR)/crypto/gf128mul.ko@lt6.6 \
+  $(LINUX_DIR)/lib/crypto/gf128mul.ko@ge6.6
   AUTOLOAD:=$(call AutoLoad,09,gf128mul)
   $(call AddDepends/crypto)
 endef
@@ -699,7 +701,7 @@ $(eval $(call KernelPackage,crypto-lib-poly1305))
 
 define KernelPackage/crypto-manager
   TITLE:=CryptoAPI algorithm manager
-  DEPENDS:=+kmod-crypto-aead +kmod-crypto-hash
+  DEPENDS:=+kmod-crypto-aead +kmod-crypto-hash +TARGET_ipq53xx_rd15:kmod-crypto-pcompress
   KCONFIG:= \
 	CONFIG_CRYPTO_MANAGER \
 	CONFIG_CRYPTO_MANAGER2
@@ -729,7 +731,7 @@ define KernelPackage/crypto-md5
   KCONFIG:= \
 	CONFIG_CRYPTO_MD5 \
 	CONFIG_CRYPTO_MD5_OCTEON \
-	CONFIG_CRYPTO_MD5_PPC
+	CONFIG_CRYPTO_MD5_PPC@ge6.6
   FILES:=$(LINUX_DIR)/crypto/md5.ko
   AUTOLOAD:=$(call AutoLoad,09,md5)
   $(call AddDepends/crypto)
@@ -881,6 +883,21 @@ endef
 $(eval $(call KernelPackage,crypto-pcbc))
 
 
+define KernelPackage/crypto-pcompress
+  TITLE:=CryptoAPI Partial (de)compression operations
+  DEPENDS:=@TARGET_ipq53xx_rd15
+  KCONFIG:= \
+	CONFIG_CRYPTO_PCOMP=y \
+	CONFIG_CRYPTO_PCOMP2
+  FILES:=$(LINUX_DIR)/crypto/pcompress.ko
+  AUTOLOAD:=$(call AutoLoad,09,pcompress)
+  $(call AddDepends/crypto)
+endef
+
+$(eval $(call KernelPackage,crypto-pcompress))
+
+
+
 define KernelPackage/crypto-rsa
   TITLE:=RSA algorithm
   DEPENDS:=+kmod-crypto-manager +kmod-asn1-decoder
@@ -911,7 +928,7 @@ $(eval $(call KernelPackage,crypto-rmd160))
 
 define KernelPackage/crypto-rng
   TITLE:=CryptoAPI random number generation
-  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +!TARGET_ipq53xx:kmod-crypto-sha512 +!TARGET_ipq53xx:kmod-crypto-sha3
+  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +TARGET_ipq53xx_rd15:kmod-crypto-sha256 +!TARGET_ipq53xx_rd15:kmod-crypto-sha512 +!TARGET_ipq53xx_rd15:kmod-crypto-sha3
   KCONFIG:= \
 	CONFIG_CRYPTO_DRBG \
 	CONFIG_CRYPTO_DRBG_HMAC=y \
@@ -960,11 +977,11 @@ define KernelPackage/crypto-sha1
   DEPENDS:=+kmod-crypto-hash
   KCONFIG:= \
 	CONFIG_CRYPTO_SHA1 \
-	CONFIG_CRYPTO_SHA1_ARM \
-	CONFIG_CRYPTO_SHA1_ARM_NEON \
-	CONFIG_CRYPTO_SHA1_ARM64_CE \
+	CONFIG_CRYPTO_SHA1_ARM@ge6.6 \
+	CONFIG_CRYPTO_SHA1_ARM_NEON@ge6.6 \
+	CONFIG_CRYPTO_SHA1_ARM64_CE@ge6.6 \
 	CONFIG_CRYPTO_SHA1_OCTEON \
-	CONFIG_CRYPTO_SHA1_PPC_SPE \
+	CONFIG_CRYPTO_SHA1_PPC_SPE@ge6.6 \
 	CONFIG_CRYPTO_SHA1_SSSE3
   FILES:=$(LINUX_DIR)/crypto/sha1_generic.ko
   AUTOLOAD:=$(call AutoLoad,09,sha1_generic)
@@ -972,8 +989,8 @@ define KernelPackage/crypto-sha1
 endef
 
 define KernelPackage/crypto-sha1/arm
-  FILES+=$(LINUX_DIR)/arch/arm/crypto/sha1-arm.ko
-  AUTOLOAD+=$(call AutoLoad,09,sha1-arm)
+  FILES+=$(LINUX_DIR)/arch/arm/crypto/sha1-arm.ko@ge6.6
+  AUTOLOAD+=$(call AutoLoad,09,sha1-arm@ge6.6)
 endef
 
 define KernelPackage/crypto-sha1/arm-neon
@@ -1043,13 +1060,13 @@ define KernelPackage/crypto-sha256
   KCONFIG:= \
 	CONFIG_CRYPTO_SHA256 \
 	CONFIG_CRYPTO_SHA256_OCTEON \
-	CONFIG_CRYPTO_SHA256_PPC_SPE \
-	CONFIG_CRYPTO_SHA256_ARM64 \
-	CONFIG_CRYPTO_SHA2_ARM64_CE \
+	CONFIG_CRYPTO_SHA256_PPC_SPE@ge6.6 \
+	CONFIG_CRYPTO_SHA256_ARM64@ge6.6 \
+	CONFIG_CRYPTO_SHA2_ARM64_CE@ge6.6 \
 	CONFIG_CRYPTO_SHA256_SSSE3
   FILES:= \
 	$(LINUX_DIR)/crypto/sha256_generic.ko \
-	$(LINUX_DIR)/lib/crypto/libsha256.ko
+	$(LINUX_DIR)/lib/crypto/libsha256.ko@ge6.6
   AUTOLOAD:=$(call AutoLoad,09,sha256_generic)
   $(call AddDepends/crypto)
 endef
