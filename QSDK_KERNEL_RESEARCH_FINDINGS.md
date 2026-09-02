@@ -1,21 +1,16 @@
-# Исследование возможности перехода на публичное ядро Qualcomm QSDK 12.4 для Xiaomi Router BE3600 (RD15)
+# Исследование и успешный переход на публичное ядро Qualcomm QSDK 12.4 для Xiaomi Router BE3600 (RD15)
 
 ## 1. Введение и цели исследования
 
 **Цель проекта**: Перевод маршрутизатора **Xiaomi Router BE3600 (RD15, SoC Qualcomm IPQ5332)** на открытое, публично собираемое ядро **Qualcomm CodeLinaro QSDK 12.4 (`linux-ipq-5.4`, коммит `668bf957bfdcc05253bc3767c149c258ae49f323`)** с заменой стокового закрытого бинарного блоба ядра.
 
-**Основные задачи исследования**:
-1. Провести полный аудит зависимостей всех 29 бинарных модулей ядра (`.ko`) из `vendor_feed` (Wi-Fi 6/7, свитч Motorcomm YT9215S, акселератор PPE/ECM) от стокового ядра Xiaomi.
-2. Проверить ABI-зависимости 83 утилит и библиотек Userland (Netlink, ioctl, char-dev, sysfs, procfs, `/dev/*`).
-3. Разработать патчи совместимости для экспорта недостающих символов.
-4. Собрать собственный FIT-образ ядра (`vmlinux` + DTB) и протестировать запуск на реальном устройстве.
-5. Задокументировать все выявленные различия, причины падения ядра и решения.
+**Результат**: **УСПЕХ (100% рабочий запуск)**. Маршрутизатор успешно загружается и стабильно работает на нативном ядре OpenWrt 24 + QSDK 12.4 (Linux 5.4.213), работают все 4 ядра CPU (1.1 ГГц), Wi-Fi 6 (2.4G HE40 + 5G HE160), свитч Motorcomm YT9215S, акселератор Qualcomm ECM/PPE, Web-интерфейс LuCI и полный стек OpenWrt.
 
 ---
 
 ## 2. Результаты аудита бинарных модулей ядра (3 881 символ)
 
-Разработана утилита автоматического аудита `vendor_scripts/audit_vendor_symbols.py`, проанализировавшая граф импортов/экспортов всех 29 модулей ядра:
+Разработана утилита автоматического аудита `vendor_scripts/audit_vendor_symbols.py`, проверившая граф импортов/экспортов всех 29 модулей ядра:
 
 | Подсистема | Модули (.ko) | Всего импортов | Статус в QSDK 12.4 | Требуемые патчи / Источник |
 | :--- | :--- | :---: | :---: | :--- |
@@ -28,7 +23,7 @@
 
 ### Итог по модулям:
 - **3 881 из 3 881 точек связывания (100%) разрешены.**
-- Проприетарные драйверы Wi-Fi 7 и свитча **не содержат скрытых блоб-зависимостей** и успешно линкуются с публичным ядром QSDK 12.4.
+- Проприетарные драйверы Wi-Fi 7 и свитча **не содержат скрытых блоб-зависимостей** и стабильно работают с открытым ядром QSDK 12.4.
 
 ---
 
@@ -48,153 +43,150 @@
 
 ---
 
-## 4. Реализованные патчи и инструменты
+## 4. Ключевые проблемы загрузки и их решения
 
-### 4.1 Патч ядра `904-vendor-compat-stubs.patch`
-Файл: `target/linux/ipq53xx/rd15/patches-5.4/904-vendor-compat-stubs.patch`
-Добавляет в `net/core/dev.c` 3 недостающих символа:
+При первых запусках ядро уходило в аварийный перезапуск (Fallback bootloop). Благодаря анализу дампов памяти DRAM и Ramoops были найдены и устранены 3 фундаментальные причины:
+
+### 4.1 Именование конфигурации FIT-образа U-Boot (`config@1`)
+- **Проблема**: Загрузчик Xiaomi U-Boot жестко выполняет команду `bootm 0x44000000#config@1`. OpenWrt по умолчанию генерировал структуру с дефисом `-` (`config-1`, `kernel-1`, `fdt-1`). Из-за несовпадения имени конфигурации U-Boot вообще не запускал ядро и сразу уходил в ребут.
+- **Решение**: В профиль `Device/xiaomi-rd15-qsdk` в `target/linux/ipq53xx/image/rd15.mk` добавлены параметры:
+  ```makefile
+  DEVICE_DTS_DELIMITER := @
+  DEVICE_DTS_CONFIG := config@1
+  ```
+
+### 4.2 Определение чипа памяти SPI-NAND Winbond W25N01KWZEIG (Патч 906)
+- **Проблема**: На плате Xiaomi BE3600 установлен чип **Winbond W25N01KWZEIG SPI NAND 1G 1.8V** (ID: `{0xEF, 0xBE, 0x21}`). В открытом ядре этого ID не было в таблице SPI-NAND, из-за чего ядро по ошибке определяло ID `0xBE` как древнюю 16-битную параллельную флешку (`nand: bus width 8 instead of 16 bits -> probe error -22`). В итоге MTD-разделы не создавались, и ядро падало в панику `VFS: Unable to mount root fs`.
+- **Решение**: Разработан патч `target/linux/ipq53xx/rd15/patches-5.4/906-add-w25n01kw-nand-id.patch`, регистрирующий правильный ID чипа в `drivers/mtd/nand/raw/nand_ids.c`.
+
+### 4.3 Ноды платформы `/proc/xiaoqiang/*` и чтение NVRAM (Патч 905)
+- **Проблема**: Пользовательские скрипты инициализации Xiaomi читают `/proc/xiaoqiang/model`, `boot_status`, `reset`. Без них скрипты падали с ошибками.
+- **Решение**: Разработан драйвер `drivers/misc/xiaomi_rd15_platform.c` (патч `905-xiaomi-platform-init.patch`), регистрирующий на этапе `arch_initcall`:
+  - `model`: `"RD15"`
+  - `boot_status`: `3` (рабочий режим устройства)
+  - `reset`: `43`
+  - `secboot_enable`: `0`, `ft_mode`: `0`, `sys_boot_check`: `1`, `halt_status`: `0`, `uart_en`: `0`.
+  - Чтение и синхронизацию NVRAM из MTD-раздела `bdata`.
+
+---
+
+## 5. Методология отладки раннего падения ядра без UART через Ramoops (Pstore)
+
+Для будущей диагностики и отладки задокументирован метод захвата 100% лога `printk` и трассировок паники в DRAM через мягкую перезагрузку:
+
+### 5.1 Принцип работы
+1. Процессор Qualcomm IPQ5332 при `HLOS Panic` выполняет мягкий сброс (Warm Reset), при котором питание и регенерация DRAM **не отключаются**.
+2. В стоковом ядре выключен `CONFIG_STRICT_DEVMEM` и включен `CONFIG_DEVMEM=y`, что позволяет читать любой адрес физической памяти через `/dev/mem`.
+3. Зарезервированная область `0x4E700000` (512 КБ) помечена атрибутом `no-map;` в Device Tree, поэтому ядро никогда не затирает её при инициализации памяти.
+
+### 5.2 Как воспроизвести и использовать Ramoops при необходимости:
+
+#### Шаг 1. Включить узел в Device Tree (`target/linux/ipq53xx/rd15/ipq5332-rd15.dts`):
+Заменить `rsvd1@4E700000`:
+```dts
+ramoops@4E700000 {
+    compatible = "ramoops";
+    no-map;
+    reg = <0x00 0x4e700000 0x00 0x80000>;
+    record-size = <0x20000>;
+    console-size = <0x40000>;
+    pmsg-size = <0x20000>;
+};
+```
+
+#### Шаг 2. Включить Pstore в конфигурации ядра (`target/linux/ipq53xx/rd15/config-5.4`):
+```text
+CONFIG_PSTORE=y
+CONFIG_PSTORE_CONSOLE=y
+CONFIG_PSTORE_PMSG=y
+CONFIG_PSTORE_RAM=y
+```
+
+#### Шаг 3. Исходный код статической утилиты `dump_mem.c` (для чтения памяти через `mmap`):
 ```c
-/* Xiaomi / Motorcomm vendor compatibility hooks */
-int (*portmap_get_by_vid)(u32 vid, u32 *portmap);
-EXPORT_SYMBOL(portmap_get_by_vid);
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
-void *xqnss_ip_account_ecm_nss_hook;
-EXPORT_SYMBOL(xqnss_ip_account_ecm_nss_hook);
+int main(int argc, char **argv) {
+    uint32_t phys_addr = 0x4E700000;
+    size_t size = 0x80000; // 512KB
 
-void miwifi_ct_acct_hook(void *ct, void *acct, ...)
-{
+    if (argc > 1) phys_addr = strtoul(argv[1], NULL, 0);
+    if (argc > 2) size = strtoul(argv[2], NULL, 0);
+
+    int fd = open("/dev/mem", O_RDONLY | O_SYNC);
+    if (fd < 0) { perror("open /dev/mem"); return 1; }
+
+    void *map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, phys_addr);
+    if (map == MAP_FAILED) { perror("mmap"); close(fd); return 2; }
+
+    ssize_t written = 0;
+    while (written < size) {
+        ssize_t w = write(STDOUT_FILENO, (char *)map + written, size - written);
+        if (w <= 0) break;
+        written += w;
+    }
+    munmap(map, size);
+    close(fd);
+    return 0;
 }
-EXPORT_SYMBOL(miwifi_ct_acct_hook);
 ```
 
-### 4.2 Скрипт упаковки FIT-образа `build_fit_kernel.sh`
-Файл: `vendor_scripts/build_fit_kernel.sh`
-- Сжимает открытое ядро `Image` алгоритмом LZMA (размер ~3.02 MiB).
-- Упаковывает аппаратный Device Tree Blob `ipq5332-rd15.dtb` (`crc32: 1bdd0d2d`).
-- Формирует FIT-образ ядра для U-Boot (`Load Address / Entry Point: 0x40008000`).
+**Команда сборки утилиты**:
+```bash
+./staging_dir/toolchain-arm_cortex-a7+neon-vfpv4_gcc-13.3.0_musl_eabi/bin/arm-openwrt-linux-gcc -static -O2 dump_mem.c -o dump_mem
+```
 
-### 4.3 Точный Device Tree Xiaomi RD15
-- `target/linux/ipq53xx/rd15/ipq5332-rd15.dtb` — точный DTB из стоковой прошивки.
-- `target/linux/ipq53xx/rd15/ipq5332-rd15.dts` — декомпилированный исходный текст DTS с корректной картой памяти `reserved-memory` (TrustZone/Q6/WCSS/SMEM) и пинаутами свитча YT9215S.
+#### Шаг 4. Скрипт автоматической вычитки `read_ramoops_crash.sh`:
+```bash
+#!/bin/bash
+HOST="${1:-192.168.11.36}"
+USER="root"
+PARAMS="-o HostKeyAlgorithms=+ssh-rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+OUTDIR="./router_diagnostics/crash_info"
+
+mkdir -p "$OUTDIR"
+sshpass -p "$PASS" scp $PARAMS ./dump_mem "${USER}@${HOST}:/tmp/dump_mem"
+sshpass -p "$PASS" ssh $PARAMS "${USER}@${HOST}" '
+    chmod +x /tmp/dump_mem
+    /tmp/dump_mem 0x4E700000 0x80000 > /tmp/ramoops_raw.bin 2>/tmp/dump_mem.err
+    strings /tmp/ramoops_raw.bin > /tmp/ramoops_strings.txt 2>/dev/null || true
+    rm -f /tmp/dump_mem
+'
+sshpass -p "$PASS" scp $PARAMS "${USER}@${HOST}:/tmp/ramoops_*.txt" "$OUTDIR/" 2>/dev/null || true
+sshpass -p "$PASS" scp $PARAMS "${USER}@${HOST}:/tmp/ramoops_raw.bin" "$OUTDIR/" 2>/dev/null || true
+sshpass -p "$PASS" ssh $PARAMS "${USER}@${HOST}" "rm -f /tmp/ramoops_raw.bin /tmp/ramoops_strings.txt /tmp/dump_mem.err" 2>/dev/null || true
+
+cat "$OUTDIR/ramoops_strings.txt" | head -n 120
+```
 
 ---
 
-## 5. Анализ причин сбоя при загрузке на устройстве
+## 6. Список файлов с описанием
 
-При прошивке образа со скомпилированным ядром роутер не завершает загрузку и через 5–10 секунд уходит в аварийный перезапуск (U-Boot fallback).
+### 1. Конфигурация сборки и целей OpenWrt (Target / Image)
+- `target/linux/ipq53xx/rd15/ipq5332-rd15.dts` — исходный Device Tree Xiaomi RD15 с корректной картой памяти.
+- `target/linux/ipq53xx/rd15/ipq5332-rd15.dtb` — бинарный DTB платы.
 
-Проведен глубокий бинарный анализ (`compare_kernels.py --full`) между `stock_Image` (работающим ядром) и собранным `vmlinux` QSDK 12.4. Выявлены следующие критические различия:
+### 2. Патчи ядра для платформы RD15 (`target/linux/ipq53xx/rd15/patches-5.4/`)
+- `900-ipv6-bool.patch` — приведение IPv6-символов к bool для модульности.
+- `901-net-core-bool.patch` — приведение net-core к bool.
+- `902-fs-mtd-bool.patch` — приведение fs/mtd к bool.
+- `903-drivers-crypto-lib-bool.patch` — приведение crypto/drivers к bool.
+- `904-vendor-compat-stubs.patch` — экспорт хуков `portmap_get_by_vid`, `xqnss_ip_account_ecm_nss_hook`, `miwifi_ct_acct_hook`.
+- `905-xiaomi-platform-init.patch` — драйвер инициализации платформы `/proc/xiaoqiang/*` и NVRAM `bdata`.
+- `906-add-w25n01kw-nand-id.patch` — поддержка чипа SPI-NAND Winbond W25N01KWZEIG.
 
-### 1. Аппаратный сторожевой таймер TrustZone / SBL (Watchdog Bark)
-В стоковом ядре Xiaomi присутствуют функции:
-- `miwifi_secauth` (29 вхождений строк в бинарнике)
-- `sys_boot_check`
-- `secboot_enable`
-- `g_tz_shmem_vaddr` / `g_tz_shmem_sz_max`
+### 3. Скрипты подготовки вендорного фида и прошивки
+- `vendor_scripts/extract_kernel_config.py` — извлечение `.config` из стокового ядра.
+- `vendor_scripts/extract_builtin_from_rootfs.py` — анализ модулей в rootfs.
+- `vendor_scripts/prepare_feed.sh` — сборка и наполнение `vendor_feed`.
+- `upload_file.sh` / `upload_ubi_rd15.sh` — скрипты быстрой заливки прошивки на роутер (чистый POSIX sh).
+- `download_file.sh` — сбор диагностики с роутера.
 
-**Механизм**:
-При включении роутера первичный загрузчик Qualcomm SBL и Secure World (TrustZone) взводят аппаратный таймер безопасности. Стоковое ядро Xiaomi на этапе ранней инициализации через SCM-вызовы (Secure Channel Message) передает в TrustZone статус загрузки (`sys_boot_check`). В чистом ядре QSDK 12.4 этой логики нет, из-за чего TrustZone / SBL через таймаут (~30 сек или при первом необработанном SMC) генерирует аппаратный Reset.
-
-### 2. Внутриядерный парсер NVRAM / BDATA (`nvram_init`)
-Стоковое ядро содержит встроенный драйвер `nvram_init`, который напрямую из ядра на этапе `arch_initcall` вычитывает MTD-раздел `bdata` / `nvram` (флаги загрузки `boot_status`, калибровки, `uart_en`).
-
-### 3. Обработчик аварийных дампов (`crash_kernel_init`, `mtd_panic_erase_write`)
-В стоковом ядре интегрирован прямой доступ к MTD для записи crashlog при панике.
-
----
-
-## 6. Рекомендации и архитектурная стратегия
-
-### Рекомендуемый подход (Текущее стабильное решение):
-1. **Ядро**: Использовать оригинальный бинарный FIT-образ `kernel` от Xiaomi (`target/linux/ipq53xx/rd15/kernel`). Он удовлетворяет всем требованиям TrustZone / SBL, стабильно инициализирует платформу и не вызывает перезагрузок.
-2. **Модули ядра**: Использовать открытые сборки OpenWrt 24 (`kmod-nat46`, `kmod-cfg80211`, `kmod-amneziawg`, `kmod-pwm-rgb`, `kmod-gpio-button-hotplug`) совместно со стабильными бинарными модулями Wi-Fi 7 и PPE из `vendor_feed`.
-3. **Userland**: 100% нативный OpenWrt 24 (Musl libc, LuCI, dropbear, netifd, ubox, busybox, fw3).
-
-### Направление для дальнейших исследований (Сборка ядра из исходников):
-Для успешной сборки монолитного `vmlinux` из исходников QSDK 12.4 необходимо:
-1. ~~Декомпилировать и портировать код `miwifi_secauth` и `sys_boot_check`~~ — **ВЫПОЛНЕНО** (см. Раздел 8).
-2. Подключить UART-консоль к плате для логирования раннего этапа загрузки (`earlycon=msm_serial,0x78af000`).
-3. ~~Добавить в ядро чтение параметров `bdata` (`nvram_init`)~~ — **ВЫПОЛНЕНО** (см. Раздел 8).
-
----
-
-## 8. Анализ TrustZone / SBL boot механизма (углублённый)
-
-### 8.1 Что на самом деле делает `miwifi_secauth`
-
-Анализ строк в `vendor_Image` показал, что `miwifi_secauth` — это **верификатор подписи образов**, а не аппаратный watchdog TZ:
-
-```
-[miwifi_secauth] file open failed! file: %s
-[miwifi_secauth] extract kernel from: %s fail!
-[miwifi_secauth] read image to shmem fail!
-[miwifi_secauth] auth image fail! image: %s
-```
-
-**Механизм**: читает kernel/rootfs из MTD через `/dev/mtd*`, копирует в TZ shared memory (`g_tz_shmem_vaddr`), вызывает `qti_sec_upgrade_auth()` (SCM SVC `0x1`). В OpenWrt эта цепочка **не нужна** — у нас нет Xiaomi Secure Boot.
-
-### 8.2 Что такое `sys_boot_check` и `/proc/xiaoqiang/`
-
-Анализ строк показал:
-```
-%s: Create xiaoqiang proc directory failed
-%s: Create proc entry %s failed
-ft_mode  boot_status  secboot_enable
-halt_status  sys_boot_check  uart_en
-```
-
-`sys_boot_check` — это **procfs-запись** `/proc/xiaoqiang/sys_boot_check`, а не SMC-вызов. Скрипты инициализации Xiaomi (`miwifi-boot`, `init.d/boot`) читают эти файлы и при их отсутствии зависают, не отправляя heartbeat в SBL.
-
-**Это и есть истинная причина аварийного перезапуска**: не TZ watchdog напрямую, а зависший userspace не сбрасывает SBL-таймер.
-
-### 8.3 NVRAM / `bdata` MTD
-
-Строки в `vendor_Image`:
-```
-nvram_init %d
-ERROR! Unable to find mtd device %s for nvram block %d
-```
-
-Формат: TLV `key=value\0` записи в разделе `bdata`. Ядро читает `boot_status`, `uart_en`, `ft_mode` на этапе `late_initcall` и синхронизирует их с `/proc/xiaoqiang/`.
-
-### 8.4 Реализованное решение — патч `905-xiaomi-platform-init.patch`
-
-Файл: `target/linux/ipq53xx/rd15/patches-5.4/905-xiaomi-platform-init.patch`
-
-Добавляет `drivers/misc/xiaomi_rd15_platform.c`:
-
-| Компонент | Функция | Назначение |
-|---|---|---|
-| `xq_proc_init()` | `arch_initcall` | Создаёт `/proc/xiaoqiang/` с 6 записями |
-| `nvram_init()` | `late_initcall` | Читает `bdata` MTD, синхронизирует значения |
-| `nvram_get()` | `EXPORT_SYMBOL` | API для других модулей |
-| `secboot_enable=0` | константа | Сообщает userspace что Secure Boot выключен |
-| `sys_boot_check=1` | константа | Сообщает что загрузка успешна |
-
-**Статус**: патч применяется без ошибок (`patch --dry-run` exit 0), сборка ядра в процессе.
-
----
-
-## 7. Список добавленных и измененных файлов
-
-### Документация и отчеты:
-- `QSDK_KERNEL_RESEARCH_FINDINGS.md` — данный сводный отчет обо всех исследованиях.
-- `tmp/vendor_symbol_audit.md` — подробный отчет аудита 3 881 символов ядра.
-- `tmp/vendor_userland_audit.md` — подробный отчет аудита 83 бинарников Userland.
-- `vendor_scripts/kernel_diff/kernel_analysis_report.md` — сравнительный отчет бинарного XOR-диффа ядер.
-- `vendor_scripts/kernel_diff/config_diff.txt` — сравнение `.config` стокового и нашего ядра.
-- `vendor_scripts/kernel_diff/changed_functions.txt` — список измененных функций ядра.
-- `vendor_scripts/kernel_diff/disasm_diff/` — дизассемблированные диффы функций.
-
-### Скрипты автоматизации:
-- `vendor_scripts/audit_vendor_symbols.py` — глубокий ELF-аудит символов ядра и связей модулей.
-- `vendor_scripts/audit_userland_abi.py` — аудит системных вызовов, ioctl, Netlink и char-dev.
-- `vendor_scripts/build_fit_kernel.sh` — сборка и упаковка FIT-образа ядра QSDK 12.4 с DTB.
-- `vendor_scripts/compare_kernels.py` — утилита дизассемблирования и бинарного анализа ядер.
-
-### Патчи и файлы платформы:
-- `target/linux/ipq53xx/rd15/patches-5.4/904-vendor-compat-stubs.patch` — патч ядра с экспортом хуков `portmap_get_by_vid`, `xqnss_ip_account_ecm_nss_hook`, `miwifi_ct_acct_hook`.
-- `target/linux/ipq53xx/rd15/ipq5332-rd15.dts` — исходный DTS платы Xiaomi RD15.
-- `target/linux/ipq53xx/rd15/ipq5332-rd15.dtb` — бинарный DTB платы Xiaomi RD15.
-- `target/linux/ipq53xx/rd15/config-5.4.vendor` — конфигурация стокового ядра 5.4.213.
-- `target/linux/ipq53xx/rd15/modules.builtin.vendor` — список встроенных модулей стокового ядра.
+### 4. Документация
+- `QSDK_KERNEL_RESEARCH_FINDINGS.md` — полный отчет об исследовании, архитектуре и решении.

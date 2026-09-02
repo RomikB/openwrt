@@ -1,25 +1,27 @@
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -58,3 +58,4 @@
+@@ -1,3 +1,4 @@
  obj-$(CONFIG_PVPANIC)   	+= pvpanic.o
  obj-$(CONFIG_HABANA_AI)		+= habanalabs/
  obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
 +obj-y				+= xiaomi_rd15_platform.o
 --- /dev/null
 +++ b/drivers/misc/xiaomi_rd15_platform.c
-@@ -0,0 +1,203 @@
+@@ -0,0 +1,238 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Xiaomi Router BE3600 (RD15, IPQ5332) - Platform Init Stubs
 + *
 + * Implements:
 + *   1. /proc/xiaoqiang/ entries required by Xiaomi userspace daemons:
-+ *      boot_status, secboot_enable, ft_mode, sys_boot_check,
-+ *      halt_status, uart_en
++ *      boot_status (default 3), model ("RD15"), reset (43),
++ *      secboot_enable (0), ft_mode (0), sys_boot_check (1),
++ *      halt_status (0), uart_en (0)
 + *   2. nvram_init + nvram_get - reads env vars from MTD "bdata" partition
 + *
-+ * Without /proc/xiaoqiang/ the Xiaomi userspace init scripts hang at
-+ * early boot, which the SBL interprets as a boot failure -> hw reset.
++ * Without /proc/xiaoqiang/ entries (especially model and boot_status=3),
++ * Xiaomi userspace init scripts fail or hang at early boot, triggering
++ * hardware watchdog / SBL fallback reboot.
 + */
 +
 +#include <linux/kernel.h>
@@ -37,12 +39,14 @@
 +#define NVRAM_MAX_SIZE (64 * 1024)
 +
 +/* Platform state variables */
-+static u32 xq_boot_status    = 0;  /* 0=normal 1=recovery 2=factory */
-+static u32 xq_secboot_enable = 0;  /* 0=off (OpenWrt has no Xiaomi secboot) */
-+static u32 xq_ft_mode        = 0;  /* 0=normal 1=factory test */
++static u32 xq_boot_status    = 3;  /* 3=normal running on Xiaomi BE3600 */
++static u32 xq_reset          = 43; /* normal reboot code */
++static u32 xq_secboot_enable = 0;  /* 0=off */
++static u32 xq_ft_mode        = 0;  /* 0=normal */
 +static u32 xq_sys_boot_check = 1;  /* 1=boot OK */
 +static u32 xq_halt_status    = 0;
 +static u32 xq_uart_en        = 0;
++static char xq_model[32]     = "RD15";
 +
 +static struct proc_dir_entry *xq_proc_dir;
 +
@@ -83,18 +87,45 @@
 +	.release = single_release,
 +};
 +
++/* String proc handler (e.g. model) */
++static int xq_str_show(struct seq_file *m, void *v)
++{
++	seq_printf(m, "%s\n", (char *)m->private);
++	return 0;
++}
++
++static int xq_str_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, xq_str_show, PDE_DATA(inode));
++}
++
++static ssize_t xq_str_write(struct file *file, const char __user *buf,
++			     size_t count, loff_t *ppos)
++{
++	char *dst = PDE_DATA(file_inode(file));
++	size_t len = min(count, (size_t)31);
++
++	if (copy_from_user(dst, buf, len))
++		return -EFAULT;
++	dst[len] = '\0';
++	if (len > 0 && dst[len - 1] == '\n')
++		dst[len - 1] = '\0';
++	return count;
++}
++
++static const struct file_operations xq_str_fops = {
++	.owner   = THIS_MODULE,
++	.open    = xq_str_open,
++	.read    = seq_read,
++	.write   = xq_str_write,
++	.llseek  = seq_lseek,
++	.release = single_release,
++};
++
 +/* NVRAM from MTD "bdata" partition */
 +static char *nvram_buf;
 +static size_t nvram_len;
 +
-+/**
-+ * nvram_get - get value of an env variable from bdata NVRAM
-+ * @name: variable name (e.g. "boot_status", "uart_en", "SsidPrefix")
-+ *
-+ * NVRAM format: "key=value\0key=value\0..."
-+ * Returns pointer to value string, or NULL if not found.
-+ * Safe to call after nvram_init() late_initcall.
-+ */
 +const char *nvram_get(const char *name)
 +{
 +	const char *p, *end;
@@ -156,21 +187,25 @@
 +	v = nvram_get("uart_en");
 +	if (v)
 +		kstrtou32(v, 0, &xq_uart_en);
++	v = nvram_get("model");
++	if (v && strlen(v) < sizeof(xq_model))
++		strlcpy(xq_model, v, sizeof(xq_model));
 +
-+	pr_info("nvram_init: %zu bytes from '%s' boot_status=%u uart_en=%u\n",
-+		retlen, NVRAM_MTD_NAME, xq_boot_status, xq_uart_en);
++	pr_info("nvram_init: %zu bytes from '%s' model=%s boot_status=%u uart_en=%u\n",
++		retlen, NVRAM_MTD_NAME, xq_model, xq_boot_status, xq_uart_en);
 +	return 0;
 +}
 +EXPORT_SYMBOL(nvram_init);
 +late_initcall(nvram_init);
 +
-+/* /proc/xiaoqiang/ entries */
++/* /proc/xiaoqiang/ entries table */
 +static const struct {
 +	const char *name;
 +	u32 *val;
 +	umode_t mode;
-+} xq_proc_entries[] = {
++} xq_u32_entries[] = {
 +	{ "boot_status",    &xq_boot_status,    0644 },
++	{ "reset",          &xq_reset,          0644 },
 +	{ "secboot_enable", &xq_secboot_enable, 0444 },
 +	{ "ft_mode",        &xq_ft_mode,        0644 },
 +	{ "sys_boot_check", &xq_sys_boot_check, 0444 },
@@ -188,25 +223,25 @@
 +		return -ENOMEM;
 +	}
 +
-+	for (i = 0; i < ARRAY_SIZE(xq_proc_entries); i++) {
-+		if (!proc_create_data(xq_proc_entries[i].name,
-+				      xq_proc_entries[i].mode,
++	/* Create u32 entries */
++	for (i = 0; i < ARRAY_SIZE(xq_u32_entries); i++) {
++		if (!proc_create_data(xq_u32_entries[i].name,
++				      xq_u32_entries[i].mode,
 +				      xq_proc_dir,
 +				      &xq_u32_fops,
-+				      xq_proc_entries[i].val))
++				      xq_u32_entries[i].val))
 +			pr_err("xiaomi_rd15: Create proc entry %s failed\n",
-+			       xq_proc_entries[i].name);
++			       xq_u32_entries[i].name);
 +	}
 +
-+	pr_info("xiaomi_rd15_platform: /proc/%s/ ready (%u entries)\n",
-+		XQ_PROC_DIR, (unsigned int)ARRAY_SIZE(xq_proc_entries));
++	/* Create string entry for model */
++	if (!proc_create_data("model", 0644, xq_proc_dir, &xq_str_fops, xq_model))
++		pr_err("xiaomi_rd15: Create proc entry model failed\n");
++
++	pr_info("xiaomi_rd15_platform: /proc/%s/ ready (model=%s, boot_status=%u)\n",
++		XQ_PROC_DIR, xq_model, xq_boot_status);
 +	return 0;
 +}
-+
-+/*
-+ * arch_initcall: early init - creates proc dir before userspace starts.
-+ * nvram_init (late_initcall) syncs values from MTD after drivers are ready.
-+ */
 +arch_initcall(xq_proc_init);
 +
 +MODULE_DESCRIPTION("Xiaomi BE3600 (RD15 IPQ5332) platform init");

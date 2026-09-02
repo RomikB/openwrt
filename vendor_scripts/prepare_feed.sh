@@ -79,8 +79,6 @@ for kimg in "$TMP_DIR"/*/img-*_vol-kernel.ubifs "$TMP_DIR"/img-*_vol-kernel.ubif
 		echo "Found kernel volume: $kimg, copying to target/linux/ipq53xx/rd15/kernel..."
 		mkdir -p target/linux/ipq53xx/rd15
 		cp -f "$kimg" target/linux/ipq53xx/rd15/kernel
-		echo "Extracting kernel .config and generating modules.builtin..."
-		python3 ./vendor_scripts/extract_kernel_data.py "target/linux/ipq53xx/rd15/kernel" "target/linux/ipq53xx/rd15" "."
 		break
 	fi
 done

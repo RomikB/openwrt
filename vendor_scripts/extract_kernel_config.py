@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-extract_kernel_data.py
+extract_kernel_config.py
 
-Extracts the embedded kernel .config (IKCONFIG) and generates modules.builtin
-from a precompiled vendor Linux kernel FIT image.
+Extracts the embedded kernel .config (IKCONFIG) from a precompiled vendor Linux kernel FIT image.
 """
 
 import sys
@@ -202,15 +201,6 @@ def main():
     with open(config_out, "w", encoding="utf-8") as f:
         f.write(config_text)
     print(f"Saved kernel config to: {config_out}")
-
-    print("Scanning OpenWrt module definitions to build modules.builtin...")
-    builtin_modules = find_builtin_modules(configs_y, openwrt_root)
-
-    builtin_out = os.path.join(output_dir, "modules.builtin.vendor")
-    with open(builtin_out, "w", encoding="utf-8") as f:
-        for mod in builtin_modules:
-            f.write(f"{mod}\n")
-    print(f"Saved {len(builtin_modules)} built-in modules to: {builtin_out}")
 
 if __name__ == "__main__":
     main()

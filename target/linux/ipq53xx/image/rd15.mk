@@ -29,6 +29,8 @@ define Device/xiaomi-rd15-qsdk
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel)
 	DEVICE_DTS := ipq5332-rd15
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
+	DEVICE_DTS_DELIMITER := @
+	DEVICE_DTS_CONFIG := config@1
 	KERNEL_LOADADDR := 0x40008000
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
