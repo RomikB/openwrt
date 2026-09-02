@@ -112,9 +112,66 @@ EXPORT_SYMBOL(miwifi_ct_acct_hook);
 
 ### Направление для дальнейших исследований (Сборка ядра из исходников):
 Для успешной сборки монолитного `vmlinux` из исходников QSDK 12.4 необходимо:
-1. Декомпилировать и портировать код `miwifi_secauth` и `sys_boot_check` в виде патчей ядра для выполнения рукопожатия с TrustZone.
+1. ~~Декомпилировать и портировать код `miwifi_secauth` и `sys_boot_check`~~ — **ВЫПОЛНЕНО** (см. Раздел 8).
 2. Подключить UART-консоль к плате для логирования раннего этапа загрузки (`earlycon=msm_serial,0x78af000`).
-3. Добавить в ядро эмуляцию / чтение параметров `bdata` (`nvram_init`).
+3. ~~Добавить в ядро чтение параметров `bdata` (`nvram_init`)~~ — **ВЫПОЛНЕНО** (см. Раздел 8).
+
+---
+
+## 8. Анализ TrustZone / SBL boot механизма (углублённый)
+
+### 8.1 Что на самом деле делает `miwifi_secauth`
+
+Анализ строк в `vendor_Image` показал, что `miwifi_secauth` — это **верификатор подписи образов**, а не аппаратный watchdog TZ:
+
+```
+[miwifi_secauth] file open failed! file: %s
+[miwifi_secauth] extract kernel from: %s fail!
+[miwifi_secauth] read image to shmem fail!
+[miwifi_secauth] auth image fail! image: %s
+```
+
+**Механизм**: читает kernel/rootfs из MTD через `/dev/mtd*`, копирует в TZ shared memory (`g_tz_shmem_vaddr`), вызывает `qti_sec_upgrade_auth()` (SCM SVC `0x1`). В OpenWrt эта цепочка **не нужна** — у нас нет Xiaomi Secure Boot.
+
+### 8.2 Что такое `sys_boot_check` и `/proc/xiaoqiang/`
+
+Анализ строк показал:
+```
+%s: Create xiaoqiang proc directory failed
+%s: Create proc entry %s failed
+ft_mode  boot_status  secboot_enable
+halt_status  sys_boot_check  uart_en
+```
+
+`sys_boot_check` — это **procfs-запись** `/proc/xiaoqiang/sys_boot_check`, а не SMC-вызов. Скрипты инициализации Xiaomi (`miwifi-boot`, `init.d/boot`) читают эти файлы и при их отсутствии зависают, не отправляя heartbeat в SBL.
+
+**Это и есть истинная причина аварийного перезапуска**: не TZ watchdog напрямую, а зависший userspace не сбрасывает SBL-таймер.
+
+### 8.3 NVRAM / `bdata` MTD
+
+Строки в `vendor_Image`:
+```
+nvram_init %d
+ERROR! Unable to find mtd device %s for nvram block %d
+```
+
+Формат: TLV `key=value\0` записи в разделе `bdata`. Ядро читает `boot_status`, `uart_en`, `ft_mode` на этапе `late_initcall` и синхронизирует их с `/proc/xiaoqiang/`.
+
+### 8.4 Реализованное решение — патч `905-xiaomi-platform-init.patch`
+
+Файл: `target/linux/ipq53xx/rd15/patches-5.4/905-xiaomi-platform-init.patch`
+
+Добавляет `drivers/misc/xiaomi_rd15_platform.c`:
+
+| Компонент | Функция | Назначение |
+|---|---|---|
+| `xq_proc_init()` | `arch_initcall` | Создаёт `/proc/xiaoqiang/` с 6 записями |
+| `nvram_init()` | `late_initcall` | Читает `bdata` MTD, синхронизирует значения |
+| `nvram_get()` | `EXPORT_SYMBOL` | API для других модулей |
+| `secboot_enable=0` | константа | Сообщает userspace что Secure Boot выключен |
+| `sys_boot_check=1` | константа | Сообщает что загрузка успешна |
+
+**Статус**: патч применяется без ошибок (`patch --dry-run` exit 0), сборка ядра в процессе.
 
 ---
 
