@@ -19,5 +19,5 @@ define Kernel/Patch
 endef
 
 define Kernel/CompileImage
-	@echo "-=RB=-Kernel/CompileImage"
+	$(call Kernel/CompileImage/Default)
 endef
