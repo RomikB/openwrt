@@ -116,8 +116,8 @@ def patch_amneziawg_feed(repo_root):
     if not os.path.isdir(amneziawg_dir) or not os.path.isfile(makefile_path):
         return False
 
-    # 1. Makefile с правильными зависимостями под vendor ядро:
-    # +kmod-udptunnel4-vendor, +kmod-udptunnel6-vendor
+    # 1. Makefile с правильными зависимостями под ядро:
+    # +kmod-udptunnel4, +kmod-udptunnel6
     ...
     # 2. Создание patches/001-fix-kernel-5.4-compat.patch
     ...
@@ -142,7 +142,7 @@ src-git amneziawg https://github.com/Slava-Shchipunov/awg-openwrt.git
 ```bash
 python3 vendor_scripts/patch_feeds.py
 ```
-*(Скрипт настроит зависимости `kmod-amneziawg` на вендорные модули `udptunnel` и сгенерирует патч совместимости криптографии под ядро 5.4)*.
+*(Скрипт настроит зависимости `kmod-amneziawg` на нативные модули `kmod-udptunnel4`/`kmod-udptunnel6` и сгенерирует патч совместимости криптографии под ядро 5.4)*.
 
 ### 3. Выбор пакетов через `make menuconfig`
 Запустите конфигуратор:

@@ -102,13 +102,11 @@ define KernelPackage/amneziawg
 \tFILES:=$(PKG_BUILD_DIR)/$(MAKE_PATH)/amneziawg.ko
 \tEXTRA_DEPENDS:=
 \tDEPENDS:= \\
+\t\t+kmod-udptunnel4 \\
+\t\t+kmod-udptunnel6 \\
 \t\t$(if $(call kernel_version_cmp,-ge,$(LINUX_VERSION),5.6), \\
-\t\t\t+kmod-udptunnel4 \\
-\t\t\t+kmod-udptunnel6 \\
 \t\t\t+kmod-crypto-lib-chacha20poly1305 \\
-\t\t\t+kmod-crypto-lib-curve25519, \\
-\t\t\t+kmod-udptunnel4-vendor \\
-\t\t\t+kmod-udptunnel6-vendor \\
+\t\t\t+kmod-crypto-lib-curve25519 \\
 \t\t)
 endef
 
