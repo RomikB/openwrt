@@ -39,7 +39,7 @@ src/main.c:27:13: error: implicit declaration of function 'curve25519_mod_init'
 
 ## 3. Содержимое патча (`001-fix-kernel-5.4-compat.patch`)
 
-Файл располагается в `feeds/amneziawg/kmod-amneziawg/patches/001-fix-kernel-5.4-compat.patch`. Включает исключительно необходимые исправления совместимости криптографии ядра и заголовков (без лишнего отладочного логирования):
+Все необходимые исправления уже интегрированы в репозиторий фида [RomikB/amneziawg-openwrt](https://github.com/RomikB/amneziawg-openwrt). Патч располагается в `kmod-amneziawg/patches/001-fix-kernel-5.4-compat.patch` и включает исправления совместимости криптографии ядра и безопасную инициализацию `header_ops`:
 
 ```diff
 --- a/src/compat/compat.h
@@ -55,7 +55,20 @@ src/main.c:27:13: error: implicit declaration of function 'curve25519_mod_init'
  #endif
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
  #define blake2s_hmac zinc_blake2s_hmac
-@@ -1404,7 +1400,7 @@
+@@ -1103,11 +1099,8 @@
+ 		return htons(ETH_P_IPV6);
+ 	return 0;
+ }
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0) || defined(ISRHEL8)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0) || defined(ISRHEL8)
+ static const struct header_ops ip_tunnel_header_ops = { .parse_protocol = ip_tunnel_parse_protocol };
+-#else
+-#define header_ops hard_header_len
+-#define ip_tunnel_header_ops *(char *)0 - (char *)0
+ #endif
+ #endif
+ 
+@@ -1404,7 +1397,7 @@
  #include <crypto/blake2s.h>
  #define blake2s_ctx blake2s_state
  #define blake2s(key, keylen, in, inlen, out, outlen) \
@@ -91,6 +104,20 @@ src/main.c:27:13: error: implicit declaration of function 'curve25519_mod_init'
  int curve25519_mod_init(void);
  
  #endif
+--- a/src/device.c
++++ b/src/device.c
+@@ -300,7 +300,11 @@ static void wg_setup(struct net_device *dev)
+ 			     max(sizeof(struct ipv6hdr), sizeof(struct iphdr));
+ 
+ 	dev->netdev_ops = &netdev_ops;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+ 	dev->header_ops = &ip_tunnel_header_ops;
++#else
++	dev->header_ops = NULL;
++#endif
+ 	dev->hard_header_len = 0;
+ 	dev->addr_len = 0;
+ 	dev->needed_headroom = DATA_PACKET_HEAD_ROOM;
 --- a/src/main.c
 +++ b/src/main.c
 @@ -11,6 +11,7 @@
@@ -105,30 +132,21 @@ src/main.c:27:13: error: implicit declaration of function 'curve25519_mod_init'
 
 ---
 
-## 4. Автоматизация в `vendor_scripts/patch_feeds.py`
+## 4. Особенности фида в репозитории `RomikB/amneziawg-openwrt`
 
-Для сохранения воспроизводимости при обновлении feeds логика генерации патча и настройки `Makefile` включена в `vendor_scripts/patch_feeds.py`:
+Все необходимые изменения для нативной и стабильной сборки уже внесены в фид:
+1. **Тарболы GitHub с SHA256:** Пакеты `kmod-amneziawg` и `amneziawg-tools` переведены на скачивание архивов через GitHub `codeload` с валидацией по `PKG_HASH`, что предотвращает сбои анонимного `git clone` (HTTP 401).
+2. **Зависимости ядра:** В `kmod-amneziawg` используется стандартный макрос `$(if $(call kernel_patchver_ge,5.6),...)` для разделения криптографических модулей (для ядра 5.4 используются нативные `kmod-udptunnel4`/`kmod-udptunnel6`, а встроенная криптография Zinc собирается по патчу).
 
-```python
-def patch_amneziawg_feed(repo_root):
-    amneziawg_dir = os.path.join(repo_root, "feeds/amneziawg/kmod-amneziawg")
-    makefile_path = os.path.join(amneziawg_dir, "Makefile")
-    if not os.path.isdir(amneziawg_dir) or not os.path.isfile(makefile_path):
-        return False
 
-    # 1. Makefile с правильными зависимостями под ядро:
-    # +kmod-udptunnel4, +kmod-udptunnel6
-    ...
-    # 2. Создание patches/001-fix-kernel-5.4-compat.patch
-    ...
-```
+---
 
 ## 5. Включение AmneziaWG в общую сборку OpenWrt
 
 ### 1. Добавление и установка фида
-В файл `feeds.conf` (или `feeds.conf.default`) добавляется репозиторий фида AmneziaWG:
+В файл `feeds.conf` добавляется репозиторий:
 ```text
-src-git amneziawg https://github.com/Slava-Shchipunov/awg-openwrt.git
+src-git amneziawg https://github.com/RomikB/amneziawg-openwrt.git
 ```
 
 Затем выполняется загрузка и регистрация пакетов фида:
@@ -137,14 +155,7 @@ src-git amneziawg https://github.com/Slava-Shchipunov/awg-openwrt.git
 ./scripts/feeds install -a -p amneziawg
 ```
 
-### 2. Патчинг фида под ядро 5.4 QSDK
-Запустите скрипт автоматической адаптации фидов:
-```bash
-python3 vendor_scripts/patch_feeds.py
-```
-*(Скрипт настроит зависимости `kmod-amneziawg` на нативные модули `kmod-udptunnel4`/`kmod-udptunnel6` и сгенерирует патч совместимости криптографии под ядро 5.4)*.
-
-### 3. Выбор пакетов через `make menuconfig`
+### 2. Выбор пакетов через `make menuconfig`
 Запустите конфигуратор:
 ```bash
 make menuconfig
@@ -164,7 +175,7 @@ make menuconfig
 ./scripts/config --enable CONFIG_PACKAGE_luci-proto-amneziawg
 ```
 
-### 4. Запуск сборки
+### 3. Запуск сборки
 * **Сборка всей прошивки с AmneziaWG:**
   ```bash
   make -j$(nproc)

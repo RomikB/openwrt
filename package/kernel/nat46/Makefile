@@ -3,11 +3,11 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=nat46
 
-ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),eq,5.4)),1)
+ifeq ($(call kernel_patchver_eq,5.4),1)
   # QSDK 12.4 version for kernel 5.4 with PPE/ECM hardware MAP-T acceleration
   PKG_SOURCE_DATE:=2020-06-26
   PKG_SOURCE_VERSION:=1182f30785e4274913f01a8c3d7e1b5437ae3819
-  PKG_MIRROR_HASH:=0627c7122ff7432aadb443e92e11a9ad7710add0ff512eebe17d7e3c041e0d2a
+  PKG_MIRROR_HASH:=1f11eadbfb4f40b61a0e939fbf5aa3218b0ba0d3b01ed880f14f2d63c4a66ef1
   PATCH_DIR:=./patches-5.4
 else
   # Upstream OpenWrt 24 version for kernels 5.15+
