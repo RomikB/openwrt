@@ -39,6 +39,7 @@ define Device/xiaomi-rd15-qsdk
 	VID_HDR_OFFSET := 2048
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	ROOTFS_NAME := ubi_rootfs
+	DEVICE_PACKAGES := uboot-envtools
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
 endef
