@@ -66,12 +66,13 @@ make4.1+ perl python3.7+ rsync subversion unzip which
 7. Run `make menuconfig` to select your preferred configuration for the
    toolchain, target system & firmware packages.
 
-8. Run `make` to build your firmware. This will download all sources, build the
-   cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
-   applications for your target system.
+8. Run `./vendor_scripts/build_kmod_toolchain.sh` to build the dedicated kernel module toolchain (GCC 7.5.0) required for binary compatibility with the stock Linux 5.4.213 kernel and prebuilt vendor proprietary drivers. *(This script will automatically compile required host tools if not already present).*
 
-   The resulting UBI image will be generated at:
-   `bin/targets/ipq53xx/rd15/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi`
+9. Run `make` to compile the toolchain, packages, and firmware images.
+
+   The resulting UBI images will be generated at `bin/targets/ipq53xx/rd15/`:
+   * `openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi` (prebuilt vendor kernel)
+   * `openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi` (native QSDK kernel)
 
 ### Related Repositories
 

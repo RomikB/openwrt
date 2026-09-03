@@ -15,9 +15,16 @@ echo " Destination: ${TOOLCHAIN_DIR}"
 echo "================================================================="
 
 # Ensure host tools from OpenWrt are built
-if [ ! -d "${TOPDIR}/staging_dir/host/include" ] || [ ! -f "${TOPDIR}/staging_dir/host/bin/m4" ]; then
-    echo "Host tools in ${TOPDIR}/staging_dir/host not detected."
-    echo "Building OpenWrt host tools first..."
+STAMP_TOOLS_COMPILE="$(find "${TOPDIR}/staging_dir/host/stamp" -name ".tools_compile_*" 2>/dev/null | head -n 1 || true)"
+
+if [ -z "${STAMP_TOOLS_COMPILE}" ] || \
+   [ ! -f "${TOPDIR}/staging_dir/host/bin/m4" ] || \
+   [ ! -f "${TOPDIR}/staging_dir/host/include/gmp.h" ] || \
+   [ ! -f "${TOPDIR}/staging_dir/host/include/mpfr.h" ] || \
+   [ ! -f "${TOPDIR}/staging_dir/host/include/mpc.h" ] || \
+   [ ! -f "${TOPDIR}/staging_dir/host/lib/libmpc.a" ]; then
+    echo "Host tools / required libraries (GMP/MPFR/MPC) in staging_dir/host not complete."
+    echo "Building OpenWrt host tools first (make tools/install)..."
     make -C "${TOPDIR}" tools/install -j"$(nproc 2>/dev/null || echo 4)"
 fi
 

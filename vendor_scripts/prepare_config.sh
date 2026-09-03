@@ -16,7 +16,9 @@ rm -f .config
 
 enable TARGET_ipq53xx
 enable TARGET_ipq53xx_rd15
-enable TARGET_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
+enable TARGET_MULTI_PROFILE
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP
