@@ -20,6 +20,11 @@ enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
+enable PACKAGE_firewall
+disable PACKAGE_firewall4
+disable PACKAGE_nftables-json
+disable PACKAGE_nftables-nojson
+disable PACKAGE_kmod-nft-offload
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP
