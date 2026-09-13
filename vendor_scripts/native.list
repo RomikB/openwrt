@@ -24,6 +24,7 @@ kmod-crypto-sha1
 kmod-crypto-sha256
 kmod-crypto-xts
 kmod-dm
+kmod-emesh-sp
 kmod-fs-ext4
 kmod-gpio-button-hotplug
 kmod-gre
@@ -93,6 +94,7 @@ kmod-pppox
 kmod-pptp
 kmod-pwm-rgb
 kmod-qca-mcs
+kmod-qca-nss-ppe
 kmod-qca-ssdk-nohnat
 kmod-sched
 kmod-sched-core
