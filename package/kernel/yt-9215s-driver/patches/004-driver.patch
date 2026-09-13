@@ -1,6 +1,6 @@
 --- a/yt9215rb_mdio_driver/yt9215rb.c
 +++ b/yt9215rb_mdio_driver/yt9215rb.c
-@@ -1,136 +1,920 @@
+@@ -1,427 +1,1297 @@
 -#include <linux/proc_fs.h>
 +// SPDX-License-Identifier: GPL-2.0
 +/*
@@ -35,6 +35,7 @@
 +#include "yt_error.h"
 +#include "yt_init.h"
 +#include "yt_port.h"
++#include "yt_port_isolation.h"
 +#include "yt_vlan.h"
 +#include "yt_stat.h"
 +#include "cal_bprofile.h"
@@ -58,19 +59,21 @@
 +/* Forward declarations for SDK callbacks */
 +uint32_t rd15_smi_read(uint8_t phy_addr, uint8_t reg_addr, uint16_t *pVal);
 +uint32_t rd15_smi_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t val);
-+
-+/* Qualcomm PPE/ECM acceleration hook exported by the kernel */
-+extern int (*portmap_get_by_vid)(u32 vid, u32 *portmap) __attribute__((weak));
-+
-+static bool g_reset_gpio_requested;
-+
-+/* Hardware GPIO 510 Reset */
-+static int yt_hw_reset(void)
-+{
-+	struct gpio_desc *desc;
-+	int ret;
  
 -#include "yt9215rb.h"
++/* Qualcomm PPE/ECM acceleration hook exported by the kernel */
++extern int (*portmap_get_by_vid)(u32 vid, u32 *portmap) __attribute__((weak));
+ 
+-#define YT9215RB_PROC_DEBUG
++static bool g_reset_gpio_requested;
+ 
+-static u32 yt9215rb_smi_read(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum)
++/* Hardware GPIO 510 Reset */
++static int yt_hw_reset(void)
+ {
++	struct gpio_desc *desc;
+ 	int ret;
++
 +	ret = gpio_request(YT9215S_RESET_GPIO, "yt-hw-reset");
 +	if (ret == 0) {
 +		g_reset_gpio_requested = true;
@@ -78,8 +81,7 @@
 +		pr_err("[yt_switch] can't get yt-hw-reset %d\n", ret);
 +		return ret;
 +	}
- 
--#define YT9215RB_PROC_DEBUG
++
 +	desc = gpio_to_desc(YT9215S_RESET_GPIO);
 +	if (!desc || gpiod_direction_output_raw(desc, 0)) {
 +		pr_err("[yt_switch] can't set direction for yt-hw-reset\n");
@@ -138,11 +140,10 @@
 +	*pVal = (uint16_t)(ret & 0xffff);
 +	return CMM_ERR_OK;
 +}
- 
--static u32 yt9215rb_smi_read(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum)
++
 +uint32_t rd15_smi_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t val)
- {
- 	int ret;
++{
++	int ret;
 +
 +	if (!g_mii_bus)
 +		return CMM_ERR_FAIL;
@@ -245,8 +246,7 @@
 +		yt_direct_smi_write(0x000f0008, 0x1c0d);
 +		yt_direct_smi_write(0x000f0000, 1);
 +	}
- 
--static int yt9215rb_smi_write(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum, u32 val)
++
 +	/* 2. SerDes registers */
 +	yt_direct_smi_write(0x00303000, 0x1a5);
 +	yt_direct_smi_write(0x00303020, 0x1a5);
@@ -300,7 +300,8 @@
 +		yt_vlan_port_igrFilter_enable_set(0, i, YT_ENABLE);
 +		yt_vlan_port_egrFilter_enable_set(0, i, YT_ENABLE);
 +	}
-+
+ 
+-static int yt9215rb_smi_write(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum, u32 val)
 +	/* Set default VLANs:
 +	 * VLAN 1: WAN (port 3 untagged) + CPU SerDes (port 5 tagged)
 +	 * VLAN 2: LAN 2 (port 2 untagged) + CPU SerDes (port 5 tagged)
@@ -477,11 +478,7 @@
 +			else
 +				p += snprintf(portbuf + p, sizeof(portbuf) - p, "%dt", i);
 +		}
- 	}
--	if (ret >= 0){
--		ret = bus->write(bus, phy_id, reg, lo);
--	} else {
--		dev_err(&bus->dev, "failed to write yt9215rb 32bit register");
++	}
 +
 +	snprintf(g_vlan_info_buf, sizeof(g_vlan_info_buf),
 +		 "VLAN %d: Ports: '%s', members=%04x, untag=%04x, fid=0",
@@ -537,21 +534,13 @@
 +			else
 +				port->flags = (1 << SWITCH_PORT_FLAG_TAGGED);
 +		}
- 	}
--	return (ret > 0 ? 0 : ret);
++	}
 +	val->len = p;
 +	return 0;
- }
- 
--static u32 yt9215rb_read(struct yt9215rb_priv *priv, u32 regnum)
++}
++
 +static int yt_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *val)
- {
--	struct mii_bus *bus = priv->bus;
--	u32 val = 0;
--	mutex_lock(&priv->reg_mutex);
--	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
--	mutex_unlock(&priv->reg_mutex);
--	return val;
++{
 +	yt_port_mask_t member, untag;
 +	int i;
 +
@@ -575,20 +564,13 @@
 +	}
 +
 +	return yt_vlan_port_set(0, val->port_vlan, member, untag);
- }
- 
--static int yt9215rb_write(struct yt9215rb_priv *priv, u32 regnum, u32 val)
++}
++
 +static int yt_sw_get_port_link(struct switch_dev *dev, int port, struct switch_port_link *link)
- {
--	struct mii_bus *bus = priv->bus;
--	int ret = 0;
++{
 +	yt_port_linkStatus_all_t status;
 +	int err;
- 
--	mutex_lock(&priv->reg_mutex);
--	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
--	mutex_unlock(&priv->reg_mutex);
--	return ret;
++
 +	if (port >= dev->ports)
 +		return -EINVAL;
 +
@@ -621,41 +603,28 @@
 +		break;
 +	}
 +	return 0;
- }
- 
--static int yt9215rb_mask_write(struct yt9215rb_priv *priv, u32 regnum, u32 mask, u32 set)
++}
++
 +static int yt_sw_get_port_stats(struct switch_dev *dev, int port, struct switch_port_stats *stats)
- {
--	struct mii_bus *bus = priv->bus;
--	u32 val = 0;
--	int ret = 0;
++{
 +	yt_stat_mib_port_cnt_t mib;
 +
 +	if (port >= dev->ports)
 +		return -EINVAL;
- 
--	mutex_lock(&priv->reg_mutex);
--	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
--	val &= ~mask;
--	val |= set;
--	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
--	mutex_unlock(&priv->reg_mutex);
--	return ret;
++
 +	memset(&mib, 0, sizeof(mib));
 +	yt_stat_mib_port_get(0, port, &mib);
 +
 +	stats->rx_bytes = (unsigned long long)mib.RX_OKBYTE;
 +	stats->tx_bytes = (unsigned long long)mib.TX_OKBYTE;
 +	return 0;
- }
- 
++}
++
 +static int yt_sw_apply_config(struct switch_dev *dev)
 +{
 +	return 0;
 +}
- 
--#if defined(YT9215RB_PROC_DEBUG)
--static ssize_t yt9215rb_smi_write_proc(struct file *filp, const char *buffer, size_t count, loff_t *offp)
++
 +static int yt_sw_reset_switch(struct switch_dev *dev)
 +{
 +	yt_hw_setup();
@@ -731,7 +700,11 @@
 +	case 2: return 2;
 +	case 1: return 3;
 +	default: return port;
-+	}
+ 	}
+-	if (ret >= 0){
+-		ret = bus->write(bus, phy_id, reg, lo);
+-	} else {
+-		dev_err(&bus->dev, "failed to write yt9215rb 32bit register");
 +}
 +
 +static void yt_link_poll_worker(struct work_struct *work)
@@ -785,13 +758,21 @@
 +				dev_put(dev);
 +			}
 +		}
-+	}
+ 	}
+-	return (ret > 0 ? 0 : ret);
 +
 +	queue_delayed_work(g_yt_wq, &g_link_poll_work, msecs_to_jiffies(1000));
-+}
-+
+ }
+ 
+-static u32 yt9215rb_read(struct yt9215rb_priv *priv, u32 regnum)
 +static int portmap_proc_show(struct seq_file *m, void *v)
-+{
+ {
+-	struct mii_bus *bus = priv->bus;
+-	u32 val = 0;
+-	mutex_lock(&priv->reg_mutex);
+-	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
+-	mutex_unlock(&priv->reg_mutex);
+-	return val;
 +	int port = (int)(uintptr_t)m->private;
 +
 +	if (port >= 0 && port < 7) {
@@ -801,8 +782,9 @@
 +			seq_puts(m, "\n");
 +	}
 +	return 0;
-+}
-+
+ }
+ 
+-static int yt9215rb_write(struct yt9215rb_priv *priv, u32 regnum, u32 val)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
 +#define yt_pde_data(inode) pde_data(inode)
 +#else
@@ -810,10 +792,16 @@
 +#endif
 +
 +static int portmap_proc_open(struct inode *inode, struct file *file)
-+{
+ {
+-	struct mii_bus *bus = priv->bus;
+-	int ret = 0;
 +	return single_open(file, portmap_proc_show, yt_pde_data(inode));
 +}
-+
+ 
+-	mutex_lock(&priv->reg_mutex);
+-	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
+-	mutex_unlock(&priv->reg_mutex);
+-	return ret;
 +static ssize_t portmap_proc_write(struct file *file, const char __user *user_buf,
 +				  size_t count, loff_t *ppos)
 +{
@@ -933,12 +921,23 @@
 +	}
 +
 +	return 0;
-+}
-+
+ }
+ 
+-static int yt9215rb_mask_write(struct yt9215rb_priv *priv, u32 regnum, u32 mask, u32 set)
 +static void portmap_proc_deinit(void)
-+{
+ {
+-	struct mii_bus *bus = priv->bus;
+-	u32 val = 0;
+-	int ret = 0;
 +	int i;
-+
+ 
+-	mutex_lock(&priv->reg_mutex);
+-	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
+-	val &= ~mask;
+-	val |= set;
+-	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
+-	mutex_unlock(&priv->reg_mutex);
+-	return ret;
 +	if (g_portmap_dir) {
 +		for (i = 0; i < ARRAY_SIZE(portmap_names); i++)
 +			remove_proc_entry(portmap_names[i], g_portmap_dir);
@@ -946,8 +945,8 @@
 +		remove_proc_entry("portmap", NULL);
 +		g_portmap_dir = NULL;
 +	}
-+}
-+
+ }
+ 
 +/* Qualcomm PPE/ECM acceleration hook callback */
 +static int yt_portmap_get_by_vid(u32 vid, u32 *portmap)
 +{
@@ -973,7 +972,9 @@
 +	}
 +	return 0;
 +}
-+
+ 
+-#if defined(YT9215RB_PROC_DEBUG)
+-static ssize_t yt9215rb_smi_write_proc(struct file *filp, const char *buffer, size_t count, loff_t *offp)
 +/* Procfs /proc/smi and /proc/mib Handlers */
 +static ssize_t yt9215rb_smi_write_proc(struct file *filp, const char __user *buffer,
 +				       size_t count, loff_t *offp)
@@ -1003,7 +1004,8 @@
  			value = strsep(&str, "\t \n");
  			if (!value)
  				goto error;
-@@ -139,289 +923,226 @@
+-			regAddr = simple_strtoul(value, &value, 16);
+-			value = strsep(&str, "\t \n");
  			if (!value)
  				goto error;
  			regData = simple_strtoul(value, &value, 16);
@@ -1209,8 +1211,11 @@
  }
  
 -static void smi_mib_proc_create(struct yt9215rb_priv *priv)
--{
--
++/* SMI ioctl handler for /proc/smi (switch_ctl support) */
++static long yt9215rb_smi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
++	void __user *argp = (void __user *)arg;
+ 
 -	priv->smi_fops.proc_read  = NULL;
 -	priv->smi_fops.proc_write = yt9215rb_smi_write_proc;
 -	
@@ -1221,21 +1226,165 @@
 -	priv->mib_proc = proc_create_data("mib", 0666, NULL, &priv->mib_fops, priv);
 -
 -
--}
++	switch (cmd) {
++	case 0x201: { /* sw_reg write */
++		struct { u32 addr; u32 val; } reg;
++		if (copy_from_user(&reg, argp, sizeof(reg)))
++			return -EFAULT;
++		yt_direct_smi_write(reg.addr, reg.val);
++		return 0;
++	}
++	case 0x202: { /* sw_reg read */
++		struct { u32 addr; u32 val; } reg;
++		if (copy_from_user(&reg, argp, sizeof(reg)))
++			return -EFAULT;
++		reg.val = yt_direct_smi_read(reg.addr);
++		if (copy_to_user(argp, &reg, sizeof(reg)))
++			return -EFAULT;
++		return 0;
++	}
++	case 0x204: { /* phy power */
++		struct { u8 phy_id; u32 power; } p;
++		if (copy_from_user(&p, argp, sizeof(p)))
++			return -EFAULT;
++		if (p.phy_id < 6)
++			yt_port_enable_set(0, p.phy_id, p.power ? YT_ENABLE : YT_DISABLE);
++		return 0;
++	}
++	case 0x205: { /* phy autoNeg get */
++		struct { u8 phy_id; u32 enable; u32 speed_mask; } an;
++		yt_port_an_ability_t ab;
++		if (copy_from_user(&an, argp, sizeof(an)))
++			return -EFAULT;
++		if (an.phy_id < 6) {
++			if (yt_port_phyAutoNeg_ability_get(0, an.phy_id, &ab) == CMM_ERR_OK) {
++				if (ab.full_1000_en)
++					an.speed_mask = 1000;
++				else if (ab.full_100_en)
++					an.speed_mask = 100;
++				else if (ab.full_10_en)
++					an.speed_mask = 10;
++				else
++					an.speed_mask = 0;
++			}
++		}
++		if (copy_to_user(argp, &an, sizeof(an)))
++			return -EFAULT;
++		return 0;
++	}
++	case 0x206: { /* phy autoNeg set */
++		struct { u8 phy_id; u32 enable; u32 speed_mask; } an;
++		yt_port_an_ability_t ab = {0};
++		if (copy_from_user(&an, argp, sizeof(an)))
++			return -EFAULT;
++		if (an.phy_id < 6) {
++			if (an.speed_mask == 10) {
++				ab.half_10_en = 1;
++				ab.full_10_en = 1;
++			} else if (an.speed_mask == 100) {
++				ab.half_10_en = 1;
++				ab.full_10_en = 1;
++				ab.half_100_en = 1;
++				ab.full_100_en = 1;
++			} else {
++				/* 0 or 1000 or any: enable all speeds */
++				ab.half_10_en = 1;
++				ab.full_10_en = 1;
++				ab.half_100_en = 1;
++				ab.full_100_en = 1;
++				ab.full_1000_en = 1;
++			}
++			ab.fc_en = 1;
++			ab.asyFC_en = 1;
++			yt_port_phyAutoNeg_ability_set(0, an.phy_id, ab);
++			yt_port_phyAutoNeg_enable_set(0, an.phy_id, YT_ENABLE);
++		}
++		return 0;
++	}
++	case 0x207: { /* phy speed & duplex */
++		struct { u8 phy_id; u32 speed; u32 duplex; } sp;
++		yt_port_speed_duplex_t sd;
++		if (copy_from_user(&sp, argp, sizeof(sp)))
++			return -EFAULT;
++		if (sp.phy_id < 6) {
++			if (sp.speed == 1000)
++				sd = PORT_SPEED_DUP_1000FULL;
++			else if (sp.speed == 100)
++				sd = sp.duplex ? PORT_SPEED_DUP_100FULL : PORT_SPEED_DUP_100HALF;
++			else
++				sd = sp.duplex ? PORT_SPEED_DUP_10FULL : PORT_SPEED_DUP_10HALF;
++			yt_port_phy_force_set(0, sp.phy_id, sd);
++		}
++		return 0;
++	}
++	case 0x208: { /* phy reg write */
++		struct { u8 phy_id; u32 addr; u16 val; } pr;
++		if (copy_from_user(&pr, argp, sizeof(pr)))
++			return -EFAULT;
++		rd15_smi_write(pr.phy_id, pr.addr, pr.val);
++		return 0;
++	}
++	case 0x209: { /* phy reg read */
++		struct { u8 phy_id; u32 addr; u16 val; } pr;
++		if (copy_from_user(&pr, argp, sizeof(pr)))
++			return -EFAULT;
++		rd15_smi_read(pr.phy_id, pr.addr, &pr.val);
++		if (copy_to_user(argp, &pr, sizeof(pr)))
++			return -EFAULT;
++		return 0;
++	}
++	case 0x20c: { /* forward 0/1 */
++		yt_port_mask_t m;
++		u8 fwd = 0;
++		if (copy_from_user(&fwd, argp, sizeof(fwd)))
++			return -EFAULT;
++		memset(&m, 0, sizeof(m));
++		if (fwd) {
++			/* Normal forwarding: clear isolation mask (allow forwarding) */
++			m.portbits[0] = 0;
++			yt_port_isolation_set(0, 0, m);
++			yt_port_isolation_set(0, 1, m);
++			yt_port_isolation_set(0, 2, m);
++			yt_port_isolation_set(0, 3, m);
++			yt_port_isolation_set(0, 4, m);
++			yt_port_isolation_set(0, 5, m);
++		} else {
++			/* Stop port forward: isolate ports from each other */
++			m.portbits[0] = 0x3e; yt_port_isolation_set(0, 0, m);
++			m.portbits[0] = 0x3d; yt_port_isolation_set(0, 1, m);
++			m.portbits[0] = 0x3b; yt_port_isolation_set(0, 2, m);
++			m.portbits[0] = 0x37; yt_port_isolation_set(0, 3, m);
++			m.portbits[0] = 0x2f; yt_port_isolation_set(0, 4, m);
++			m.portbits[0] = 0x1f; yt_port_isolation_set(0, 5, m);
++		}
++		return 0;
++	}
++	case 0x200: { /* fdb dump */
++		return 0;
++	}
++	default:
++		return -EINVAL;
++	}
+ }
+-#else
+-static void smi_mib_proc_create(struct yt9215rb_priv *priv)
+-{
+ 
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 +static const struct proc_ops yt_smi_proc_ops = {
 +	.proc_write = yt9215rb_smi_write_proc,
++	.proc_ioctl = yt9215rb_smi_ioctl,
++	.proc_compat_ioctl = yt9215rb_smi_ioctl,
 +};
 +static const struct proc_ops yt_mib_proc_ops = {
 +	.proc_write = yt9215rb_mib_write_proc,
 +};
- #else
--static void smi_mib_proc_create(struct yt9215rb_priv *priv)
--{
--
++#else
 +static const struct file_operations yt_smi_fops = {
 +	.owner = THIS_MODULE,
 +	.write = yt9215rb_smi_write_proc,
++	.unlocked_ioctl = yt9215rb_smi_ioctl,
++	.compat_ioctl = yt9215rb_smi_ioctl,
 +};
 +static const struct file_operations yt_mib_fops = {
 +	.owner = THIS_MODULE,
@@ -1386,6 +1535,15 @@
  {
 -	struct yt9215rb_priv *priv;
 -	struct device_node   *dn;
+-
+-	dev_info(&mdiodev->dev,"%s enter...",__func__);
+-	dn = mdiodev->dev.of_node;
+-
+-	priv = devm_kzalloc(&mdiodev->dev, sizeof(struct yt9215rb_priv), GFP_KERNEL);
+-	if (!priv)
+-		return -ENOMEM;
+-	priv->bus = mdiodev->bus;
+-	priv->dev = &mdiodev->dev;
 +	if (g_yt_wq) {
 +		cancel_delayed_work_sync(&g_link_poll_work);
 +		destroy_workqueue(g_yt_wq);
@@ -1393,25 +1551,15 @@
 +		pr_info("[yt_switch] portmap timer deinit success\n");
 +	}
  
--	dev_info(&mdiodev->dev,"%s enter...",__func__);
--	dn = mdiodev->dev.of_node;
 +	if (&portmap_get_by_vid)
 +		portmap_get_by_vid = NULL;
 +	pr_info("[yt_switch] revert bonding support\n");
 +	pr_info("[yt_switch] portmap deinit success\n");
  
--	priv = devm_kzalloc(&mdiodev->dev, sizeof(struct yt9215rb_priv), GFP_KERNEL);
--	if (!priv)
--		return -ENOMEM;
--	priv->bus = mdiodev->bus;
--	priv->dev = &mdiodev->dev;
+-	yt9215rb_dt(priv, dn);
 +	portmap_proc_deinit();
 +	pr_info("[yt_switch] portmap proc deinit seccess!\n");
  
-+	unregister_switch(&yt_swdev);
- 
--	yt9215rb_dt(priv, dn);
--
 -	mutex_init(&priv->reg_mutex);
 -	
 -	yt9215rb_init(priv);
@@ -1419,7 +1567,8 @@
 -	smi_mib_proc_create(priv);
 -	return 0;
 -}
--
++	unregister_switch(&yt_swdev);
+ 
 -static void yt9215rb_remove(struct mdio_device *mdiodev)
 -{
 -//	struct yt9215rb_priv *priv = dev_get_drvdata(&mdiodev->dev);

@@ -13,7 +13,7 @@ DEFAULT_PACKAGES += \
 	luci iperf3 htop iw iwinfo \
 	kmod-bootconfig kmod-qca-nss-dp-vendor \
 	kmod-pwm-rgb kmod-gpio-button-hotplug \
-	nvram-vendor qca-ssdk-shell-vendor yt-9215s-client-vendor \
+	nvram-vendor qca-ssdk-shell-vendor \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
 	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
 	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
