@@ -1,0 +1,13 @@
+--- a/nss_dp_main.c
++++ b/nss_dp_main.c
+@@ -296,8 +296,10 @@ static int nss_dp_close(struct net_devi
+ 		return -EAGAIN;
+ 	}
+ 
++/*
+ 	if (dp_priv->phydev)
+ 		phy_stop(dp_priv->phydev);
++*/
+ 	dp_priv->link_state = __NSS_DP_LINK_DOWN;
+ 
+ #if defined(NSS_DP_PPE_SUPPORT)

@@ -11,12 +11,12 @@ DEFAULT_PACKAGES += \
 	-firewall4 -nftables -kmod-nft-offload \
 	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
 	luci iperf3 htop iw iwinfo \
-	kmod-bootconfig kmod-qca-nss-dp-vendor \
+	kmod-bootconfig kmod-qca-nss-dp kmod-qca-nss-ppe-vp kmod-qca-nss-ppe-rule kmod-qca-nss-ppe-ds kmod-qca-nss-ppe-tun kmod-qca-nss-ppe-pppoe-mgr kmod-qca-nss-ppe-vlan-mgr kmod-qca-nss-ppe-lag-mgr kmod-qca-nss-ppe-bridge-mgr kmod-qca-nss-ppe-vxlanmgr kmod-qca-nss-sfe kmod-qca-cnss \
 	kmod-pwm-rgb kmod-gpio-button-hotplug \
 	nvram-vendor qca-ssdk-shell-vendor \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
 	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
-	kmod-qca-nss-ecm-premium-vendor kmod-qca-nss-ppe-pppoe-mgr-vendor kmod-qca-nss-ppe-lag-mgr-vendor \
+	kmod-qca-nss-ecm-premium-vendor \
 	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
 	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor kmod-qca-nss-ecm-wifi-plugin-vendor \
 	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli-vendor qca-wpa-cli-vendor

@@ -1,0 +1,66 @@
+--- a/drv/ppe_tun/Makefile
++++ b/drv/ppe_tun/Makefile
+@@ -5,6 +5,14 @@ ccflags-y += -DPPE_BUILD_ID="$(BUILD_ID)
+ ccflags-y += -Wall -Werror
+ ccflags-y += -DPPE_TUN_DEBUG_LEVEL=3
+ 
++ifeq ($(PPE_LOWMEM_PROFILE_16M), y)
++ccflags-y += -DNSS_PPE_LOWMEM_PROFILE_16M
++endif
++
++ifeq ($(PPE_LOWMEM_PROFILE_256M), y)
++ccflags-y += -DNSS_PPE_LOWMEM_PROFILE_256M
++endif
++
+ obj-m += qca-nss-ppe-tun.o
+ qca-nss-ppe-tun-objs := ppe_tun.o
+ 
+--- a/drv/ppe_tun/ppe_tun.h
++++ b/drv/ppe_tun/ppe_tun.h
+@@ -19,7 +19,7 @@
+ #ifndef _PPE_TUN_H_
+ #define _PPE_TUN_H_
+ 
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(NSS_PPE_LOWMEM_PROFILE_16M) && !defined(NSS_PPE_LOWMEM_PROFILE_256M)
+ #include <ppe_acl.h>
+ #include <ppe_drv_sc.h>
+ #endif
+@@ -134,7 +134,7 @@ struct ppe_tun_priv {
+ 	struct dentry *dentry;			/* Debugfs entry */
+ 	struct ppe_tun_accel tun_accel;		/* Enable or disable acceleration per tunnel type */
+ 	struct ppe_tun_xcpn_mode xcpn_mode;	/* Toggle exception mode */
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(NSS_PPE_LOWMEM_PROFILE_16M) && !defined(NSS_PPE_LOWMEM_PROFILE_256M)
+ 	ppe_acl_rule_id_t ppe_tun_l2_tunnel_rule_id;	/* PPE ACL rule-id for L2 Tunnels */
+ #endif
+ 	atomic_t total_free;			/* Number of available tunnel instance*/
+--- a/drv/ppe_tun/ppe_tun.c
++++ b/drv/ppe_tun/ppe_tun.c
+@@ -1417,7 +1417,7 @@ const struct file_operations ppe_tun_l2t
+ static int __init ppe_tun_module_init(void)
+ {
+ 	struct dentry *dir;
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(NSS_PPE_LOWMEM_PROFILE_16M) && !defined(NSS_PPE_LOWMEM_PROFILE_256M)
+ 	ppe_acl_ret_t ret;
+ 	struct ppe_acl_rule rule = {0};
+ #endif
+@@ -1516,7 +1516,7 @@ static int __init ppe_tun_module_init(vo
+ 		ppe_tun_warn("failed to create debugfs entry for l2tp");
+ 	}
+ 
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(NSS_PPE_LOWMEM_PROFILE_16M) && !defined(NSS_PPE_LOWMEM_PROFILE_256M)
+ 	rule.cmn.cmn_flags = rule.cmn.cmn_flags & PPE_ACL_RULE_CMN_FLAG_NO_RULEID;
+ 	rule.stype = PPE_ACL_RULE_SRC_TYPE_SC;
+ 	rule.action.fwd_cmd = PPE_ACL_FWD_CMD_REDIR;
+@@ -1547,7 +1547,7 @@ static void __exit ppe_tun_module_exit(v
+ {
+ 	debugfs_remove_recursive(ptp->dentry);
+ 
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(NSS_PPE_LOWMEM_PROFILE_16M) && !defined(NSS_PPE_LOWMEM_PROFILE_256M)
+ 	ppe_acl_rule_destroy(ptp->ppe_tun_l2_tunnel_rule_id);
+ #endif
+ 
