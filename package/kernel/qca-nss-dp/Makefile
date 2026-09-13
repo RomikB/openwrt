@@ -60,7 +60,8 @@ endef
 
 EXTRA_CFLAGS+= \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk \
-	-I$(STAGING_DIR)/usr/include/qca-nss-ppe
+	-I$(STAGING_DIR)/usr/include/qca-nss-ppe \
+	-DNSS_DP_MEM_PROFILE_LOW
 
 NSS_DP_HAL_DIR:=$(PKG_BUILD_DIR)/hal
 
