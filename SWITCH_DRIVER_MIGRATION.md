@@ -570,3 +570,56 @@ static int __init yt9215_module_init(void)
 * **`target/linux/ipq53xx/image/rd15.mk`**:
   - В профиле `xiaomi-rd15-prebuild`: оставлен вендорный пакет `yt-9215s-client-vendor` (вместе с вендорными драйверами).
   - В профиле `xiaomi-rd15-qsdk`: подключен новый открытый пакет `yt-9215s-client` (вместе с открытыми `kmod-yt-9215s-driver` и `kmod-yt-phy-driver`).
+
+---
+
+## 11. Оптимизация потребления оперативной памяти и размера драйвера (`kmod-yt-9215s-driver`)
+
+### 11.1 Причина избыточного размера открытого драйвера
+После первоначальной сборки `kmod-yt-9215s-driver` из исходных кодов SDK Motorcomm было замечено существенное увеличение размера драйвера по сравнению со стоковым блобом Xiaomi:
+* **Стоковый бинарный блоб (`yt_switch.ko`)**: `.text` = 273 894 байт (~267 КБ), размер файла на диске: 367 КБ, память в `lsmod`: ~290 КБ.
+* **Базовая сборка открытого драйвера (Full Profile)**: `.text` = 422 988 байт (~413 КБ), размер файла на диске: 611 КБ, память в `lsmod`: ~434 КБ (+144 КБ в RAM, +244 КБ на flash).
+
+Анализ системы сборки SDK Motorcomm (`switch_sdk/config/kernel_module/env.h` и `switch_sdk/make/env/all.mds`) показал:
+1. По умолчанию в `env.h` был выставлен профиль `export SDK_MODEL_FULL=YES`.
+2. Профиль `FULL` компилирует абсолютно все 26 модулей Switch SDK (151 исходный C-файл), включая функции уровня Enterprise L2/L3-коммутаторов:
+   - `ACL` (Access Control Lists)
+   - `QOS` (Quality of Service очереди и планировщики)
+   - `RATE` (Traffic Shaping и Shaper)
+   - `HW_MULTICAST` (аппаратный IGMP/MLD снупинг)
+   - `NIC` (собственный интерфейс сетевой карты switch SDK)
+   - `OAM` (Operations, Administration and Maintenance 802.3ah/802.1ag)
+   - `DOT1X` (аутентификация 802.1X на портах)
+   - `DOS` (защита от DoS-атак на коммутатор)
+   - `STORM_CTRL` (Broadcast/Multicast storm control)
+   - `PORT_MIRROR` (зеркалирование портов)
+   - `DEBUG` (отладочный вывод и трассировка с -DDEBUG_INCLUDED)
+   - `LED`, `MONITOR`, `SENSOR`, `WOL`, `HW_LOOPDETECT`, `HW_STP`, `RMA`, `CTRLPKT`
+3. На домашнем маршрутизаторе Xiaomi BE3600 свитч выполняет исключительно роль аппаратного L2-коммутатора с разделением портов по VLAN (`swconfig`), опросом линков, сбором MIB-счетчиков и взаимодействием с Qualcomm ECM/PPE через `portmap_get_by_vid`. Все вышеперечисленные 18 Enterprise-модулей никогда не вызываются и лишь занимали память в невыгружаемой области ядра (`vmalloc`).
+
+### 11.2 Включение легковесного профиля `SDK_MODEL_CUST` (патч `005-lean-profile.patch`)
+Для кардинального сокращения потребления памяти и размера модуля был разработан патч `package/kernel/yt-9215s-driver/patches/005-lean-profile.patch`:
+1. В `switch_sdk/config/kernel_module/env.h`:
+   - Отключен `SDK_MODEL_FULL=YES`.
+   - Включен `SDK_MODEL_CUST=YES`.
+2. В `switch_sdk/make/env/cust.mds` включены **только те модули, которые реально требуются** для работы свитча на RD15:
+   - `MODULE_SYS = YES` — базовая инициализация чипа и регистров.
+   - `MODULE_PORT = YES` — управление PHY, link status, duplex, speed, auto-negotiation.
+   - `MODULE_PORT_ISO = YES` — изоляция портов (`forward 0/1`).
+   - `MODULE_VLAN = YES` — поддержка VLAN групп и тегирования в `swconfig`.
+   - `MODULE_STAT = YES` — чтение MIB-счетчиков байтов/пакетов в `/proc/mib`.
+   - `MODULE_L2 = YES` — таблица FDB и форвардинг L2 MAC-адресов.
+   - Все остальные 18 модулей (`ACL`, `QOS`, `NIC`, `DEBUG`, `DOS`, `RATE` и др.) переведены в `= NO`.
+
+### 11.3 Результаты оптимизации
+
+| Метрика | Стоковый блоб Xiaomi | Открытый драйвер (до) | Открытый драйвер (Lean Profile) | Эффект |
+| :--- | :--- | :--- | :--- | :--- |
+| **Секция кода `.text`** | 273 894 байт | 422 988 байт | **195 590 байт** | **-53.8% (-227 КБ)** |
+| **Бинарник `.ko` на диске** | ~367 КБ | 611 204 байт | **287 208 байт** | **-53.0% (-324 КБ)** |
+| **Размер пакета `.ipk`** | — | 157 464 байт | **81 043 байт** | **-48.5% (-76 КБ)** |
+| **Память ядра (`lsmod`)** | ~290 КБ | ~434 КБ | **~270 КБ** | **~-164 КБ RAM** |
+
+> [!TIP]
+> **Итог:** оптимизированный открытый драйвер `kmod-yt-9215s-driver` стал **компактнее даже оригинального закрытого блоба Xiaomi** (195 КБ кода против 273 КБ у блоба), полностью сохраняя всю необходимую функциональность коммутации, `swconfig`, `/proc/smi`, `/proc/mib` и Qualcomm PPE offloading.
+

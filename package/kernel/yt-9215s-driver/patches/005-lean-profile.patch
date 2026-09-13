@@ -1,0 +1,53 @@
+--- a/switch_sdk/config/kernel_module/env.h
++++ b/switch_sdk/config/kernel_module/env.h
+@@ -39,8 +39,8 @@
+ # PHY_YT8531 is not set
+ # end of Supported phy list
+ 
+-export SDK_MODEL_FULL=YES
+-# SDK_MODEL_CUST is not set
++# SDK_MODEL_FULL is not set
++export SDK_MODEL_CUST=YES
+ export YT_SDK_VERSION=
+ 
+ #
+--- a/switch_sdk/make/env/cust.mds
++++ b/switch_sdk/make/env/cust.mds
+@@ -2,29 +2,29 @@
+ 
+ MODULE_SYS              = YES
+ MODULE_ACL              = NO
+-MODULE_CTRLPKT          = YES
+-MODULE_DOS              = YES
++MODULE_CTRLPKT          = NO
++MODULE_DOS              = NO
+ MODULE_DOT1X            = NO
+ MODULE_INTERRUPT        = NO
+ MODULE_L2               = YES
+ MODULE_LAG              = NO
+ MODULE_HW_LOOPDETECT    = NO
+ MODULE_PORT_MIRROR      = NO
+ MODULE_HW_MULTICAST     = NO
+-MODULE_NIC              = YES
++MODULE_NIC              = NO
+ MODULE_OAM              = NO
+-MODULE_PORT             = NO
++MODULE_PORT             = YES
+ MODULE_PORT_ISO         = YES
+-MODULE_QOS              = YES
+-MODULE_RATE             = YES
++MODULE_QOS              = NO
++MODULE_RATE             = NO
+ MODULE_RMA              = NO
+-MODULE_STAT             = NO
++MODULE_STAT             = YES
+ MODULE_STORM_CTRL       = NO
+ MODULE_HW_STP           = NO
+ MODULE_VLAN             = YES
+ MODULE_VLAN_TRANS       = NO
+ MODULE_WOL              = NO
+ MODULE_LED              = NO
+ MODULE_MONITOR          = NO
+ MODULE_SENSOR           = NO
+-MODULE_DEBUG            = YES
++MODULE_DEBUG            = NO
