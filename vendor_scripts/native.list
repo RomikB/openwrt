@@ -92,6 +92,8 @@ kmod-pppol2tp
 kmod-pppox
 kmod-pptp
 kmod-pwm-rgb
+kmod-qca-mcs
+kmod-qca-ssdk-nohnat
 kmod-sched
 kmod-sched-core
 kmod-slhc

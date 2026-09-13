@@ -130,21 +130,31 @@ def compare_binary_text(our_ko, ven_ko):
     Извлекает секцию .text обоих файлов через objcopy и сравнивает побитово.
     Возвращает (is_identical, our_size, ven_size, diff_bytes_count).
     """
-    with tempfile.NamedTemporaryFile(suffix=".bin") as f1, tempfile.NamedTemporaryFile(suffix=".bin") as f2:
-        try:
-            subprocess.run([OBJCOPY, "-O", "binary", "--only-section=.text", str(our_ko), f1.name], check=True, stderr=subprocess.DEVNULL)
-            subprocess.run([OBJCOPY, "-O", "binary", "--only-section=.text", str(ven_ko), f2.name], check=True, stderr=subprocess.DEVNULL)
+    t1 = tempfile.NamedTemporaryFile(suffix=".bin", delete=False)
+    t2 = tempfile.NamedTemporaryFile(suffix=".bin", delete=False)
+    t1.close()
+    t2.close()
+    try:
+        subprocess.run([OBJCOPY, "-O", "binary", "--only-section=.text", str(our_ko), t1.name], check=True, stderr=subprocess.DEVNULL)
+        subprocess.run([OBJCOPY, "-O", "binary", "--only-section=.text", str(ven_ko), t2.name], check=True, stderr=subprocess.DEVNULL)
+        with open(t1.name, "rb") as f1, open(t2.name, "rb") as f2:
             b1 = f1.read()
             b2 = f2.read()
-            is_ident = (b1 == b2)
-            diff_count = 0
-            if not is_ident:
-                min_len = min(len(b1), len(b2))
-                diff_count = sum(1 for i in range(min_len) if b1[i] != b2[i]) + abs(len(b1) - len(b2))
-            return is_ident, len(b1), len(b2), diff_count
-        except Exception as e:
-            print(f"[!] Ошибка побитового сравнения: {e}")
-            return False, 0, 0, -1
+        is_ident = (b1 == b2)
+        diff_count = 0
+        if not is_ident:
+            min_len = min(len(b1), len(b2))
+            diff_count = sum(1 for i in range(min_len) if b1[i] != b2[i]) + abs(len(b1) - len(b2))
+        return is_ident, len(b1), len(b2), diff_count
+    except Exception as e:
+        print(f"[!] Ошибка побитового сравнения: {e}")
+        return False, 0, 0, -1
+    finally:
+        for p in (t1.name, t2.name):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
 
 
 def compare_functions_breakdown(our_ko, ven_ko):

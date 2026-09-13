@@ -1,0 +1,44 @@
+--- a/src/fal/fal_port_ctrl.c
++++ b/src/fal/fal_port_ctrl.c
+@@ -1008,11 +1008,14 @@
+ 	return hsl_port_phy_remote_loopback_get(dev_id, port_id, enable);
+ }
+ 
++#endif
++
+ static sw_error_t
+ _fal_port_reset (a_uint32_t dev_id, fal_port_t port_id)
+ {
+ 	return hsl_port_phy_reset(dev_id, port_id);
+ }
++#ifndef IN_PORTCONTROL_MINI
+ 
+ 
+ static sw_error_t
+@@ -2982,6 +2985,8 @@
+  * @param[out]
+  * @return SW_OK or error code
+  */
++#endif
++
+ sw_error_t
+ fal_port_reset (a_uint32_t dev_id, fal_port_t port_id)
+ {
+@@ -2992,6 +2997,7 @@
+   FAL_API_UNLOCK;
+   return rv;
+ }
++#ifndef IN_PORTCONTROL_MINI
+ 
+ /**
+  * @brief phy id on a particular port.
+@@ -3796,8 +3802,8 @@
+ EXPORT_SYMBOL(fal_port_local_loopback_get);
+ EXPORT_SYMBOL(fal_port_remote_loopback_set);
+ EXPORT_SYMBOL(fal_port_remote_loopback_get);
++#endif
+ EXPORT_SYMBOL(fal_port_reset);
+-#endif
+ EXPORT_SYMBOL(fal_port_combo_prefer_medium_set);
+ EXPORT_SYMBOL(fal_port_combo_prefer_medium_get);
+ EXPORT_SYMBOL(fal_port_power_off);
