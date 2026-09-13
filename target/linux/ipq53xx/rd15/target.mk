@@ -12,7 +12,6 @@ DEFAULT_PACKAGES += \
 	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
 	luci iperf3 htop iw iwinfo \
 	kmod-bootconfig kmod-qca-nss-dp-vendor \
-	kmod-yt-phy-driver-vendor \
 	kmod-pwm-rgb kmod-gpio-button-hotplug \
 	nvram-vendor qca-ssdk-shell-vendor yt-9215s-client-vendor \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \

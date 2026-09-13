@@ -14,15 +14,18 @@ boot() {
 	[ -f /proc/jffs2_bbc ] && echo "S" > /proc/jffs2_bbc
 	[ -f /proc/net/vlan/config ] && vconfig set_name_type DEV_PLUS_VID_NO_PAD
 
-	mkdir -p /var/run
-	ln -sf /var/run/ubus/ubus.sock /var/run/ubus.sock 2>/dev/null || true
-	mkdir -p /var/log
 	mkdir -p /var/lock
+	chmod 1777 /var/lock
+	mkdir -p /var/log
+	mkdir -p /var/run
+	ln -s /var/run /run
+	ln -s /var/lock /run/lock
 	mkdir -p /var/state
 	mkdir -p /var/tmp
 	mkdir -p /tmp/.uci
 	chmod 0700 /tmp/.uci
 	touch /var/log/wtmp
+	touch /var/log/lastlog
 	mkdir -p /tmp/resolv.conf.d
 	touch /tmp/resolv.conf.d/resolv.conf.auto
 	ln -sf /tmp/resolv.conf.d/resolv.conf.auto /tmp/resolv.conf
@@ -32,6 +35,9 @@ boot() {
 	[ "$FAILSAFE" = "true" ] && touch /tmp/.failsafe
 
 	/sbin/kmodloader
+
+	mkdir -p /tmp/.uci
+	[ -f /etc/uci-defaults/30_uboot-envtools ] && (. /etc/uci-defaults/30_uboot-envtools)
 
 	[ -f /etc/diag.sh ] && { . /etc/diag.sh; set_state booting; }
 
