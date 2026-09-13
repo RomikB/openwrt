@@ -1,0 +1,19 @@
+--- a/switch_sdk/config/kernel_module/env.h
++++ b/switch_sdk/config/kernel_module/env.h
+@@ -20,14 +20,14 @@
+ 
+ export Tiger=YES
+ # Board_AUTO_Detect is not set
+-export Board_YT9215_Default_Demo=YES
++# Board_YT9215_Default_Demo is not set
+ # Board_YT9218MB_Default_Demo is not set
+ # Board_YT9214NB_Default_Demo is not set
+ # Board_YT9215RB_Default_Demo is not set
+ # Board_YT9215RB_YT8531_Demo is not set
+ # Board_YT9215S_YT8531_Fib_Demo is not set
+ # Board_YT9215S_Fib_Demo is not set
+-# Board_YT9215SC_Default_Demo is not set
++export Board_YT9215SC_Default_Demo=YES
+ # Board_YT9218MB_YT8531_Demo is not set
+ # Board_YT9218N_Default_Demo is not set
+ # Board_Customer is not set

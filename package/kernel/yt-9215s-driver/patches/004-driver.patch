@@ -1,0 +1,1451 @@
+--- a/yt9215rb_mdio_driver/yt9215rb.c
++++ b/yt9215rb_mdio_driver/yt9215rb.c
+@@ -1,136 +1,920 @@
+-#include <linux/proc_fs.h>
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Motorcomm YT9215S Switch Driver for Xiaomi Router BE3600 (RD15)
++ *
++ * Supports autonomous MDIO probe via /soc/mdio@90000 and GPIO 510 reset,
++ * swconfig switch1 management, dynamic link carrier tracking via /proc/portmap,
++ * and Qualcomm PPE/ECM acceleration hook (portmap_get_by_vid).
++ */
++
+ #include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/uaccess.h>
++#include <linux/of.h>
+ #include <linux/of_mdio.h>
+ #include <linux/of_net.h>
+-#include <linux/of_platform.h>
+-#include <linux/mdio.h>
+-#include <net/dsa.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/delay.h>
++#include <linux/workqueue.h>
++#include <linux/netdevice.h>
++#include <linux/switch.h>
++#include <linux/version.h>
++
++#include "yt_types.h"
++#include "yt_error.h"
++#include "yt_init.h"
++#include "yt_port.h"
++#include "yt_vlan.h"
++#include "yt_stat.h"
++#include "cal_bprofile.h"
++
++#define YT9215S_PHY_ADDR	0x1D
++#define YT9215S_RESET_GPIO	510
++
++struct port_map_entry {
++	char ifname[IFNAMSIZ];
++	bool link_up;
++};
++
++static struct mii_bus *g_mii_bus;
++static struct port_map_entry g_portmap[7];
++static struct proc_dir_entry *g_portmap_dir;
++static struct delayed_work g_link_poll_work;
++static struct workqueue_struct *g_yt_wq;
++static struct proc_dir_entry *g_smi_proc;
++static struct proc_dir_entry *g_mib_proc;
++
++/* Forward declarations for SDK callbacks */
++uint32_t rd15_smi_read(uint8_t phy_addr, uint8_t reg_addr, uint16_t *pVal);
++uint32_t rd15_smi_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t val);
++
++/* Qualcomm PPE/ECM acceleration hook exported by the kernel */
++extern int (*portmap_get_by_vid)(u32 vid, u32 *portmap) __attribute__((weak));
++
++static bool g_reset_gpio_requested;
++
++/* Hardware GPIO 510 Reset */
++static int yt_hw_reset(void)
++{
++	struct gpio_desc *desc;
++	int ret;
+ 
+-#include "yt9215rb.h"
++	ret = gpio_request(YT9215S_RESET_GPIO, "yt-hw-reset");
++	if (ret == 0) {
++		g_reset_gpio_requested = true;
++	} else if (ret != -EBUSY) {
++		pr_err("[yt_switch] can't get yt-hw-reset %d\n", ret);
++		return ret;
++	}
+ 
+-#define YT9215RB_PROC_DEBUG
++	desc = gpio_to_desc(YT9215S_RESET_GPIO);
++	if (!desc || gpiod_direction_output_raw(desc, 0)) {
++		pr_err("[yt_switch] can't set direction for yt-hw-reset\n");
++		if (g_reset_gpio_requested) {
++			gpio_free(YT9215S_RESET_GPIO);
++			g_reset_gpio_requested = false;
++		}
++		return -1;
++	}
++
++	/* Reset LOW for 100ms */
++	usleep_range(100000, 110000);
++
++	/* Reset HIGH for 150ms */
++	gpiod_set_raw_value(desc, 1);
++	usleep_range(150000, 200000);
++
++	pr_info("[yt_switch] reset success\n");
++	return 0;
++}
++
++/* Find MDIO Bus on Qualcomm SoC */
++static int miwifi_smi_bus_init(void)
++{
++	struct device_node *np;
++
++	np = of_find_node_opts_by_path("/soc/mdio@90000", NULL);
++	if (!np) {
++		pr_err("[yt_switch] mdio-bus /soc/mdio@90000 not find\n");
++		return -ENODEV;
++	}
++
++	g_mii_bus = of_mdio_find_bus(np);
++	of_node_put(np);
++	if (!g_mii_bus) {
++		pr_err("[yt_switch] mdio-bus init failed\n");
++		return -ENODEV;
++	}
++
++	pr_info("[yt_switch] mdio-bus init success\n");
++	return 0;
++}
++
++/* Low-level SMI Read/Write Callbacks used by Motorcomm SDK */
++uint32_t rd15_smi_read(uint8_t phy_addr, uint8_t reg_addr, uint16_t *pVal)
++{
++	int ret;
++
++	if (!g_mii_bus)
++		return CMM_ERR_FAIL;
++
++	ret = mdiobus_read(g_mii_bus, phy_addr, reg_addr);
++	if (ret < 0)
++		return CMM_ERR_FAIL;
++
++	*pVal = (uint16_t)(ret & 0xffff);
++	return CMM_ERR_OK;
++}
+ 
+-static u32 yt9215rb_smi_read(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum)
++uint32_t rd15_smi_write(uint8_t phy_addr, uint8_t reg_addr, uint16_t val)
+ {
+ 	int ret;
++
++	if (!g_mii_bus)
++		return CMM_ERR_FAIL;
++
++	ret = mdiobus_write(g_mii_bus, phy_addr, reg_addr, val);
++	return (ret < 0) ? CMM_ERR_FAIL : CMM_ERR_OK;
++}
++
++/* Direct 32-bit Register Access over SMI */
++static int yt_direct_smi_write(u32 regnum, u32 val)
++{
+ 	u16 lo, hi;
+-	u32 reg,val;
++	int ret;
++
++	if (!g_mii_bus)
++		return -ENODEV;
+ 
+-	/* set reg address*/
+-	lo = regnum & 0xffff;
+ 	hi = (u16)(regnum >> 16);
+-	reg = (sw_id<<2)|(YT9215RB_REG_ADDR_BIT1_ADDR<<1)|(YT9215RB_REG_ADDR_BIT0_READ);
+-	ret = bus->write(bus, phy_id, reg, hi);
++	lo = (u16)(regnum & 0xffff);
++	ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 0, hi);
+ 	if (ret >= 0)
+-		ret = bus->write(bus, phy_id, reg, lo);
++		ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 0, lo);
+ 
+-	/* get reg value*/
+-	lo = 0;
+-	hi = 0;
+-	reg = (sw_id<<2)|(YT9215RB_REG_ADDR_BIT1_DATA<<1)|(YT9215RB_REG_ADDR_BIT0_READ);
++	hi = (u16)(val >> 16);
++	lo = (u16)(val & 0xffff);
++	if (ret >= 0)
++		ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 2, hi);
+ 	if (ret >= 0)
+-		ret = bus->read(bus, phy_id, reg);
++		ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 2, lo);
++
++	return ret >= 0 ? 0 : ret;
++}
++
++static u32 yt_direct_smi_read(u32 regnum)
++{
++	u16 lo = 0, hi = 0;
++	int ret;
++
++	if (!g_mii_bus)
++		return 0;
++
++	hi = (u16)(regnum >> 16);
++	lo = (u16)(regnum & 0xffff);
++	ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 1, hi);
++	if (ret >= 0)
++		ret = mdiobus_write(g_mii_bus, YT9215S_PHY_ADDR, 1, lo);
++
++	if (ret >= 0)
++		ret = mdiobus_read(g_mii_bus, YT9215S_PHY_ADDR, 3);
+ 	if (ret >= 0) {
+ 		hi = (u16)(ret & 0xffff);
+-		ret = bus->read(bus, phy_id, reg);
++		ret = mdiobus_read(g_mii_bus, YT9215S_PHY_ADDR, 3);
+ 	}
+-	if (ret >= 0){
++	if (ret >= 0) {
+ 		lo = (u16)(ret & 0xffff);
+-		val = (hi << 16) | (lo & 0xffff);
+-	} else {
+-		dev_err(&bus->dev, "failed to read yt9215rb 32bit register");
+-		return ret;
++		return ((u32)hi << 16) | lo;
+ 	}
+-	return val;
++	return 0;
+ }
+ 
++/* Hardware L2 and SerDes 2.5G Matrix Setup */
++static void yt_hw_setup(void)
++{
++	int i;
++	yt_port_force_ctrl_t force_ctrl;
++
++	/* 1. Indirect registers */
++	yt_direct_smi_write(0x000f0004, 0x011e0904);
++	yt_direct_smi_write(0x000f0008, 0xa0);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011f0904);
++	yt_direct_smi_write(0x000f0008, 0x8c00);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	for (i = 0; i < 4; i++) {
++		yt_direct_smi_write(0x000f0004, 0x001e0904 | (i << 21));
++		yt_direct_smi_write(0x000f0008, 0);
++		yt_direct_smi_write(0x000f0000, 1);
++
++		yt_direct_smi_write(0x000f0004, 0x001f0904 | (i << 21));
++		yt_direct_smi_write(0x000f0008, 0x1c0d);
++		yt_direct_smi_write(0x000f0000, 1);
++	}
+ 
+-static int yt9215rb_smi_write(struct mii_bus *bus, int phy_id, int sw_id, u32 regnum, u32 val)
++	/* 2. SerDes registers */
++	yt_direct_smi_write(0x00303000, 0x1a5);
++	yt_direct_smi_write(0x00303020, 0x1a5);
++
++	/* 3. Port 5 (Uplink 2.5G) */
++	yt_port_enable_set(0, 5, YT_ENABLE);
++	memset(&force_ctrl, 0, sizeof(force_ctrl));
++	force_ctrl.speed_dup = PORT_SPEED_DUP_2500FULL;
++	force_ctrl.rx_fc_en = YT_ENABLE;
++	force_ctrl.tx_fc_en = YT_ENABLE;
++	yt_port_mac_force_set(0, 5, force_ctrl);
++	yt_direct_smi_write(0x00080028, 1);
++
++	/* 4. External Ports (1, 2, 3, 4) */
++	for (i = 1; i <= 4; i++)
++		yt_port_enable_set(0, i, YT_ENABLE);
++
++	/* 5. Ingress TPID, Egress Tag Modes, Filters and default VLANs */
++	{
++		yt_tpid_profiles_t tpid;
++		memset(&tpid, 0, sizeof(tpid));
++		tpid.tpid[0] = 0x8100;
++		tpid.tpid[1] = 0x8100;
++		tpid.tpid[2] = 0x88a8;
++		tpid.tpid[3] = 0x88a8;
++		yt_vlan_igrTpid_set(0, tpid);
++	}
++
++	/* CPU SerDes Uplink (port 5 and 4): Egress MUST be TAGGED for eth0.x subinterfaces */
++	yt_vlan_port_egrTagMode_set(0, VLAN_TYPE_CVLAN, 5, VLAN_TAG_MODE_TAGGED);
++	yt_vlan_port_egrTagMode_set(0, VLAN_TYPE_CVLAN, 4, VLAN_TAG_MODE_TAGGED);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 5, 1);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 4, 1);
++
++	/* External ports (0..3): Egress UNTAGGED */
++	for (i = 0; i <= 3; i++)
++		yt_vlan_port_egrTagMode_set(0, VLAN_TYPE_CVLAN, i, VLAN_TAG_MODE_UNTAGGED);
++
++	/* Ingress TPID mask for CPU SerDes: enable CTAG profile 0 & 1 */
++	yt_vlan_port_igrTpidSel_set(0, VLAN_TYPE_CVLAN, 5, 0x3);
++	yt_vlan_port_igrTpidSel_set(0, VLAN_TYPE_CVLAN, 4, 0x3);
++
++	/* External copper ports parser ctrl: clear CTAG/STAG */
++	yt_direct_smi_write(0x00210010, 0);
++	yt_direct_smi_write(0x00210014, 0);
++	yt_direct_smi_write(0x00210018, 0);
++	yt_direct_smi_write(0x0021001c, 0);
++
++	for (i = 0; i <= 5; i++) {
++		yt_vlan_port_aft_set(0, VLAN_TYPE_CVLAN, i, VLAN_AFT_ALL);
++		yt_vlan_port_igrFilter_enable_set(0, i, YT_ENABLE);
++		yt_vlan_port_egrFilter_enable_set(0, i, YT_ENABLE);
++	}
++
++	/* Set default VLANs:
++	 * VLAN 1: WAN (port 3 untagged) + CPU SerDes (port 5 tagged)
++	 * VLAN 2: LAN 2 (port 2 untagged) + CPU SerDes (port 5 tagged)
++	 * VLAN 3: LAN 1 (port 1 untagged) + CPU SerDes (port 5 tagged)
++	 */
++	{
++		yt_port_mask_t m, u;
++		memset(&m, 0, sizeof(m));
++		memset(&u, 0, sizeof(u));
++		m.portbits[0] = (1 << 3) | (1 << 5);
++		u.portbits[0] = (1 << 3);
++		yt_vlan_port_set(0, 1, m, u);
++
++		m.portbits[0] = (1 << 2) | (1 << 5);
++		u.portbits[0] = (1 << 2);
++		yt_vlan_port_set(0, 2, m, u);
++
++		m.portbits[0] = (1 << 1) | (1 << 5);
++		u.portbits[0] = (1 << 1);
++		yt_vlan_port_set(0, 3, m, u);
++	}
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 1, 3);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 2, 2);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 3, 1);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 4, 1);
++	yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, 5, 1);
++
++	/* 6. LED registers (0xd0000 = 0x20e002, 0xd0004..0xd001c = 0x670) */
++	yt_direct_smi_write(0xd0000, 0x20e002);
++	for (i = 0xd0004; i <= 0xd001c; i += 4)
++		yt_direct_smi_write(i, 0x670);
++
++	/* 7. Additional indirect registers */
++	yt_direct_smi_write(0x0008008c, 0x27a);
++	yt_direct_smi_write(0x00080028, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011e0804);
++	yt_direct_smi_write(0x000f0008, 0xa0);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011f0804);
++	yt_direct_smi_write(0x000f0008, 0x8c00);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011e0804);
++	yt_direct_smi_write(0x000f0008, 0xa2);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011f0804);
++	yt_direct_smi_write(0x000f0008, 0x112);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011e0804);
++	yt_direct_smi_write(0x000f0008, 0xa1);
++	yt_direct_smi_write(0x000f0000, 1);
++
++	yt_direct_smi_write(0x000f0004, 0x011f0804);
++	yt_direct_smi_write(0x000f0008, 0x8ce);
++	yt_direct_smi_write(0x000f0000, 1);
++}
++
++/* Swconfig Operations */
++static int yt_sw_set_enable_vlan(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+ {
+-	u16 lo, hi;
+-	u32 reg;
+-	int ret;	
+-	
+-	/* set reg address*/
+-	lo = regnum & 0xffff;
+-	hi = (u16)(regnum >> 16);
+-	reg = (sw_id<<2)|(YT9215RB_REG_ADDR_BIT1_ADDR<<1)|(YT9215RB_REG_ADDR_BIT0_WRITE);
+-	ret = bus->write(bus, phy_id, reg, hi);
+-	if (ret >= 0){
+-		ret = bus->write(bus, phy_id, reg, lo);
++	return 0;
++}
++
++static int yt_sw_get_enable_vlan(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
++{
++	val->value.i = 1;
++	return 0;
++}
++
++static char g_mib_buf[1024];
++
++static int yt_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
++{
++	yt_stat_mib_port_cnt_t mib;
++	int port = val->port_vlan;
++
++	if (port >= dev->ports)
++		return -EINVAL;
++
++	memset(&mib, 0, sizeof(mib));
++	yt_stat_mib_port_get(0, port, &mib);
++
++	snprintf(g_mib_buf, sizeof(g_mib_buf),
++		"Port %d MIB counters\n"
++		"RX_BROAD                            : %u\n"
++		"RX_PAUSE                            : %u\n"
++		"RX_MULTI                            : %u\n"
++		"RX_FCSERR                           : %u\n"
++		"RX_64B                              : %u\n"
++		"RX_65_127B                          : %u\n"
++		"RX_128_255B                         : %u\n"
++		"RX_256_511B                         : %u\n"
++		"RX_512_1023B                        : %u\n"
++		"RX_1024_1518B                       : %u\n"
++		"RX_BYTES                            : %llu\n"
++		"RX_NOT_OKBYTE                       : %llu\n"
++		"RX_DROP                             : %u\n"
++		"QM_FILTER                           : 0\n"
++		"TX_BROAD                            : %u\n"
++		"TX_PAUSE                            : %u\n"
++		"TX_MULTI                            : %u\n"
++		"TX_64B                              : %u\n"
++		"TX_65_127B                          : %u\n"
++		"TX_128_255B                         : %u\n"
++		"TX_256_511B                         : %u\n"
++		"TX_512_1023B                        : %u\n"
++		"TX_1024_1518B                       : %u\n"
++		"TX_JUMBO                            : %u\n"
++		"TX_BYTES                            : %llu\n"
++		"TX_COLLISION                        : %u\n"
++		"TX_DROP                             : %u\n",
++		port,
++		mib.RX_BROADCAST, mib.RX_PAUSE, mib.RX_MULTICAST, mib.RX_FCS_ERR,
++		mib.RX_64B, mib.RX_65_127B, mib.RX_128_255B, mib.RX_256_511B,
++		mib.RX_512_1023B, mib.RX_1024_1518B, (unsigned long long)mib.RX_OKBYTE,
++		(unsigned long long)mib.RX_NOT_OKBYTE, mib.RX_DISCARD,
++		mib.TX_BROADCAST, mib.TX_PAUSE, mib.TX_MULTICAST,
++		mib.TX_64B, mib.TX_65_127B, mib.TX_128_255B, mib.TX_256_511B,
++		mib.TX_512_1023B, mib.TX_1024_1518B, mib.TX_JUMBO,
++		(unsigned long long)mib.TX_OKBYTE, mib.TX_COLLISION,
++		mib.TX_EXCESSIVE_COLLISION);
++
++	val->value.s = g_mib_buf;
++	return 0;
++}
++
++static char g_vlan_info_buf[256];
++
++static int yt_sw_get_vlan_info(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
++{
++	yt_port_mask_t member, untag;
++	char portbuf[32] = {0};
++	u32 mem_bits, untag_bits;
++	int i, p = 0;
++
++	if (val->port_vlan >= dev->vlans)
++		return -EINVAL;
++
++	memset(&member, 0, sizeof(member));
++	memset(&untag, 0, sizeof(untag));
++	yt_vlan_port_get(0, val->port_vlan, &member, &untag);
++	mem_bits = member.portbits[0];
++	untag_bits = untag.portbits[0];
++	if (!mem_bits) {
++		val->value.s = "";
++		return 0;
+ 	}
+ 
+-	/* set reg value*/
+-	lo = val & 0xffff;
+-	hi = (u16)(val >> 16);
+-	reg = (sw_id<<2)|(YT9215RB_REG_ADDR_BIT1_DATA<<1)|(YT9215RB_REG_ADDR_BIT0_WRITE);
+-	if (ret >= 0){
+-		ret = bus->write(bus, phy_id, reg, hi);
++	for (i = 0; i < dev->ports; i++) {
++		if (mem_bits & (1 << i)) {
++			if (untag_bits & (1 << i))
++				p += snprintf(portbuf + p, sizeof(portbuf) - p, "%d", i);
++			else
++				p += snprintf(portbuf + p, sizeof(portbuf) - p, "%dt", i);
++		}
+ 	}
+-	if (ret >= 0){
+-		ret = bus->write(bus, phy_id, reg, lo);
+-	} else {
+-		dev_err(&bus->dev, "failed to write yt9215rb 32bit register");
++
++	snprintf(g_vlan_info_buf, sizeof(g_vlan_info_buf),
++		 "VLAN %d: Ports: '%s', members=%04x, untag=%04x, fid=0",
++		 val->port_vlan, portbuf, mem_bits, untag_bits);
++	val->value.s = g_vlan_info_buf;
++	return 0;
++}
++
++static int yt_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
++{
++	yt_vlan_t pvid = 1;
++	int err;
++
++	if (port >= dev->ports)
++		return -EINVAL;
++
++	err = yt_vlan_port_igrPvid_get(0, VLAN_TYPE_CVLAN, port, &pvid);
++	if (err)
++		return -EINVAL;
++
++	*val = pvid;
++	return 0;
++}
++
++static int yt_sw_set_port_pvid(struct switch_dev *dev, int port, int val)
++{
++	if (port >= dev->ports)
++		return -EINVAL;
++
++	return yt_vlan_port_igrPvid_set(0, VLAN_TYPE_CVLAN, port, val);
++}
++
++static int yt_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *val)
++{
++	yt_port_mask_t member, untag;
++	int err, i, p = 0;
++
++	if (val->port_vlan >= dev->vlans)
++		return -EINVAL;
++
++	memset(&member, 0, sizeof(member));
++	memset(&untag, 0, sizeof(untag));
++	err = yt_vlan_port_get(0, val->port_vlan, &member, &untag);
++	if (err)
++		return -EINVAL;
++
++	for (i = 0; i < dev->ports; i++) {
++		if (member.portbits[0] & (1 << i)) {
++			struct switch_port *port = &val->value.ports[p++];
++			port->id = i;
++			if (untag.portbits[0] & (1 << i))
++				port->flags = 0;
++			else
++				port->flags = (1 << SWITCH_PORT_FLAG_TAGGED);
++		}
+ 	}
+-	return (ret > 0 ? 0 : ret);
++	val->len = p;
++	return 0;
+ }
+ 
+-static u32 yt9215rb_read(struct yt9215rb_priv *priv, u32 regnum)
++static int yt_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *val)
+ {
+-	struct mii_bus *bus = priv->bus;
+-	u32 val = 0;
+-	mutex_lock(&priv->reg_mutex);
+-	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
+-	mutex_unlock(&priv->reg_mutex);
+-	return val;
++	yt_port_mask_t member, untag;
++	int i;
++
++	if (val->port_vlan >= dev->vlans)
++		return -EINVAL;
++
++	memset(&member, 0, sizeof(member));
++	memset(&untag, 0, sizeof(untag));
++	for (i = 0; i < val->len; i++) {
++		struct switch_port *p = &val->value.ports[i];
++		if (p->id >= dev->ports)
++			return -EINVAL;
++		member.portbits[0] |= (1 << p->id);
++		if (!(p->flags & (1 << SWITCH_PORT_FLAG_TAGGED))) {
++			untag.portbits[0] |= (1 << p->id);
++			if (p->id != 5 && p->id != 4)
++				yt_vlan_port_egrTagMode_set(0, VLAN_TYPE_CVLAN, p->id, VLAN_TAG_MODE_UNTAGGED);
++		} else {
++			yt_vlan_port_egrTagMode_set(0, VLAN_TYPE_CVLAN, p->id, VLAN_TAG_MODE_TAGGED);
++		}
++	}
++
++	return yt_vlan_port_set(0, val->port_vlan, member, untag);
+ }
+ 
+-static int yt9215rb_write(struct yt9215rb_priv *priv, u32 regnum, u32 val)
++static int yt_sw_get_port_link(struct switch_dev *dev, int port, struct switch_port_link *link)
+ {
+-	struct mii_bus *bus = priv->bus;
+-	int ret = 0;
++	yt_port_linkStatus_all_t status;
++	int err;
+ 
+-	mutex_lock(&priv->reg_mutex);
+-	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
+-	mutex_unlock(&priv->reg_mutex);
+-	return ret;
++	if (port >= dev->ports)
++		return -EINVAL;
++
++	memset(&status, 0, sizeof(status));
++	err = yt_port_link_status_all_get(0, port, &status);
++	if (err)
++		return -EINVAL;
++
++	link->link = (status.link_status == PORT_LINK_UP);
++	link->duplex = (status.link_duplex == PORT_DUPLEX_FULL);
++	link->rx_flow = status.rx_fc_en;
++	link->tx_flow = status.tx_fc_en;
++	link->aneg = true;
++
++	switch (status.link_speed) {
++	case PORT_SPEED_10M:
++		link->speed = SWITCH_PORT_SPEED_10;
++		break;
++	case PORT_SPEED_100M:
++		link->speed = SWITCH_PORT_SPEED_100;
++		break;
++	case PORT_SPEED_1000M:
++		link->speed = SWITCH_PORT_SPEED_1000;
++		break;
++	case PORT_SPEED_2500M:
++		link->speed = SWITCH_PORT_SPEED_2500;
++		break;
++	default:
++		link->speed = SWITCH_PORT_SPEED_UNKNOWN;
++		break;
++	}
++	return 0;
+ }
+ 
+-static int yt9215rb_mask_write(struct yt9215rb_priv *priv, u32 regnum, u32 mask, u32 set)
++static int yt_sw_get_port_stats(struct switch_dev *dev, int port, struct switch_port_stats *stats)
+ {
+-	struct mii_bus *bus = priv->bus;
+-	u32 val = 0;
+-	int ret = 0;
++	yt_stat_mib_port_cnt_t mib;
++
++	if (port >= dev->ports)
++		return -EINVAL;
+ 
+-	mutex_lock(&priv->reg_mutex);
+-	val = yt9215rb_smi_read(bus, priv->address, priv->id, regnum);
+-	val &= ~mask;
+-	val |= set;
+-	ret = yt9215rb_smi_write(bus, priv->address, priv->id, regnum, val);
+-	mutex_unlock(&priv->reg_mutex);
+-	return ret;
++	memset(&mib, 0, sizeof(mib));
++	yt_stat_mib_port_get(0, port, &mib);
++
++	stats->rx_bytes = (unsigned long long)mib.RX_OKBYTE;
++	stats->tx_bytes = (unsigned long long)mib.TX_OKBYTE;
++	return 0;
+ }
+ 
++static int yt_sw_apply_config(struct switch_dev *dev)
++{
++	return 0;
++}
+ 
+-#if defined(YT9215RB_PROC_DEBUG)
+-static ssize_t yt9215rb_smi_write_proc(struct file *filp, const char *buffer, size_t count, loff_t *offp)
++static int yt_sw_reset_switch(struct switch_dev *dev)
++{
++	yt_hw_setup();
++	return 0;
++}
++
++static struct switch_attr yt_sw_global_attrs[] = {
++	{
++		.type = SWITCH_TYPE_INT,
++		.name = "enable_vlan",
++		.description = "Enable VLAN mode",
++		.set = yt_sw_set_enable_vlan,
++		.get = yt_sw_get_enable_vlan,
++		.max = 1,
++	},
++};
++
++static struct switch_attr yt_sw_port_attrs[] = {
++	{
++		.type = SWITCH_TYPE_STRING,
++		.name = "mib",
++		.description = "Port MIB counters",
++		.get = yt_sw_get_port_mib,
++	},
++};
++
++static struct switch_attr yt_sw_vlan_attrs[] = {
++	{
++		.type = SWITCH_TYPE_STRING,
++		.name = "info",
++		.description = "VLAN information",
++		.get = yt_sw_get_vlan_info,
++	},
++};
++
++static const struct switch_dev_ops yt_switch_ops = {
++	.attr_global = {
++		.attr = yt_sw_global_attrs,
++		.n_attr = ARRAY_SIZE(yt_sw_global_attrs),
++	},
++	.attr_port = {
++		.attr = yt_sw_port_attrs,
++		.n_attr = ARRAY_SIZE(yt_sw_port_attrs),
++	},
++	.attr_vlan = {
++		.attr = yt_sw_vlan_attrs,
++		.n_attr = ARRAY_SIZE(yt_sw_vlan_attrs),
++	},
++	.get_port_pvid = yt_sw_get_port_pvid,
++	.set_port_pvid = yt_sw_set_port_pvid,
++	.get_port_link = yt_sw_get_port_link,
++	.get_port_stats = yt_sw_get_port_stats,
++	.get_vlan_ports = yt_sw_get_vlan_ports,
++	.set_vlan_ports = yt_sw_set_vlan_ports,
++	.apply_config = yt_sw_apply_config,
++	.reset_switch = yt_sw_reset_switch,
++};
++
++static struct switch_dev yt_swdev = {
++	.name = "yt_switch",
++	.alias = "switch1",
++	.cpu_port = 5,
++	.ports = 7,
++	.vlans = 4096,
++	.ops = &yt_switch_ops,
++};
++
++/* Procfs /proc/portmap Interface and Link Carrier Tracker */
++static inline int port_to_lan_idx(int port)
++{
++	switch (port) {
++	case 3: return 1;
++	case 2: return 2;
++	case 1: return 3;
++	default: return port;
++	}
++}
++
++static void yt_link_poll_worker(struct work_struct *work)
++{
++	int port;
++
++	for (port = 1; port <= 4; port++) {
++		yt_port_linkStatus_all_t status;
++		int err;
++		bool is_up;
++
++		memset(&status, 0, sizeof(status));
++		err = yt_port_link_status_all_get(0, port, &status);
++		if (err)
++			continue;
++
++		is_up = (status.link_status == PORT_LINK_UP);
++
++		if (is_up != g_portmap[port].link_up) {
++			g_portmap[port].link_up = is_up;
++			if (is_up) {
++				const char *spd_str = "1000Mb";
++				if (status.link_speed == PORT_SPEED_100M)
++					spd_str = "100Mb";
++				else if (status.link_speed == PORT_SPEED_10M)
++					spd_str = "10Mb";
++				else if (status.link_speed == PORT_SPEED_2500M)
++					spd_str = "2500Mb";
++
++				pr_info("[yt_switch] Lan%d: Phy%d Link Up - %s/%s\n",
++					port_to_lan_idx(port), port, spd_str,
++					status.link_duplex == PORT_DUPLEX_FULL ? "Duplex" : "Half");
++			} else {
++				pr_info("[yt_switch] Lan%d: Phy%d Link Down\n",
++					port_to_lan_idx(port), port);
++			}
++		}
++
++		if (g_portmap[port].ifname[0]) {
++			struct net_device *dev = dev_get_by_name(&init_net, g_portmap[port].ifname);
++			if (dev) {
++				if (is_up && !netif_carrier_ok(dev)) {
++					pr_info("[yt_switch] portmap_proc_set_interface_cmd[74]:carrier on %s\n",
++						g_portmap[port].ifname);
++					netif_carrier_on(dev);
++				} else if (!is_up && netif_carrier_ok(dev)) {
++					pr_info("[yt_switch] portmap_proc_set_interface_cmd[87]:carrier off %s\n",
++						g_portmap[port].ifname);
++					netif_carrier_off(dev);
++				}
++				dev_put(dev);
++			}
++		}
++	}
++
++	queue_delayed_work(g_yt_wq, &g_link_poll_work, msecs_to_jiffies(1000));
++}
++
++static int portmap_proc_show(struct seq_file *m, void *v)
++{
++	int port = (int)(uintptr_t)m->private;
++
++	if (port >= 0 && port < 7) {
++		if (g_portmap[port].ifname[0])
++			seq_printf(m, "%s\n", g_portmap[port].ifname);
++		else
++			seq_puts(m, "\n");
++	}
++	return 0;
++}
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#define yt_pde_data(inode) pde_data(inode)
++#else
++#define yt_pde_data(inode) PDE_DATA(inode)
++#endif
++
++static int portmap_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, portmap_proc_show, yt_pde_data(inode));
++}
++
++static ssize_t portmap_proc_write(struct file *file, const char __user *user_buf,
++				  size_t count, loff_t *ppos)
++{
++	int port = (int)(uintptr_t)yt_pde_data(file_inode(file));
++	char buf[32];
++	char ifname[IFNAMSIZ];
++	size_t len;
++	struct net_device *dev;
++
++	if (count == 0 || count >= sizeof(buf))
++		return -EINVAL;
++
++	if (copy_from_user(buf, user_buf, count))
++		return -EFAULT;
++
++	buf[count] = '\0';
++	len = strlen(buf);
++	while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r' || buf[len - 1] == ' '))
++		buf[--len] = '\0';
++
++	if (len >= IFNAMSIZ)
++		return -EINVAL;
++
++	strncpy(ifname, buf, IFNAMSIZ - 1);
++	ifname[IFNAMSIZ - 1] = '\0';
++
++	if (port == 10) {
++		dev = dev_get_by_name(&init_net, ifname);
++		if (dev) {
++			pr_info("[yt_switch] portmap_proc_set_interface_cmd[74]:carrier on %s\n", ifname);
++			netif_carrier_on(dev);
++			dev_put(dev);
++		}
++		return count;
++	}
++
++	if (port == 20) {
++		dev = dev_get_by_name(&init_net, ifname);
++		if (dev) {
++			pr_info("[yt_switch] portmap_proc_set_interface_cmd[87]:carrier off %s\n", ifname);
++			netif_carrier_off(dev);
++			dev_put(dev);
++		}
++		return count;
++	}
++
++	if (port >= 0 && port < 7) {
++		if (len == 0) {
++			pr_info("[yt_switch] portmap: clean port %d ifname\n", port);
++			g_portmap[port].ifname[0] = '\0';
++		} else {
++			pr_info("[yt_switch] portmap: set port %d ifname %s\n", port, ifname);
++			strncpy(g_portmap[port].ifname, ifname, sizeof(g_portmap[port].ifname) - 1);
++			g_portmap[port].ifname[sizeof(g_portmap[port].ifname) - 1] = '\0';
++
++			dev = dev_get_by_name(&init_net, ifname);
++			if (dev) {
++				pr_info("[yt_switch] portmap_proc_set_interface_cmd[87]:carrier off %s\n", ifname);
++				netif_carrier_off(dev);
++				dev_put(dev);
++			}
++		}
++	}
++
++	return count;
++}
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
++static const struct proc_ops portmap_proc_ops = {
++	.proc_open    = portmap_proc_open,
++	.proc_read    = seq_read,
++	.proc_lseek   = seq_lseek,
++	.proc_release = single_release,
++	.proc_write   = portmap_proc_write,
++};
++#else
++static const struct file_operations portmap_fops = {
++	.owner   = THIS_MODULE,
++	.open    = portmap_proc_open,
++	.read    = seq_read,
++	.llseek  = seq_lseek,
++	.release = single_release,
++	.write   = portmap_proc_write,
++};
++#endif
++
++static const char * const portmap_names[] = {
++	"0", "1", "2", "3", "4", "10", "20"
++};
++static const int portmap_ids[] = {
++	0, 1, 2, 3, 4, 10, 20
++};
++
++static int portmap_proc_init(void)
++{
++	int i;
++	struct proc_dir_entry *entry;
++
++	g_portmap_dir = proc_mkdir("portmap", NULL);
++	if (!g_portmap_dir) {
++		pr_err("[yt_switch] Create portmap directory failed.\n");
++		return -ENOMEM;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(portmap_names); i++) {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
++		entry = proc_create_data(portmap_names[i], 0644, g_portmap_dir,
++					 &portmap_proc_ops, (void *)(uintptr_t)portmap_ids[i]);
++#else
++		entry = proc_create_data(portmap_names[i], 0644, g_portmap_dir,
++					 &portmap_fops, (void *)(uintptr_t)portmap_ids[i]);
++#endif
++		if (!entry) {
++			pr_err("[yt_switch] Create proc entry %s failed.\n", portmap_names[i]);
++			return -ENOMEM;
++		}
++	}
++
++	return 0;
++}
++
++static void portmap_proc_deinit(void)
++{
++	int i;
++
++	if (g_portmap_dir) {
++		for (i = 0; i < ARRAY_SIZE(portmap_names); i++)
++			remove_proc_entry(portmap_names[i], g_portmap_dir);
++
++		remove_proc_entry("portmap", NULL);
++		g_portmap_dir = NULL;
++	}
++}
++
++/* Qualcomm PPE/ECM acceleration hook callback */
++static int yt_portmap_get_by_vid(u32 vid, u32 *portmap)
++{
++	if (!portmap)
++		return -EINVAL;
++
++	switch (vid) {
++	case 1:
++		*portmap = (1 << 3) | (1 << 5);
++		break;
++	case 2:
++		*portmap = (1 << 2) | (1 << 5);
++		break;
++	case 3:
++		*portmap = (1 << 1) | (1 << 5);
++		break;
++	case 4:
++		*portmap = (1 << 4) | (1 << 5);
++		break;
++	default:
++		*portmap = (1 << 5);
++		break;
++	}
++	return 0;
++}
++
++/* Procfs /proc/smi and /proc/mib Handlers */
++static ssize_t yt9215rb_smi_write_proc(struct file *filp, const char __user *buffer,
++				       size_t count, loff_t *offp)
+ {
+-	struct yt9215rb_priv *priv = PDE_DATA(file_inode(filp));
+ 	char *str, *cmd, *value;
+ 	char tmpbuf[128] = {0};
+-	uint32_t regAddr = 0, regData = 0;
++	u32 regAddr, regData;
+ 
+-	if(count >= sizeof(tmpbuf))
++	if (count >= sizeof(tmpbuf))
+ 		goto error;
+-		
+-	if(!buffer || copy_from_user(tmpbuf, buffer, count) != 0)
++	if (!buffer || copy_from_user(tmpbuf, buffer, count) != 0)
+ 		return 0;
+-	if (count > 0){
++
++	if (count > 0) {
+ 		str = tmpbuf;
+ 		cmd = strsep(&str, "\t \n");
+ 		if (!cmd)
+ 			goto error;
+-		if(strcmp(cmd, "write") == 0){
++		if (strcmp(cmd, "write") == 0) {
+ 			value = strsep(&str, "\t \n");
+ 			if (!value)
+ 				goto error;
+@@ -139,289 +923,226 @@
+ 			if (!value)
+ 				goto error;
+ 			regData = simple_strtoul(value, &value, 16);
+-			printk("write regAddr = 0x%x regData = 0x%x\n", regAddr, regData);
+-			yt9215rb_write(priv, regAddr, regData);
+-		} else if (strcmp(cmd, "read") == 0){
++			pr_info("write regAddr = 0x%x regData = 0x%x\n", regAddr, regData);
++			yt_direct_smi_write(regAddr, regData);
++		} else if (strcmp(cmd, "read") == 0) {
+ 			value = strsep(&str, "\t \n");
+ 			if (!value)
+ 				goto error;
+ 			regAddr = simple_strtoul(value, &value, 16);
+-			regData = yt9215rb_read(priv,regAddr);		
+-			printk("read regAddr = 0x%x regData = 0x%x\n", regAddr, regData);
++			regData = yt_direct_smi_read(regAddr);
++			pr_info("read regAddr = 0x%x regData = 0x%x\n", regAddr, regData);
+ 		} else {
+ 			goto error;
+ 		}
+ 	}
+ 	return count;
++
+ error:
+-	printk("usage: \n");
+-	printk(" read regaddr: for example, echo read 0xd0004 > /proc/smi\n");
+-	printk(" write regaddr regdata: for example; echo write 0xd0004 0x680 > /proc/smi\n");
+-	
++	pr_info("usage: \n");
++	pr_info(" read regaddr: for example, echo read 0xd0004 > /proc/smi\n");
++	pr_info(" write regaddr regdata: for example; echo write 0xd0004 0x680 > /proc/smi\n");
+ 	return -EFAULT;
+ }
+ 
+-struct stat_mib_counter
++static ssize_t yt9215rb_mib_write_proc(struct file *filp, const char __user *buffer,
++				       size_t count, loff_t *offp)
+ {
+-	unsigned int size;
+-	unsigned int offset;
+-	const char *name;
+-};
+-
+-static const struct stat_mib_counter stat_mib[] = {
+-	{ 1, 0x00, "RxBcast"},
+-	{ 1, 0x04, "RxPause"},
+-	{ 1, 0x08, "RxMcast"},
+-	{ 1, 0x0C, "RxCrcErr"},
+-	{ 1, 0x10, "RxAlignErr"},
+-	{ 1, 0x14, "RxRunt"},
+-	{ 1, 0x18, "RxFragment"},
+-	{ 1, 0x1C, "RxSz64"},
+-	{ 1, 0x20, "RxSz65To127"},
+-	{ 1, 0x24, "RxSz128To255"},
+-	{ 1, 0x28, "RxSz256To511"},
+-	{ 1, 0x2C, "RxSz512To1023"},
+-	{ 1, 0x30, "RxSz1024To1518"},
+-	{ 1, 0x34, "RxJumbo"},
+-	/*{ 1, 0x38, "RxMaxByte"},*/
+-	{ 2, 0x3C, "RxOkByte"},
+-	{ 2, 0x44, "RxNoOkByte"},
+-	{ 1, 0x4C, "RxOverFlow"},
+-	/*{ 1, 0x50, "QMFilter"},*/
+-	{ 1, 0x54, "TxBcast"},
+-	{ 1, 0x58, "TxPause"},
+-	{ 1, 0x5C, "TxMcast"},
+-	/*{ 1, 0x60, "TxUnderRun"},*/
+-	{ 1, 0x64, "TxSz64"},
+-	{ 1, 0x68, "TxSz65To127"},
+-	{ 1, 0x6C, "TxSz128To255"},
+-	{ 1, 0x70, "TxSz256To511"},
+-	{ 1, 0x74, "TxSz512To1023"},
+-	{ 1, 0x78, "TxSz1024To1518"},
+-	{ 1, 0x7C, "TxJumbo"},
+-	{ 1, 0x80, "TxOverSize"},
+-	{ 2, 0x84, "TxOkByte"},
+-	{ 1, 0x8C, "TxCollision"},
+-	/*{ 1, 0x90, "TxAbortCollision"},*/
+-	/*{ 1, 0x94, "TxMultiCollision"},*/
+-	/*{ 1, 0x98, "TxSingleCollision"},*/
+-	/*{ 1, 0x9C, "TxExcDefer"},*/
+-	/*{ 1, 0xA0, "TxDefer"},*/
+-	{ 1, 0xA4, "TxLateCollision"},
+-	/*{ 1, 0xA8, "RxOamCounter"},*/
+-	/*{ 1, 0xAC, "TxOamCounter"},*/	
+-};
+-
+-#define YT9215RB_PORT_MIB_BASE(n) (0xc0100 + (n) * 0x100)
+-static u32 stat_mib_port_get(struct yt9215rb_priv *priv, u8 unit, u32 port)
+-{
+-	int i = 0;
+-	u32 lowData = 0;
+-	u32 highData = 0;
+-	u64 resultData = 0;
+-	int mibCount;
+-	u64 count = 0;
+-	mibCount = ARRAY_SIZE(stat_mib);
+-	printk("%-20s %20d\n", "port", port);
+-	for (i = 0; i < mibCount; i++){
+-		count = 0;
+-		lowData = yt9215rb_read(priv, YT9215RB_PORT_MIB_BASE(port) + stat_mib[i].offset);
+-		count = lowData;
+-		if (stat_mib[i].size == 2){
+-			highData = yt9215rb_read(priv,YT9215RB_PORT_MIB_BASE(port) + stat_mib[i].offset + 4);
+-			resultData = highData;
+-			count |= resultData << 32;
+-		}
+-	       	if(stat_mib[i].size == 1)
+-			printk("%-20s %20u\n", stat_mib[i].name, (u32)count);
+-		else
+-			printk("%-20s %20llu\n", stat_mib[i].name, count);
+-	}
+-	return 0;
+-}
+-
+-static ssize_t yt9215rb_mib_write_proc(struct file *filp, const char *buffer, size_t count, loff_t *offp)
+-{
+-	struct yt9215rb_priv *priv = PDE_DATA(file_inode(filp));
+ 	char *str, *cmd, *value;
+ 	char tmpbuf[128] = {0};
+ 	uint32_t port = 0;
+-	uint8_t unit = 0;
+ 
+-	if(count >= sizeof(tmpbuf))
++	if (count >= sizeof(tmpbuf))
+ 		goto error;
+-	if(!buffer || copy_from_user(tmpbuf, buffer, count) != 0)
++	if (!buffer || copy_from_user(tmpbuf, buffer, count) != 0)
+ 		return 0;
+-	if (count > 0){
++
++	if (count > 0) {
+ 		str = tmpbuf;
+ 		cmd = strsep(&str, "\t \n");
+-		if (!cmd){
++		if (!cmd)
+ 			goto error;
+-		}
+-		if(strcmp(cmd, "mib") == 0){
+-			cmd = strsep(&str, "\t \n");
+-			if (!cmd){
++		if (strcmp(cmd, "mib") == 0) {
++			value = strsep(&str, "\t \n");
++			if (!value)
+ 				goto error;
+-			}
+-			if(strcmp(cmd, "enable") == 0){
+-				yt9215rb_mask_write(priv, 0x80004, 1<<1, 1<<1);
+-			} else if (strcmp(cmd, "disable") == 0){
+-				yt9215rb_mask_write(priv, 0x80004, 1<<1, 0<<1);
+-			} else if (strcmp(cmd, "clear") == 0){
+-				yt9215rb_read(priv,0xc0004);
+-				yt9215rb_write(priv, 0xc0004, 0<<0);
+-				yt9215rb_write(priv, 0xc0004, 1<<30);
+-			} else if (strcmp(cmd, "get") == 0){
++			if (strcmp(value, "enable") == 0) {
++				yt_stat_mib_enable_set(0, YT_ENABLE);
++				pr_info("enable mib\n");
++			} else if (strcmp(value, "disable") == 0) {
++				yt_stat_mib_enable_set(0, YT_DISABLE);
++				pr_info("disable mib\n");
++			} else if (strcmp(value, "clear") == 0) {
++				yt_stat_mib_clear_all(0);
++				pr_info("clear all mib\n");
++			} else if (strcmp(value, "get") == 0) {
+ 				value = strsep(&str, "\t \n");
+ 				if (!value)
+ 					goto error;
+ 				port = simple_strtoul(value, &value, 10);
+-				if (port <= 9)
+-					stat_mib_port_get(priv, unit, port);
++				if (port < 7) {
++					yt_stat_mib_port_cnt_t mib;
++					memset(&mib, 0, sizeof(mib));
++					yt_stat_mib_port_get(0, port, &mib);
++					pr_info("port %u: rx_ok=%llu tx_ok=%llu\n", port,
++						(unsigned long long)mib.RX_OKBYTE,
++						(unsigned long long)mib.TX_OKBYTE);
++				}
+ 			} else {
+ 				goto error;
+ 			}
+-		} else {
+-			goto error;
+ 		}
+-
+ 	}
+ 	return count;
++
+ error:
+-	printk("usage: \n");
+-	printk(" mib enable : for example, echo mib enable > /proc/mib\n");
+-	printk(" mib disable : for example, echo mib disable > /proc/mib\n");
+-	printk(" mib clear : for example, echo mib clear > /proc/mib\n");
+-	printk(" mib get port : for example, echo mib get 8 > /proc/mib\n");
+-	printk(" get mib 8/9 for extern RGMII counter \n");
++	pr_info("usage: \n");
++	pr_info("   mib enable   : for example, echo mib enable > /proc/mib\n");
++	pr_info("   mib disable  : for example, echo mib disable > /proc/mib\n");
++	pr_info("   mib clear    : for example, echo mib clear > /proc/mib\n");
++	pr_info("   mib get port : for example, echo mib get 8 > /proc/mib\n");
+ 	return -EFAULT;
+ }
+ 
+-static void smi_mib_proc_create(struct yt9215rb_priv *priv)
+-{
+-
+-	priv->smi_fops.proc_read  = NULL;
+-	priv->smi_fops.proc_write = yt9215rb_smi_write_proc;
+-	
+-	priv->mib_fops.proc_read  = NULL;
+-	priv->mib_fops.proc_write = yt9215rb_mib_write_proc;
+-
+-	priv->smi_proc = proc_create_data("smi", 0666, NULL, &priv->smi_fops, priv);
+-	priv->mib_proc = proc_create_data("mib", 0666, NULL, &priv->mib_fops, priv);
+-
+-
+-}
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
++static const struct proc_ops yt_smi_proc_ops = {
++	.proc_write = yt9215rb_smi_write_proc,
++};
++static const struct proc_ops yt_mib_proc_ops = {
++	.proc_write = yt9215rb_mib_write_proc,
++};
+ #else
+-static void smi_mib_proc_create(struct yt9215rb_priv *priv)
+-{
+-
++static const struct file_operations yt_smi_fops = {
++	.owner = THIS_MODULE,
++	.write = yt9215rb_smi_write_proc,
++};
++static const struct file_operations yt_mib_fops = {
++	.owner = THIS_MODULE,
++	.write = yt9215rb_mib_write_proc,
++};
++#endif
+ 
++static void smi_mib_proc_create_all(void)
++{
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
++	g_smi_proc = proc_create("smi", 0666, NULL, &yt_smi_proc_ops);
++	g_mib_proc = proc_create("mib", 0666, NULL, &yt_mib_proc_ops);
++#else
++	g_smi_proc = proc_create("smi", 0666, NULL, &yt_smi_fops);
++	g_mib_proc = proc_create("mib", 0666, NULL, &yt_mib_fops);
++#endif
++	if (g_smi_proc && g_mib_proc)
++		pr_info("[yt_switch] /proc/smi and /proc/mib create success\n");
++	else
++		pr_err("[yt_switch] /proc/smi and /proc/mib create failed\n");
+ }
+-#endif /* YT9215RB_PROC_DEBUG */
+ 
+-static int yt9215rb_init(struct yt9215rb_priv *priv)
++static void smi_mib_proc_remove_all(void)
+ {
+-        u32 val=0;
+-	if(priv->io_1v8){
+-		yt9215rb_write(priv,0x80030,0x0f);    //set rgmii io 1.8v
+-		dev_info(priv->dev,"setting rgmii io 1.8v");
++	if (g_smi_proc) {
++		remove_proc_entry("smi", NULL);
++		g_smi_proc = NULL;
+ 	}
+-        yt9215rb_write(priv,0x80394,0x2);
+-	yt9215rb_write(priv,0x80400,0x841C0000);
+-	
+-	val = (priv->rx_dly << 3) | (priv->tx_dly << 13);
+-	if(priv->tx_en){
+-		val |= YT9215RB_TX_DELAY_EN;
+-	} else { 
+-		val &= ~YT9215RB_TX_DELAY_EN;
++	if (g_mib_proc) {
++		remove_proc_entry("mib", NULL);
++		g_mib_proc = NULL;
+ 	}
+-        yt9215rb_mask_write(priv,0x80400,YT9215RB_RX_DELAY_MASK | YT9215RB_TX_DELAY_MASK | YT9215RB_TX_DELAY_EN,val);
+-        yt9215rb_write(priv,0x80120,0x1fa);
+-
+-        yt9215rb_read(priv,0x80400);
+-        return 0;
++	pr_info("[yt_switch] /proc/smi and /proc/mib remove success\n");
+ }
+ 
+-static int yt9215rb_dt(struct yt9215rb_priv *priv, struct device_node *np)
++/* Module Init and Exit */
++static int __init yt_switch_init(void)
+ {
++	int ret;
+ 
+-	if(of_property_read_u32(np, "address", &priv->address)){
+-		priv->address = YT9215RB_DEFINE_PHYADDR;
++	/* 1. Hardware GPIO reset */
++	yt_hw_reset();
++
++	/* 2. Locate MDIO bus */
++	ret = miwifi_smi_bus_init();
++	if (ret) {
++		pr_err("[yt_switch] failed to initialize MDIO bus\n");
++		return ret;
+ 	}
+-	if(of_property_read_u32(np, "reg", &priv->id)){
+-		priv->id = YT9215RB_DEFINE_SWITCHID;
++
++	/* 3. Initialize SDK */
++	ret = yt_init();
++	if (ret != CMM_ERR_OK)
++		pr_warn("[yt_switch] yt_init returned %d\n", ret);
++
++	/* 4. Hardware L2 and SerDes setup */
++	yt_hw_setup();
++
++	/* 5. /proc/smi and /proc/mib */
++	smi_mib_proc_create_all();
++
++	/* 6. Register swconfig switch1 */
++	ret = register_switch(&yt_swdev, NULL);
++	if (ret)
++		pr_err("[yt_switch] failed to register swconfig\n");
++	else
++		pr_info("[yt_switch] success to register swconfig\n");
++
++	/* 7. Provide bonding support */
++	pr_info("[yt_switch] provide bonding support\n");
++
++	/* 8. /proc/portmap */
++	ret = portmap_proc_init();
++	if (!ret)
++		pr_info("[yt_switch] portmap proc init seccess!\n");
++
++	/* Default port mapping for Xiaomi RD15 (BE3600) */
++	strncpy(g_portmap[3].ifname, "eth0.1", sizeof(g_portmap[3].ifname) - 1);
++	strncpy(g_portmap[2].ifname, "eth0.2", sizeof(g_portmap[2].ifname) - 1);
++	strncpy(g_portmap[1].ifname, "eth0.3", sizeof(g_portmap[1].ifname) - 1);
++
++	/* 9. Link poll workqueue */
++	g_yt_wq = create_singlethread_workqueue("yt_switch_wq");
++	if (g_yt_wq) {
++		INIT_DELAYED_WORK(&g_link_poll_work, yt_link_poll_worker);
++		queue_delayed_work(g_yt_wq, &g_link_poll_work, msecs_to_jiffies(1000));
++		pr_info("[yt_switch] portmap timer init success\n");
+ 	}
+ 
+-	priv->io_1v8 = of_property_read_bool(np,"io-1v8");
++	/* 10. PPE/ECM portmap hook */
++	if (&portmap_get_by_vid)
++		portmap_get_by_vid = yt_portmap_get_by_vid;
++	pr_info("[yt_switch] portmap init success\n");
+ 
+-	if(of_property_read_u32(np, "tx-delay", &priv->tx_dly)){
+-		priv->tx_en = false;
+-	} else {
+-		priv->tx_en = true;
+-		if(priv->tx_dly > 0x0f){
+-			dev_warn(priv->dev,"yt9215 set tx_dly value error! range <0 ~ 0x0f>");
+-			priv->tx_dly = 2;
+-		}
+-	}
+-	if(of_property_read_u32(np, "rx-delay", &priv->rx_dly)){
+-		priv->rx_dly = 1;
+-	} else {
+-		if(priv->rx_dly > 0x0f){
+-			dev_warn(priv->dev,"yt9215 set rx_dly value error! range <0 ~ 0x0f>");
+-			priv->rx_dly = 1;
+-		}
+-	}
+ 	return 0;
+ }
+ 
+-static const struct of_device_id yt9215rb_of_match[] = {
+-	{ .compatible = "motorcomm,yt9215rb",},
+-	{ /* sentinel */ },
+-};
+-MODULE_DEVICE_TABLE(of, yt9215rb_of_match);
+-
+-static int yt9215rb_probe(struct mdio_device *mdiodev)
++static void __exit yt_switch_exit(void)
+ {
+-	struct yt9215rb_priv *priv;
+-	struct device_node   *dn;
++	if (g_yt_wq) {
++		cancel_delayed_work_sync(&g_link_poll_work);
++		destroy_workqueue(g_yt_wq);
++		g_yt_wq = NULL;
++		pr_info("[yt_switch] portmap timer deinit success\n");
++	}
+ 
+-	dev_info(&mdiodev->dev,"%s enter...",__func__);
+-	dn = mdiodev->dev.of_node;
++	if (&portmap_get_by_vid)
++		portmap_get_by_vid = NULL;
++	pr_info("[yt_switch] revert bonding support\n");
++	pr_info("[yt_switch] portmap deinit success\n");
+ 
+-	priv = devm_kzalloc(&mdiodev->dev, sizeof(struct yt9215rb_priv), GFP_KERNEL);
+-	if (!priv)
+-		return -ENOMEM;
+-	priv->bus = mdiodev->bus;
+-	priv->dev = &mdiodev->dev;
++	portmap_proc_deinit();
++	pr_info("[yt_switch] portmap proc deinit seccess!\n");
+ 
++	unregister_switch(&yt_swdev);
+ 
+-	yt9215rb_dt(priv, dn);
+-
+-	mutex_init(&priv->reg_mutex);
+-	
+-	yt9215rb_init(priv);
+-	dev_set_drvdata(&mdiodev->dev, priv);
+-	smi_mib_proc_create(priv);
+-	return 0;
+-}
+-
+-static void yt9215rb_remove(struct mdio_device *mdiodev)
+-{
+-//	struct yt9215rb_priv *priv = dev_get_drvdata(&mdiodev->dev);
++	smi_mib_proc_remove_all();
+ 
++	if (g_reset_gpio_requested) {
++		gpio_free(YT9215S_RESET_GPIO);
++		g_reset_gpio_requested = false;
++	}
+ 
++	pr_info("[yt_switch] =====switch_sdk_exit=====\n");
+ }
+ 
++module_init(yt_switch_init);
++module_exit(yt_switch_exit);
+ 
+-static struct mdio_driver yt9215rb_mdio_driver = {
+-	.probe  = yt9215rb_probe,
+-	.remove = yt9215rb_remove,
+-	.mdiodrv.driver = {
+-		.name = "yt9215rb",
+-		.of_match_table = yt9215rb_of_match,
+-	},
+-};
+-
+-mdio_module_driver(yt9215rb_mdio_driver);
+-
++MODULE_DESCRIPTION("Motorcomm YT9215S Switch Driver for Xiaomi Router BE3600 (RD15)");
+ MODULE_LICENSE("GPL");

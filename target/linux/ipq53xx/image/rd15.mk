@@ -18,6 +18,7 @@ define Device/xiaomi-rd15-prebuild
 	VID_HDR_OFFSET := 2048
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	ROOTFS_NAME := ubi_rootfs
+	DEVICE_PACKAGES := kmod-yt-9215s-driver-vendor
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
 endef
@@ -39,7 +40,7 @@ define Device/xiaomi-rd15-qsdk
 	VID_HDR_OFFSET := 2048
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	ROOTFS_NAME := ubi_rootfs
-	DEVICE_PACKAGES := uboot-envtools
+	DEVICE_PACKAGES := uboot-envtools kmod-yt-9215s-driver
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
 endef

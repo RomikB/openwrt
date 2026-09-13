@@ -1,0 +1,26 @@
+diff --git a/switch_sdk/config/kernel_module/Mk_Module b/switch_sdk/config/kernel_module/Mk_Module
+index 3a03efa..c9ec830 100644
+--- a/switch_sdk/config/kernel_module/Mk_Module
++++ b/switch_sdk/config/kernel_module/Mk_Module
+@@ -13,7 +13,7 @@ include $(MAKE_PATH)/make.cfg
+ 
+ .PHONY: sdk
+ 
+-TARGET_SDK = sdk
++TARGET_SDK = yt_switch
+ 
+ obj-m += $(TARGET_SDK).o
+ 
+diff --git a/switch_sdk/make/Kbuild b/switch_sdk/make/Kbuild
+index 6d8627c..b835a52 100755
+--- a/switch_sdk/make/Kbuild
++++ b/switch_sdk/make/Kbuild
+@@ -20,7 +20,7 @@ ccflags-y += -D__KERNEL__
+ ccflags-y += $(SDK_COMPILATION_SWITCHES)
+ ccflags-y += $(COMMON_COMPILE_FLAG)
+ 
+-TARGET_SDK = sdk
++TARGET_SDK = yt_switch
+ 
+ obj-m += $(TARGET_SDK).o
+ 
