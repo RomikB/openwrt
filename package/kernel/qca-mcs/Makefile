@@ -27,6 +27,11 @@ define KernelPackage/qca-mcs/Description
   Qualcomm Multicast Snooping and Forwarding acceleration driver for IPQ53xx/RD15.
 endef
 
+define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include/qca-mcs
+	$(CP) -rf $(PKG_BUILD_DIR)/*.h $(1)/usr/include/qca-mcs/
+endef
+
 define Build/Compile
 	+$(KERNEL_MAKE) M="$(PKG_BUILD_DIR)" \
 		KERNELPATH="$(LINUX_DIR)" \

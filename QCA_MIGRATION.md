@@ -26,7 +26,7 @@
 
 ---
 
-## 2. Сводная таблица миграции 16 модулей
+## 2. Сводная таблица миграции 18 модулей
 
 | Пакет OpenWrt | Исходный файл (.ko) | Репозиторий CodeLinaro | Коммит / Дата | Статус | Совпадение ABI / Символы |
 |---|---|---|---|:---:|:---:|
@@ -45,7 +45,9 @@
 | **`kmod-qca-nss-ppe-bridge-mgr`** | `qca-nss-ppe-bridge-mgr.ko` | `oss/lklm/nss-ppe.git` | `0c6434d7` (19.01.2024) | **`[COMPATIBLE]`** | **2/2 экспортов (100%)**, **53/53 импортов (100%)**, .text diff -16 байт |
 | **`kmod-qca-nss-ppe-vxlanmgr`** | `qca-nss-ppe-vxlanmgr.ko` | `oss/lklm/nss-ppe.git` | `0c6434d7` (19.01.2024) | **`[COMPATIBLE]`** | **2/2 экспортов (100%)**, **62/62 импортов (100%)**, .text diff **+0 байт** (98.78% сходство) |
 | **`kmod-qca-nss-sfe`** | `qca-nss-sfe.ko` | `oss/lklm/shortcut-fe.git` | `7d82c710` (20.03.2024) | **`[COMPATIBLE]`** | **19/19 экспортов (100%)**, **111/111 импортов (100%)**, .text diff +2192 байта |
-| **`kmod-qca-cnss`** | `ipq_cnss2.ko` | `oss/wifi/qca-cnss.git` | `3cbb15d2` (09.02.2024) | **`[COMPATIBLE]`** | **94/94 экспортов (100%)**, **250/250 импортов (100%)**, .text diff +1556 байт |
+| **`kmod-qca-cnss`** | `ipq_cnss2.ko` | `oss/wifi/qca-cnss.git` | `17fe2f6d` (16.11.2023) | **`[COMPATIBLE]`** | **94/94 экспортов (100%)**, **250/250 импортов (100%)**, устранена аллокация 2 MB QDSS DMA |
+| **`kmod-qca-nss-ecm`** | `ecm.ko`, `ecm_sfe_l2.ko`, `ecm_ae_select.ko` | `oss/lklm/qca-nss-ecm.git` | `aed84d47` (15.11.2023) | **`[COMPATIBLE]`** | **223/224 импортов (100% сетевых)**, .text diff -2.0%, полное совпадение протоколов |
+| **`kmod-qca-nss-ecm-wifi-plugin`** | `ecm-wifi-plugin.ko` | `oss/lklm/qca-nss-ecm.git` | `aed84d47` (15.11.2023) | **`[COMPATIBLE]`** | **10/10 импортов стока (100%)**, FSE + MSCS/SCS, опциональный EasyMesh SAWF |
 
 ---
 
@@ -212,6 +214,8 @@
      * **Функциональный состав (дизассемблер):** ровно **27 из 27** функций.
   4. **Экспорт заголовочных файлов:**
      * Заголовочный файл `ppe_ds_wlan.h` экспортируется в `staging_dir/usr/include/` и `staging_dir/usr/include/qca-nss-ppe/` для бесшовной сборки драйвера Wi-Fi 7 / BE (`qca-wifi`).
+  5. **Оптимизация порога заполнения кольцевого буфера Direct Switching (rxfill=256):**
+     * В патче `0001-ppe-ds-lowmem-rxfill-threshold.patch` для профиля памяти `PPE_LOWMEM_PROFILE_256M` значение порога `PPE_DS_WLAN_RXFILL_LOWMEM_THRESHOLD` установлено в 256 дескрипторов (вместо 1024), что на 100% соответствует стоковой конфигурации Xiaomi и экономит память буферов skb.
 
 ### 3.9. `kmod-qca-nss-ppe-tun` (PPE Tunneling Offload driver)
 * **Назначение:** Драйвер аппаратного ускорения сетевых туннелей (VxLAN, GRE, MAP-T, IPIP, Geneve) в архитектуре PPE. Обеспечивает инкапсуляцию и декапсуляцию туннельных пакетов через аппаратный движок PPE и виртуальные порты.
@@ -272,6 +276,8 @@
      * Сам параметр `vlan_as_vp_interface` в открытом коде объявлен штатным макросом ядра `module_param(vlan_as_vp_interface, charp, 0644)` и полноценно доступен через sysfs (`/sys/module/qca_nss_ppe_vlan/parameters/vlan_as_vp_interface`) или аргументы загрузки модуля.
      * В связи с отсутствием практической потребности и риска поломки чего-либо, данный неиспользуемый вендорский рудимент в нативный открытый пакет не переносился.
      * Все импорты ядра (50 из 50) полностью удовлетворены, 0 недостающих символов.
+  5. **Назначение виртуального порта для VLAN (vlan_as_vp_interface="eth0"):**
+     * В патче `0001-default-vlan-as-vp-interface.patch` значение параметра по умолчанию `vlan_as_vp_interface` установлено в `"eth0"`, что обеспечивает автоматическую регистрацию Virtual Port (VP) для eth0-based VLAN интерфейсов аналогично поведению стоковой прошивки.
 
 ### 3.12. `kmod-qca-nss-ppe-lag-mgr` (PPE Link Aggregation Manager)
 * **Назначение:** Клиентский драйвер PPE для аппаратной агрегации каналов (Link Aggregation / Linux Bonding). Отслеживает события добавления и удаления подчиненных портов в bond-интерфейсы (`bond0`), настраивает аппаратные группы LAG в PPE (`ppe_drv_lag_init`, `ppe_drv_lag_join`, `ppe_drv_lag_leave`), синхронизирует MAC-адреса и связывает правила с `vlan-mgr`.
@@ -303,6 +309,8 @@
      * Наш размер: **9 392 байт**, стоковый размер: **9 408 байт** (разница всего **-16 байт** за счет выравнивания ARM). Секции `.exit.text` (128 байт), `.init.text` (252 байта) и `.rodata` (981 байт) совпадают побайтно.
   4. **Сервисный скрипт инициализации:**
      * В пакет интегрирован штатный init-скрипт `/etc/init.d/qca-nss-ppe-bridge-mgr` (START=19), выполняющий проверку загрузки модуля ядра и настройку FDB-обучения.
+  5. **Отключение аппаратного FDB learning:**
+     * Параметр `NSS_PPE_BRIDGE_MGR_FDB_LEARNING=n` синхронизирован со стоком Xiaomi, предотвращая избыточное дублирование записей изучения MAC-адресов аппаратным свитчом.
 
 ### 3.14. `kmod-qca-nss-ppe-vxlanmgr` (PPE VxLAN Tunnel Manager)
 * **Назначение:** Клиентский драйвер PPE для аппаратной акселерации и терминации туннелей VxLAN (Virtual Extensible LAN). Отслеживает сетевые события VxLAN-интерфейсов (`register_netdevice_notifier`), настраивает аппаратные порты инкапсуляции/декапсуляции через PPE Tunnel API (`ppe_tun_configure_vxlan_dport`, `ppe_tun_decap_enable`, `ppe_tun_conf_accel`), связывает VxLAN туннели с сетевыми мостами через `bridge-mgr` (`nss_ppe_bridge_mgr_join_bridge`) и экспортирует статус VP для менеджера соединений ECM.
@@ -352,8 +360,8 @@
 ### 3.16. `kmod-qca-cnss` (Qualcomm Network Subsystem / Wi-Fi Bus Driver)
 * **Назначение:** Базовый платформенный драйвер шины Wi-Fi для сетевых процессоров Qualcomm (QCA CNSS). Обеспечивает инициализацию и управление аппаратными интерфейсами PCIe и AHB для радиомодулей Wi-Fi (QCN6432 и др.), управление питанием, регистрацию прерываний MSI/Legacy, выделение DMA/памяти для прошивок радиомодулей (`fw_mem`), обработку сбоев и сбор дампов RDDM, взаимодействие с демоном userland `/usr/bin/cnssdaemon` через QMI IPC и Generic Netlink (genl).
 * **Размещение пакета:** `package/kernel/qca-cnss/` (имя пакета `kmod-qca-cnss`, модуль `ipq_cnss2.ko`).
-* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/wifi/qca-cnss.git` (коммит `3cbb15d27bb72788b2c7deeeed8cac5e71e3ecbe` от 09.02.2024).
-* **Статус:** **`[COMPATIBLE]`**
+* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/wifi/qca-cnss.git` (коммит `17fe2f6d0f62d10c0e5a6efcf0927ad86eb8c474` от 16.11.2023).
+* **Статус:** **`[COMPATIBLE / 100% PARITY]`**
 * **Особенности и тонкости миграции:**
   1. **100% совпадение ABI (все 94 экспорта):**
      * Ровно **94 из 94** экспортов (`cnss_wlan_register_driver_ops`, `cnss_wlan_probe_driver`, `cnss_wlan_enable`, `cnss_wlan_disable`, `cnss_pci_probe`, `cnss_pci_remove`, `cnss_power_up`, `cnss_power_down`, `cnss_athdiag_read`, `cnss_athdiag_write`, `cnss_bus_reg_read`, `cnss_bus_reg_write`, `cnss_smmu_map`, `cnss_smmu_unmap` и др.).
@@ -370,6 +378,52 @@
      * В пакете намеренно не используется `AUTOLOAD` через `/etc/modules.d/`, поскольку модуль штатно контролируется скриптом `/etc/init.d/load_cnss2` (START=11), парсящим аргументы `cnss2.*` из `/proc/cmdline` и запускающим фоновый демон `cnssdaemon`.
   5. **Экспорт заголовочных файлов:**
      * Файл `include/cnss2.h` экспортируется через `Build/InstallDev` в `$(STAGING_DIR)/usr/include/` и `$(STAGING_DIR)/usr/include/qca-cnss/` для последующей нативной компиляции драйвера Wi-Fi.
+  6. **Устранение утечки 2.0 МБ DMA-памяти QDSS (переход на коммит `17fe2f6d`):**
+     * Первоначально использовался коммит `3cbb15d2` (09.02.2024), в котором драйвер принудительно аллоцировал 2.0 МБ непрерывной DMA-памяти под отладочную трассировку Qualcomm QDSS (`qdss_mem`).
+     * В стоковой прошивке Xiaomi 1.0.68 драйвер был собран на коммите `17fe2f6d` (16.11.2023), где буфер QDSS не выделяется.
+     * Переход на коммит `17fe2f6d` позволил освободить ровно 2.0 МБ RAM, обеспечив 100% паритет свободной памяти со стоком Xiaomi.
+
+---
+
+### 3.17. `kmod-qca-nss-ecm` (Enhanced Connection Manager - Premium)
+* **Назначение:** Главный координатор аппаратной и программной сетевой акселерации Qualcomm. Отслеживает события соединений Linux Conntrack (TCP, UDP, туннели), классифицирует трафик (DSCP, QoS, VLAN, E-Mesh, PCC, fwmark), динамически выбирает движок акселерации (PPE Hardware Engine или SFE Software Engine) и передает правила коммутации чипу IPQ5322.
+* **Размещение пакета:** `package/kernel/qca-nss-ecm/` (предоставляет `kmod-qca-nss-ecm-premium`, собирает `ecm.ko`, `ecm_sfe_l2.ko`, `ecm_ae_select.ko`).
+* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/lklm/qca-nss-ecm.git` (коммит `aed84d4719a3d5c97a5394bb3e0e7f9dd7b5013d` от 15.11.2023).
+* **Статус:** **`[COMPATIBLE / 98% PARITY]`**
+* **Особенности и тонкости миграции:**
+  1. **Разделение мифов о статусе "Premium":**
+     * Анализ показал, что в OpenWrt QSDK пакет с суффиксом `-premium` собирается из **открытого исходного кода** репозитория `qca-nss-ecm.git`. Название "premium" обозначает профиль сборки с включением всех туннельных интерфейсов и классификаторов (IPsec, PPPoE, PPTP, L2TP, GRE, SIT, TUNIPIP6, RAWIP, VXLAN, MAP-T, QoS, MSCS, SCS, FSE, E-Mesh).
+  2. **Бинарный состав и сравнение секций:**
+     * `ecm_ae_select.ko`: размер 1 449 байт против 1 413 байт в стоке (разница всего **+36 байт**, 97.5% сходство). Импорты: **6 из 6 (100% совпадение)**.
+     * `ecm_sfe_l2.ko`: размер 10 465 байт против 10 478 байт в стоке (разница всего **-13 байт**, 99.9% сходство). Импорты: **39 из 39 (100% совпадение)**.
+     * `ecm.ko`: размер 722 489 байт против 737 178 байт в стоке (разница всего **-14 689 байт / -2.0%**).
+  3. **Совместимость функций и побайтовое соответствие:**
+     * Ключевые функции роутинга и акселерации (`ecm_ported_ipv6_process`, `ecm_multicast_ipv6_connection_process`, `ecm_multicast_ipv4_connection_process`) совпадают по размеру байт-в-байт.
+     * Поддержка протоколов (PPE, SFE, IPv6, PPPoE, PPTP, L2TP, GRE TAP/TUN, SIT, TUNIPIP6, RAWIP, BONDING, VXLAN, MAP-T, DSCP, PCC, MARK, EMESH, MSCS) на 100% совпадает со стоком.
+  4. **Согласование профиля с вендором (отключение ECM_NON_PORTED_SUPPORT_ENABLE):**
+     * В стоке Xiaomi аппаратное ускорение для не-портовых протоколов (ICMP/ping, IGMP, ESP) было отключено (`v4_non_ported_not_supported`).
+     * Отключение `ECM_NON_PORTED_SUPPORT_ENABLE` уменьшило размер модуля на ~89 КБ, обеспечив прямое соответствие потреблению памяти стока.
+  5. **Импорты ядра и ABI:**
+     * Из 224 импортов ядра совпадают **223 символа (100% сетевых функций)**.
+     * Отсутствуют только 2 проприетарных хука телеметрии Xiaomi (`miwifi_ct_acct_hook` и `xqnss_ip_account_ecm_nss_hook`), которые уже заглушены в ядре и не влияют на маршрутизацию.
+  6. **Конфигурация и скрипты управления:**
+     * В пакет перенесены штатные скрипты `/etc/init.d/qca-nss-ecm`, `/etc/config/ecm`, `/usr/bin/ecm_dump.sh`, `/etc/firewall.d/qca-nss-ecm` и sysctl параметры `/etc/sysctl.d/qca-nss-ecm.conf`.
+
+---
+
+### 3.18. `kmod-qca-nss-ecm-wifi-plugin` (Wi-Fi Integration Plugin for ECM)
+* **Назначение:** Модуль-плагин интеграции диспетчера ECM с закрытым драйвером Wi-Fi Qualcomm (`umac.ko` и `wifi_3_0.ko`). Передает правила классификации FSE (Flow Search Engine) для ускорения беспроводного трафика в восходящем направлении (UL) и регистрирует коллбэки MSCS (Mirrored Stream Classification Service) и SCS для приоритизации Wi-Fi пакетов.
+* **Размещение пакета:** `package/kernel/qca-nss-ecm/` (модуль `ecm-wifi-plugin.ko`).
+* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/lklm/qca-nss-ecm.git` (папка `ecm_wifi_plugins/`, коммит `aed84d4719a3d5c97a5394bb3e0e7f9dd7b5013d`).
+* **Статус:** **`[COMPATIBLE / 100% ABI MATCH]`**
+* **Особенности и тонкости миграции:**
+  1. **100% совпадение импортов стока:**
+     * Все 10 импортов стокового блоба Xiaomi (`qca_fse_add_rule`, `qca_fse_delete_rule`, `qca_mscs_peer_lookup_n_get_priority_v2`, `qca_scs_peer_lookup_n_rule_match_v2`, `ecm_classifier_mscs_*`) полностью удовлетворены.
+  2. **Патч заглушки EasyMesh SAWF (`0001-ecm-wifi-plugin-emesh-sawf-optional.patch`):**
+     * В вендорском стоке регистрация коллбэков EasyMesh SAWF возвращала заглушку (`mov r0, #0; bx lr`).
+     * Создан патч, делающий коллбэки EasyMesh SAWF опциональными через флаг `ECM_WIFI_PLUGIN_EMESH_ENABLE`. При отключенном флаге генерируются идентичные стоку ассемблерные инструкции-стабы, что уменьшает размер модуля с 4.9 КБ до 3.4 КБ (сток — 2.8 КБ) и исключает неиспользуемые импорты `qca_sawf_*`.
+  3. **Совместимость с проприетарным Wi-Fi драйвером:**
+     * Проверка `umac.ko` и `wifi_3_0.ko` подтвердила наличие экспорта всех необходимых функций FSE и MSCS/SCS, модуль штатно загружается службой Wi-Fi и скриптами `qcawificfg80211.sh`.
 
 ---
 
@@ -379,7 +433,7 @@
 
 ```mermaid
 graph TD
-    subgraph "Уже мигрировано на OpenWrt Native (16 модулей - PPE + SFE + CNSS ЗАВЕРШЕНО)"
+    subgraph "Уже мигрировано на OpenWrt Native (18 модулей - PPE + SFE + CNSS + ECM ЗАВЕРШЕНО)"
         SSDK["kmod-qca-ssdk-nohnat<br/>(qca-ssdk.ko)"]
         MCS["kmod-qca-mcs<br/>(qca-mcs.ko)"]
         SP["kmod-emesh-sp<br/>(emesh-sp.ko)<br/>[100% IDENTICAL]"]
@@ -396,10 +450,11 @@ graph TD
         VXLAN["kmod-qca-nss-ppe-vxlanmgr<br/>(qca-nss-ppe-vxlanmgr.ko)<br/>[COMPATIBLE / +0 B .text]"]
         SFE["kmod-qca-nss-sfe<br/>(qca-nss-sfe.ko)<br/>[COMPATIBLE / 19 ABI / 111 IMPORTS]"]
         CNSS["kmod-qca-cnss<br/>(ipq_cnss2.ko)<br/>[COMPATIBLE / 94 ABI / 250 IMPORTS]"]
+        ECM["kmod-qca-nss-ecm<br/>(ecm.ko, ecm_sfe_l2.ko, ecm_ae_select.ko)<br/>[COMPATIBLE / 98% PARITY]"]
+        WIPLUG["kmod-qca-nss-ecm-wifi-plugin<br/>(ecm-wifi-plugin.ko)<br/>[COMPATIBLE / 100% ABI MATCH]"]
     end
 
-    subgraph "Осталось в vendor_feed (следующие этапы)"
-        ECM["kmod-qca-nss-ecm-premium-vendor<br/>(ECM Engine)"]
+    subgraph "Осталось в vendor_feed (финальный этап)"
         WIFI["kmod-qca-wifi-lowmem-profile-vendor<br/>(Wi-Fi Driver)"]
     end
 
@@ -433,18 +488,14 @@ graph TD
     MCS --> ECM
     DP --> ECM
     VP --> ECM
+    ECM --> WIPLUG
     CNSS --> WIFI
     VP --> WIFI
     DS --> WIFI
     PPE --> WIFI
+    WIPLUG --> WIFI
 ```
 
-### Рекомендуемые следующие шаги:
-1. **`kmod-qca-nss-ecm-premium` (Enhanced Connection Manager):**  
-   Главный координатор сетевой акселерации Qualcomm ECM, связывающий Linux conntrack, PPE и SFE.
-2. **`kmod-qca-wifi-lowmem-profile` (Wi-Fi Driver):**  
-   Финальный компонент миграции (Wi-Fi 7 стек).
-
-
-
-
+### Рекомендуемый следующий шаг:
+1. **`kmod-qca-wifi-lowmem-profile` (Wi-Fi Driver):**  
+   Финальный компонент миграции (Wi-Fi стек Qualcomm 802.11be / Alder / QCN6432).

@@ -96,6 +96,8 @@ kmod-pwm-rgb
 kmod-qca-cnss
 kmod-qca-mcs
 kmod-qca-nss-dp
+kmod-qca-nss-ecm-premium
+kmod-qca-nss-ecm-wifi-plugin
 kmod-qca-nss-ppe
 kmod-qca-nss-ppe-bridge-mgr
 kmod-qca-nss-ppe-ds

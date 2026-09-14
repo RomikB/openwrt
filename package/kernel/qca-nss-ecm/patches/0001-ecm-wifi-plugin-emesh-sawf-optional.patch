@@ -1,0 +1,42 @@
+diff --git a/ecm_wifi_plugins/Makefile b/ecm_wifi_plugins/Makefile
+index d8faa5d..dca7607 100644
+--- a/ecm_wifi_plugins/Makefile
++++ b/ecm_wifi_plugins/Makefile
+@@ -4,6 +4,7 @@ ccflags-y += -DECM_WIFI_PLUGIN_BUILD_ID="$(BUILD_ID)"
+ ccflags-y += -DECM_WIFI_PLUGIN_DEBUG_LEVEL=2
+ ccflags-$(ECM_CLASSIFIER_MSCS_SCS_ENABLE) += -DECM_CLASSIFIER_MSCS_SCS_ENABLE
+ ccflags-$(ECM_WIFI_PLUGIN_OPEN_PROFILE_ENABLE) += -DECM_WIFI_PLUGIN_OPEN_PROFILE_ENABLE
++ccflags-$(ECM_WIFI_PLUGIN_EMESH_ENABLE) += -DECM_WIFI_PLUGIN_EMESH_ENABLE
+ ccflags-y += -Wall -Werror
+ obj-m += ecm-wifi-plugin.o
+ 
+diff --git a/ecm_wifi_plugins/ecm_wifi_plugin_emesh.c b/ecm_wifi_plugins/ecm_wifi_plugin_emesh.c
+index 046a296..2d1916c 100644
+--- a/ecm_wifi_plugins/ecm_wifi_plugin_emesh.c
++++ b/ecm_wifi_plugins/ecm_wifi_plugin_emesh.c
+@@ -25,6 +25,8 @@
+ 
+ #include "ecm_wifi_plugin.h"
+ 
++#ifdef ECM_WIFI_PLUGIN_EMESH_ENABLE
++
+ /*
+  * ecm_wifi_plugin_emesh_sawf_update_peer_mesh_params()
+  *	Update mesh latency params.
+@@ -157,3 +159,16 @@ void ecm_wifi_plugin_emesh_unregister(void)
+ 	ecm_classifier_emesh_sawf_conn_sync_callback_unregister();
+ 	ecm_wifi_plugin_info("EMESH classifier callbacks unregistered\n");
+ }
++
++#else
++
++int ecm_wifi_plugin_emesh_register(void)
++{
++return 0;
++}
++
++void ecm_wifi_plugin_emesh_unregister(void)
++{
++}
++
++#endif

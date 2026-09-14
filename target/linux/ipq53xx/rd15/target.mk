@@ -16,9 +16,9 @@ DEFAULT_PACKAGES += \
 	nvram-vendor qca-ssdk-shell-vendor \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
 	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
-	kmod-qca-nss-ecm-premium-vendor \
+	kmod-qca-nss-ecm-premium \
 	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
-	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor kmod-qca-nss-ecm-wifi-plugin-vendor \
+	qca-cnss-daemon-vendor kmod-qca-wifi-lowmem-profile-vendor kmod-qca-nss-ecm-wifi-plugin \
 	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli-vendor qca-wpa-cli-vendor
 
 
