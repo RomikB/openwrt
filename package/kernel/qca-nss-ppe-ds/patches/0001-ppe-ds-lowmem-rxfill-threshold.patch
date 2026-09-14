@@ -1,0 +1,12 @@
+--- a/drv/ppe_ds/ppe_ds_main.c
++++ b/drv/ppe_ds/ppe_ds_main.c
+@@ -66,7 +66,9 @@ module_param(reo2ppe_txcmpl_num_desc, ui
+ MODULE_PARM_DESC(reo2ppe_txcmpl_num_desc, "REO2PPE Tx complete ring descriptor count");
+ 
+-#if defined(NSS_PPE_IPQ53XX)
++#if defined(NSS_PPE_LOWMEM_PROFILE_256M)
++unsigned int rxfill_low_threshold = 256;
++#elif defined(NSS_PPE_IPQ53XX)
+ unsigned int rxfill_low_threshold = 1024;
+ #else
+ unsigned int rxfill_low_threshold = 256;

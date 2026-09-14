@@ -56,7 +56,8 @@ EXTRA_CFLAGS+= \
 	-I$(STAGING_DIR)/usr/include/qca-nss-ppe \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk/fal \
-	-I$(STAGING_DIR)/usr/include/qca-ssdk/init
+	-I$(STAGING_DIR)/usr/include/qca-ssdk/init \
+	-DNSS_PPE_BRIDGE_MGR_FDB_DISABLE
 
 MAKE_OPTS:= \
 	bridge-mgr=y \

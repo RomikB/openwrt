@@ -52,10 +52,12 @@ EXTRA_CFLAGS+= \
 	-I$(STAGING_DIR)/usr/include/qca-nss-ppe \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk/fal \
-	-I$(STAGING_DIR)/usr/include/qca-ssdk/init
+	-I$(STAGING_DIR)/usr/include/qca-ssdk/init \
+	-DNSS_PPE_LOWMEM_PROFILE_256M
 
 MAKE_OPTS:= \
 	ppe-ds=y \
+	PPE_LOWMEM_PROFILE_256M=y \
 	SoC="ipq53xx"
 
 define Build/Compile

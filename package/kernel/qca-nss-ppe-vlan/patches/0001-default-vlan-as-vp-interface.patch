@@ -1,0 +1,8 @@
+--- a/clients/vlan/nss_ppe_vlan_mgr.c
++++ b/clients/vlan/nss_ppe_vlan_mgr.c
+@@ -37,3 +37,3 @@
+ #include "nss_ppe_vlan_mgr_priv.h"
+ 
+-static char *vlan_as_vp_interface = "";
++static char *vlan_as_vp_interface = "eth0";
+ module_param(vlan_as_vp_interface, charp, 0644);
