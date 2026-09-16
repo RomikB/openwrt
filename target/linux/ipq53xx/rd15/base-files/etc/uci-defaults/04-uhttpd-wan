@@ -1,0 +1,10 @@
+#!/bin/sh
+
+[ -f /etc/config/uhttpd ] || exit 0
+
+uci -q batch << 'EOF'
+	set uhttpd.main.rfc1918_filter='0'
+	commit uhttpd
+EOF
+
+exit 0

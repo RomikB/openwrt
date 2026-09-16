@@ -6,7 +6,19 @@ STOP=98
 
 boot_phy_control() {
 	# Power on all wired Ethernet PHYs immediately
-	/sbin/phyhelper start 2>/dev/null || true
+	[ -x /sbin/phyhelper ] && /sbin/phyhelper start 2>/dev/null || true
+}
+
+uci_apply_defaults() {
+	. /lib/functions/system.sh
+
+	cd /etc/uci-defaults || return 0
+	files="$(ls)"
+	[ -z "$files" ] && return 0
+	for file in $files; do
+		( . "./$(basename $file)" ) && rm -f "$file"
+	done
+	uci commit
 }
 
 boot() {
@@ -34,12 +46,17 @@ boot() {
 	[ -d /sys/fs/pstore ] && grep -q pstore /proc/filesystems && /bin/mount -o noatime -t pstore pstore /sys/fs/pstore
 	[ "$FAILSAFE" = "true" ] && touch /tmp/.failsafe
 
+	touch /tmp/.config_pending
 	/sbin/kmodloader
 
 	mkdir -p /tmp/.uci
 	[ -f /etc/uci-defaults/30_uboot-envtools ] && (. /etc/uci-defaults/30_uboot-envtools)
 
 	[ -f /etc/diag.sh ] && { . /etc/diag.sh; set_state booting; }
+
+	rm -f /tmp/.config_pending
+	uci_apply_defaults
+	sync
 
 	# temporary hack until configd exists
 	/sbin/reload_config

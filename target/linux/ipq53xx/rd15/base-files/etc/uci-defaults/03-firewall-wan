@@ -1,0 +1,33 @@
+#!/bin/sh
+
+[ -f /etc/config/firewall ] || exit 0
+
+uci -q batch << 'EOF'
+	delete firewall.allow_ssh_wan
+	set firewall.allow_ssh_wan=rule
+	set firewall.allow_ssh_wan.name='Allow-SSH-WAN'
+	set firewall.allow_ssh_wan.src='wan'
+	set firewall.allow_ssh_wan.proto='tcp'
+	set firewall.allow_ssh_wan.dest_port='22'
+	set firewall.allow_ssh_wan.target='ACCEPT'
+
+	delete firewall.allow_http_wan
+	set firewall.allow_http_wan=rule
+	set firewall.allow_http_wan.name='Allow-HTTP-WAN'
+	set firewall.allow_http_wan.src='wan'
+	set firewall.allow_http_wan.proto='tcp'
+	set firewall.allow_http_wan.dest_port='80'
+	set firewall.allow_http_wan.target='ACCEPT'
+
+	delete firewall.allow_https_wan
+	set firewall.allow_https_wan=rule
+	set firewall.allow_https_wan.name='Allow-HTTPS-WAN'
+	set firewall.allow_https_wan.src='wan'
+	set firewall.allow_https_wan.proto='tcp'
+	set firewall.allow_https_wan.dest_port='443'
+	set firewall.allow_https_wan.target='ACCEPT'
+
+	commit firewall
+EOF
+
+exit 0
