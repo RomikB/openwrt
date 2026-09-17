@@ -116,3 +116,4 @@ kmod-slhc
 kmod-udptunnel4
 kmod-udptunnel6
 kmod-vxlan
+qca-ssdk-shell

@@ -13,7 +13,7 @@ DEFAULT_PACKAGES += \
 	luci iperf3 htop iw iwinfo \
 	kmod-bootconfig kmod-qca-nss-dp kmod-qca-nss-ppe-vp kmod-qca-nss-ppe-rule kmod-qca-nss-ppe-ds kmod-qca-nss-ppe-tun kmod-qca-nss-ppe-pppoe-mgr kmod-qca-nss-ppe-vlan-mgr kmod-qca-nss-ppe-lag-mgr kmod-qca-nss-ppe-bridge-mgr kmod-qca-nss-ppe-vxlanmgr kmod-qca-nss-sfe kmod-qca-cnss \
 	kmod-pwm-rgb kmod-gpio-button-hotplug \
-	nvram-vendor qca-ssdk-shell-vendor \
+	nvram-vendor qca-ssdk-shell \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
 	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
 	kmod-qca-nss-ecm-premium \

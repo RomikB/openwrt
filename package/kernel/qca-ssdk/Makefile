@@ -9,9 +9,9 @@ ifeq ($(call kernel_patchver_eq,5.4),1)
   # Qualcomm CodeLinaro QSDK 12.4 version for Linux 5.4 / IPQ53xx (Xiaomi RD15)
   PKG_RELEASE:=1
   PKG_LICENSE:=ISC GPL-2.0
-  PKG_SOURCE_DATE:=2024-05-20
-  PKG_SOURCE_VERSION:=0ac166a12a28ce062d2ad1ebca6e74422768a036
-  PKG_MIRROR_HASH:=85034ff54b96b08a4e7f90298c70199db04064e728c06e2cfbd4cecc773e4a7a
+  PKG_SOURCE_DATE:=2023-11-16
+  PKG_SOURCE_VERSION:=2e8bf9963e3cbe530ae3fff23ad4f0cf3b03e613
+  PKG_MIRROR_HASH:=97aae0b18255b62e744dcf4bbb0339203b95a1cc08e54d9193fc6659cbbaf63b
   PATCH_DIR:=./patches-5.4
 else
   # Upstream OpenWrt 24 version for kernels 5.15+ / qualcommax

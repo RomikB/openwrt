@@ -16,7 +16,6 @@ qca-cnss-daemon
 qca-firmware
 qca-hostap
 qca-hostapd-cli
-qca-ssdk-shell
 qca-wifi-scripts
 qca-wpa-cli
 qca-wpa-supplicant

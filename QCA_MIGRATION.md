@@ -33,7 +33,7 @@
 | **`kmod-emesh-sp`** | `emesh-sp.ko` | `oss/lklm/emesh-sp.git` | `3de1a656` (21.07.2023) | **`[IDENTICAL]`** | **100% побайтовое совпадение** (+0 байт diff) |
 | **`kmod-qca-nss-ppe`** | `qca-nss-ppe.ko` | `oss/lklm/nss-ppe.git` | `0c6434d7` (19.01.2024) | **`[COMPATIBLE]`** | **167/167 экспортов**, **232/232 импортов**, **537/537 функций** (.text diff +464 байта) |
 | **`kmod-qca-mcs`** | `qca-mcs.ko` | `oss/lklm/qca-mcs.git` | `2237266b` (07.02.2024) | **`[COMPATIBLE]`** | **12/12 экспортов**, **59/59 импортов** |
-| **`kmod-qca-ssdk-nohnat`** | `qca-ssdk.ko` | `oss/lklm/qca-ssdk.git` | `0ac166a1` (20.05.2024) | **`[COMPATIBLE]`** | **730 экспортов**, патч `fal_port_reset` |
+| **`kmod-qca-ssdk-nohnat`** | `qca-ssdk.ko` | `oss/lklm/qca-ssdk.git` | `2e8bf996` (16.11.2023) | **`[COMPATIBLE]`** | **443/443 экспортов (100%)**, **137/137 импортов (100%)**, .text diff -672 байта |
 | **`kmod-qca-nss-dp`** | `qca-nss-dp.ko` | `oss/lklm/nss-dp.git` | `93102877` (01.02.2024) | **`[COMPATIBLE]`** | **15/15 экспортов**, **202/202 импортов**, **182/182 функций** |
 | **`kmod-qca-nss-ppe-vp`** | `qca-nss-ppe-vp.ko` | `oss/lklm/nss-ppe.git` | `0c6434d7` (19.01.2024) | **`[COMPATIBLE]`** | **8/8 экспортов**, **61/61 импортов**, **24/24 функций** |
 | **`kmod-qca-nss-ppe-rule`** | `qca-nss-ppe-rule.ko` | `oss/lklm/nss-ppe.git` | `0c6434d7` (19.01.2024) | **`[COMPATIBLE]`** | **4/4 экспортов**, **30/30 импортов**, **12/12 функций** (.text diff -48 байт) |
@@ -109,22 +109,28 @@
 ### 3.4. `kmod-qca-ssdk-nohnat` (Qualcomm Switch & PHY Subsystem SDK)
 * **Назначение:** Основной системный драйвер подсистемы коммутации и физических уровней (PHY/MAC). Управляет внутренними и внешними портами, связыванием RGMII/SGMII, Uniphy и операциями свитча.
 * **Размещение пакета:** `package/kernel/qca-ssdk/`
-* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/lklm/qca-ssdk.git` (коммит `0ac166a12dfd666611270ae61fcb2dffeb6c4ee6` от 20.05.2024).
-* **Статус:** **`[COMPATIBLE]`**
+* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/lklm/qca-ssdk.git` (ветка `NHSS.QSDK.12.4`, коммит `2e8bf9963e3cbe530ae3fff23ad4f0cf3b03e613` от 16.11.2023, слияние 20.11.2023).
+* **Статус:** **`[COMPATIBLE / 100% PARITY]`**
 * **Особенности и тонкости миграции:**
-  1. **Кастомизация флагов сборки под стоковый профиль:**
-     * По умолчанию апстримный SSDK собирается с огромным набором фичей (HNAT, PTP, Led control, BM, Shaper, Policy, SFP). В стоке Xiaomi BE3600 используется облегченный профиль без HNATHW.
-     * Были подобраны флаги сборки:
-       ```makefile
-       PTP=0 MIB_RX_FLOW_CHECK=0 LEDS=0 PORTVLAN=0 SUB_PORT=0 SFP=0 \
-       SW_SYNC=0 PPPOE=0 BM=0 SHAPER=0 SERVCODE=0 POLICY=0
-       ```
-  2. **Патч `001-export-fal_port_reset.patch`:**
-     * В апстримных исходниках функция `fal_port_reset` была объявлена без экспорта наружу.
-     * Однако сторонний драйвер 2.5G PHY Motorcomm YT8821 (`yt_phy_module.ko`) требует функцию `fal_port_reset` из `qca-ssdk` для аппаратной перезагрузки порта при смене линка.
-     * Патч добавил `EXPORT_SYMBOL(fal_port_reset)` в FAL-слой SSDK, что восстановило работу 2.5G порта на скорости 2500 Mbps.
-  3. **Совместимость с Userland:**
-     * Полная совместимость с вендорской утилитой `/usr/sbin/ssdk_sh`, диагностическими скриптами и `swconfig switch0`.
+  1. **Точная идентификация коммита (переход с `0ac166a1` на `2e8bf996`):**
+     * Ранее модуль собирался на коммите `0ac166a1` (май 2024). Глубокий бинарный анализ стокового блоба Xiaomi выявил:
+       * **Символ ядра `phy_gbit_features`:** В стоковом модуле Xiaomi этот символ импортируется из ядра. В коммите `630d17e6` (23.02.2024) Qualcomm убрал статическую маску `.features = PHY_GBIT_FEATURES` в пользу динамической функции `qca808x_phy_read_abilities`. На коммите `2e8bf996` маска `PHY_GBIT_FEATURES` возвращается на место, и количество импортов ядра становится ровно **137 из 137 (100% совпадение со стоком)**.
+       * **Строка формата `Recieved IOCTL call`:** Коммит `514aa723` (18.12.2023) исправил опечатку `Recieved` -> `Received` в `sw_api_ks_ioctl.c`. В стоковом бинарнике Xiaomi присутствует именно опечатка `Recieved`, что доказывает сборку стока до 18.12.2023.
+       * **Дизассемблер `mht_port_link_update`:** Коммит `2e8bf996` (16.11.2023) добавил сброс скорости на 1G при Link Down (`phy_status.speed = FAL_SPEED_1000; phy_status.duplex = FAL_FULL_DUPLEX;`). В стоковом `qca-ssdk.ko` по адресу `0x70ef4` присутствуют инструкции `moveq r7, #1000` и `moveq r9, #1`, подтверждающие этот коммит.
+       * **Синхронизация даты сборки со всеми компонентами прошивки:**
+         * `qca-nss-ecm`: `aed84d47` — **15.11.2023**
+         * `qca-cnss`: `17fe2f6d` — **16.11.2023**
+         * `qca-ssdk`: `2e8bf996` — **16.11.2023**
+         * `qca-ssdk-shell`: `5a3e1d6d` — **23.11.2023**
+         Все компоненты подсистем ядра и сети зафиксированы вендором в середине ноября 2023 года.
+  2. **Кастомизация флагов сборки под стоковый профиль:**
+     * В стоке Xiaomi BE3600 используется облегченный профиль без HNATHW. Флаги в [Makefile](file:///home/romikb/openwrt/package/kernel/qca-ssdk/Makefile):
+       `SoC=ipq53xx CHIP_TYPE=MPPE PTP_FEATURE=disable MINI_SSDK=enable IN_AQUANTIA_PHY=FALSE IN_QCA803X_PHY=FALSE IN_MALIBU_PHY=FALSE`.
+  3. **Патч `001-export-fal_port_reset.patch`:**
+     * В апстримном коде при `MINI_SSDK=enable` функция `fal_port_reset` исключалась макросом `IN_PORTCONTROL_MINI`.
+     * В стоке Xiaomi `fal_port_reset` присутствует в `__ksymtab` (экспортируется наружу). Патч обеспечивает экспорт `fal_port_reset` и совпадение всех 443 экспортов таблицы ABI.
+  4. **Совместимость с Userland:**
+     * Полная совместимость с нативной утилитой `/usr/sbin/ssdk_sh`, проверенная на физическом роутере Xiaomi BE3600.
 
 ---
 
@@ -427,14 +433,38 @@
 
 ---
 
-## 4. Архитектурная карта миграции и следующие шаги
+## 4. Миграция утилит пространства пользователя (Userland)
+
+### 4.1. `qca-ssdk-shell` (Qualcomm SSDK Shell / `ssdk_sh`)
+* **Назначение:** Консольная утилита управления коммутатором и подсистемой PPE Qualcomm (`/usr/sbin/ssdk_sh`). Обеспечивает диагностику сетевых портов, настройку VLAN, управление таблицами FDB/ACL/QoS/MIB, считывание регистров и кабельную диагностику CDT.
+* **Размещение пакета:** `package/network/utils/qca-ssdk-shell/`
+* **Исходники:** `https://git.codelinaro.org/clo/qsdk/oss/ssdk-shell.git` (ветка `NHSS.QSDK.12.4`, коммит `5a3e1d6d72338d605e700cc083bf0f93e83d57cc` от 23.11.2023).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Точная идентификация коммита (бинарное соответствие со стоком):**
+     * Анализ истории репозитория CodeLinaro в обратном порядке от коммита `001660c2` показал, что коммит `001660c2` (17.12.2023) отключил макрос `IOCTL_COMPAT` и строки `[inf defined]:mdio_set(%s)...` под `#if 0`. В стоковом бинарнике Xiaomi `tmp/rootfs/usr/sbin/ssdk_sh` эти строки присутствуют, то есть сток собран до `001660c2`.
+     * Предыдущий коммит `5a3e1d6d` (23.11.2023) исправил расчет размера буфера в функции `cmd_data_print_portmap` (`rsb r1, r0, #64`). Дизассемблирование стокового бинарника Xiaomi по смещению `0x486c0` подтвердило идентичную инструкцию `rsb r1, r0, #64`. Таким образом, точный исходный коммит стока — `5a3e1d6d`.
+  2. **Адаптация под компилятор GCC 13 (OpenWrt):**
+     * Во внутренних мейкфайлах Qualcomm (`make/linux_opt.mk`) жёстко прописан флаг `-Wall -Werror`.
+     * В GCC 13 появилось новое строгое предупреждение `-Wenum-int-mismatch`. Из-за исторического расхождения сигнатуры метода `fal_port_cdt` в заголовочном файле `include/fal/fal_port_ctrl.h` (`fal_cable_status_t *status`) и файле реализации `src/fal_uk/fal_port_ctrl.c` (`a_uint32_t *status`), GCC 13 прерывал сборку с ошибкой.
+     * Создан точечный патч `0001-fix-gcc13-build.patch`, заменяющий `-Werror` на `-Wno-error` в `make/linux_opt.mk`. Сам C-код Qualcomm оставлен на 100% аутентичным (на 32-битном ARM ABI указателей идентичен, машинный код функции совпадает побайтово).
+  3. **Проверка на физическом роутере (Xiaomi Router BE3600, 192.168.11.46):**
+     * Пакет собран и протестирован на устройстве. Связь с драйвером ядра `kmod-qca-ssdk-nohnat` через сокет Netlink (`/dev/switch_uk`) устанавливается безупречно (`SSDK Init OK!`).
+     * Проверен опрос 2.5G порта: `port linkStatus get 2` -> `[Status]:ENABLE`, `port speed get 2` -> `2500(Mbps)`, `duplex: FULL`.
+     * Проверен кабельный тестер: команда `port cdt run 1 0` успешно вызывает функцию `fal_port_cdt` и возвращает статус без сбоев.
+     * Проверен опрос аппаратных таблиц коммутации FDB: `fdb entry show 0` отрабатывает штатно.
+
+---
+
+## 5. Архитектурная карта миграции и следующие шаги
 
 Текущее состояние зависимостей модулей на маршрутизаторе Xiaomi BE3600 (RD15):
 
 ```mermaid
 graph TD
-    subgraph "Уже мигрировано на OpenWrt Native (18 модулей - PPE + SFE + CNSS + ECM ЗАВЕРШЕНО)"
+    subgraph "Уже мигрировано на OpenWrt Native (18 модулей ядра + qca-ssdk-shell ЗАВЕРШЕНО)"
         SSDK["kmod-qca-ssdk-nohnat<br/>(qca-ssdk.ko)"]
+        SSDK_SH["qca-ssdk-shell<br/>(ssdk_sh)<br/>[COMPATIBLE / TESTED]"]
         MCS["kmod-qca-mcs<br/>(qca-mcs.ko)"]
         SP["kmod-emesh-sp<br/>(emesh-sp.ko)<br/>[100% IDENTICAL]"]
         PPE["kmod-qca-nss-ppe<br/>(qca-nss-ppe.ko)<br/>[COMPATIBLE]"]
@@ -458,6 +488,7 @@ graph TD
         WIFI["kmod-qca-wifi-lowmem-profile-vendor<br/>(Wi-Fi Driver)"]
     end
 
+    SSDK --> SSDK_SH
     SSDK --> DP
     PPE --> DP
     DP --> VP
