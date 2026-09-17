@@ -8,25 +8,26 @@ define Image/Prepare
 	$(CP) $(LINUX_DIR)/vmlinux $(KDIR)/$(IMG_PREFIX)-vmlinux.elf
 endef
 
-define Device/xiaomi-rd15-prebuild
+define Device/Default
 	DEVICE_VENDOR := Xiaomi
 	DEVICE_MODEL := Router BE3600 (RD15)
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	BLOCKSIZE := 128k
 	PAGESIZE := 2048
 	VID_HDR_OFFSET := 2048
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	ROOTFS_NAME := ubi_rootfs
-	DEVICE_PACKAGES := -firewall4 -nftables -kmod-nft-offload firewall iptables-zz-legacy xtables-legacy
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
+endef
+
+define Device/xiaomi-rd15-prebuild
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel)
+	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	DEVICE_PACKAGES := nvram-vendor
 endef
 TARGET_DEVICES += xiaomi-rd15-prebuild
 
 define Device/xiaomi-rd15-qsdk
-	DEVICE_VENDOR := Xiaomi
-	DEVICE_MODEL := Router BE3600 (RD15)
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel)
 	DEVICE_DTS := ipq5332-rd15
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
@@ -35,14 +36,7 @@ define Device/xiaomi-rd15-qsdk
 	KERNEL_LOADADDR := 0x40008000
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
-	BLOCKSIZE := 128k
-	PAGESIZE := 2048
-	VID_HDR_OFFSET := 2048
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	ROOTFS_NAME := ubi_rootfs
-	DEVICE_PACKAGES := -firewall4 -nftables -kmod-nft-offload firewall iptables-zz-legacy xtables-legacy \
-		uboot-envtools
-	IMAGES := factory.ubi
-	IMAGE/factory.ubi := append-ubi
+	DEVICE_PACKAGES := uboot-envtools
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk

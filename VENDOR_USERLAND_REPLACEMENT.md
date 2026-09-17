@@ -169,61 +169,43 @@
 6. Пропатчивает сгенерированные пакеты (`patch_package.py`).
 7. Автоматически регистрирует фид `src-link vendor_feed ../vendor_feed` в `feeds.conf`.
 
-### 1. Обязательный минимум проводного роутера с оффлоадом ([vendor_scripts/required.list](vendor_scripts/required.list)):
-Список из **13 пакетов**, необходимых для гарантированной работы роутера как проводного маршрутизатора с аппаратным ускорением:
+### 1. Обязательный минимум беспроводного роутера ([vendor_scripts/required.list](vendor_scripts/required.list)):
+Список из **10 ключевых вендорных пакетов**, необходимых для гарантированной работы беспроводного маршрутизатора (проприетарный Wi-Fi стек и заводские калибровки `nvram`):
 ```text
-kmod-bootconfig
-kmod-gpio-button-hotplug
-kmod-ipt-conntrack-extra
-kmod-ipt-ipopt
-kmod-ipt-offload
-kmod-pwm-rgb
-kmod-qca-nss-ecm-premium
-kmod-qca-nss-ppe-pppoe-mgr
-kmod-yt-9215s-driver
-kmod-yt-phy-driver
-nvram
-qca-ssdk-shell
-yt-9215s-client
-```
-
-### 2. Входной список пакетов сборки ([vendor_scripts/packages.list](vendor_scripts/packages.list)):
-Список из **26 ключевых точек входа**, включающий компоненты Wi-Fi, из которого автоматически разворачиваются все 87 пакетов фида:
-```text
-kmod-bootconfig
-kmod-gpio-button-hotplug
-kmod-ipt-conntrack-extra
-kmod-ipt-extra
-kmod-ipt-filter
-kmod-ipt-ipopt
-kmod-ipt-nat6
-kmod-ipt-offload
-kmod-ipt-raw
-kmod-pwm-rgb
-kmod-qca-nss-ecm-wifi-plugin
-kmod-qca-nss-ppe-lag-mgr
-kmod-qca-nss-ppe-pppoe-mgr
-kmod-yt-9215s-driver
-kmod-yt-phy-driver
+kmod-qca-wifi-lowmem-profile
 nvram
 qca-cnss-daemon
 qca-firmware
 qca-hostap
 qca-hostapd-cli
-qca-ssdk-shell
 qca-wifi-scripts
 qca-wpa-cli
 qca-wpa-supplicant
 wififw_mount_script
-yt-9215s-client
+```
+*(Все нативные компоненты проводного роутера — драйвер коммутатора Motorcomm YT9215S, трансивер 2.5G PHY YT8821, аппаратное ускорение маршрутизации Qualcomm PPE / ECM, Netfilter и периферия — собираются из открытых исходников OpenWrt и контролируются через `DEFAULT_PACKAGES` в `target.mk`. Необходимые вендорные разделяемые библиотеки `libc`, `libnl*`, `libopenssl` и др. подтягиваются автоматически через транзитивные зависимости).*
+
+### 2. Входной список пакетов сборки ([vendor_scripts/packages.list](vendor_scripts/packages.list)):
+Список из **10 вендорных пакетов**, из которых генератор автоматически разворачивает все 23 пакета вендорного фида (10 ключевых пакетов и 13 изолированных библиотек `ld-vendor`):
+```text
+kmod-qca-wifi-lowmem-profile
+nvram
+qca-cnss-daemon
+qca-firmware
+qca-hostap
+qca-hostapd-cli
+qca-wifi-scripts
+qca-wpa-cli
+qca-wpa-supplicant
+wififw_mount_script
 ```
 
-*Пакеты `kmod-qca-nss-dp`, `kmod-qca-nss-ecm-premium` и `kmod-qca-wifi-lowmem-profile` автоматически разрешаются и генерируются через транзитивные зависимости.*
+*(Все нативные модули ядра исключены из вендорного списка, перенесены в `native.list` и собираются штатно деревом OpenWrt).*
 
 ### 3. Вспомогательные скрипты генерации фида:
 - **`vendor_scripts/extract_kernel_data.py`**: Извлекает из FIT-образа стокового ядра LZMA-поток, сжатый `IKCONFIG` (`.config`), формирует полный `config-5.4` и файл `modules.builtin` на базе правил `KernelPackage` из OpenWrt.
 - **`vendor_scripts/extract_kmod_deps.py`**: Выполняет бинарный анализ экспортируемых и импортируемых символов всех `.ko` файлов распакованного rootfs и формирует карту зависимостей `tmp/kmod_deps.json`.
-- **`vendor_scripts/generate_feed.py`**: Считывает `opkg status` и `kmod_deps.json`, строит полный граф зависимостей в памяти, проверяет наличие всех 13 пакетов из `required.list` и генерирует дерево пакетов в `vendor_feed/`.
+- **`vendor_scripts/generate_feed.py`**: Считывает `opkg status` и `kmod_deps.json`, строит полный граф зависимостей в памяти, проверяет наличие всех 10 пакетов из `required.list` и генерирует дерево пакетов в `vendor_feed/`.
 - **`vendor_scripts/patch_package.py`**: Обрабатывает каждый пакет в сгенерированном фиде — выполняет ELF-версионирование библиотек (`v_l*.so`), перенаправляет интерпертатор на `ld-vendor.so.1` и патчит сервисные init-скрипты (`qca-nss-ecm`, `load_cnss2`, `qca-hostapd`).
 
 ---
