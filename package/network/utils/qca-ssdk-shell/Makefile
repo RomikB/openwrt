@@ -17,7 +17,7 @@ define Package/qca-ssdk-shell
   CATEGORY:=Network
   SUBMENU:=Routing and Redirection
   TITLE:=Shell application for Qualcomm SSDK
-  DEPENDS:=@TARGET_ipq53xx +kmod-qca-ssdk-nohnat
+  DEPENDS:=@TARGET_ipq53xx
 endef
 
 define Package/qca-ssdk-shell/description

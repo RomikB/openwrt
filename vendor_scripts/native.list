@@ -116,4 +116,7 @@ kmod-slhc
 kmod-udptunnel4
 kmod-udptunnel6
 kmod-vxlan
+kmod-yt-9215s-driver
+kmod-yt-phy-driver
 qca-ssdk-shell
+yt-9215s-client

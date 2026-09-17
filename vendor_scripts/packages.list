@@ -9,8 +9,6 @@ kmod-ipt-offload
 kmod-ipt-raw
 kmod-pwm-rgb
 kmod-qca-wifi-lowmem-profile
-kmod-yt-9215s-driver
-kmod-yt-phy-driver
 nvram
 qca-cnss-daemon
 qca-firmware
@@ -20,4 +18,3 @@ qca-wifi-scripts
 qca-wpa-cli
 qca-wpa-supplicant
 wififw_mount_script
-yt-9215s-client

@@ -18,8 +18,7 @@ define Device/xiaomi-rd15-prebuild
 	VID_HDR_OFFSET := 2048
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	ROOTFS_NAME := ubi_rootfs
-	DEVICE_PACKAGES := -firewall4 -nftables -kmod-nft-offload firewall iptables-zz-legacy xtables-legacy \
-		kmod-yt-9215s-driver-vendor kmod-yt-phy-driver-vendor yt-9215s-client-vendor
+	DEVICE_PACKAGES := -firewall4 -nftables -kmod-nft-offload firewall iptables-zz-legacy xtables-legacy
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
 endef
@@ -42,7 +41,7 @@ define Device/xiaomi-rd15-qsdk
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	ROOTFS_NAME := ubi_rootfs
 	DEVICE_PACKAGES := -firewall4 -nftables -kmod-nft-offload firewall iptables-zz-legacy xtables-legacy \
-		uboot-envtools kmod-yt-9215s-driver kmod-yt-phy-driver yt-9215s-client
+		uboot-envtools
 	IMAGES := factory.ubi
 	IMAGE/factory.ubi := append-ubi
 endef

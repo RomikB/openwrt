@@ -565,11 +565,11 @@ static int __init yt9215_module_init(void)
   - При старте роутера WAN-порт (`eth0.1` / Phy3) мгновенно получает IP-адрес по DHCP (`192.168.11.46`).
   - Все подкоманды `switch_ctl` отрабатывают штатно.
 
-### 10.5 Интеграция в профили сборки
-* **`target/linux/ipq53xx/rd15/target.mk`**: Пакет `yt-9215s-client-vendor` исключен из глобального списка `DEFAULT_PACKAGES`.
+### 10.5 Полная миграция в нативные пакеты и интеграция в профили сборки
+* **`vendor_scripts/packages.list` / `native.list`**: Пакеты свитча (`kmod-yt-9215s-driver`, `kmod-yt-phy-driver`, `yt-9215s-client`) перенесены из вендорского фида в нативный список `native.list`. Проприетарные блобы полностью исключены из `vendor_feed`.
+* **`target/linux/ipq53xx/rd15/target.mk`**: Открытые пакеты `kmod-yt-9215s-driver`, `kmod-yt-phy-driver` и `yt-9215s-client` включены в общецелевой список `DEFAULT_PACKAGES`.
 * **`target/linux/ipq53xx/image/rd15.mk`**:
-  - В профиле `xiaomi-rd15-prebuild`: оставлен вендорный пакет `yt-9215s-client-vendor` (вместе с вендорными драйверами).
-  - В профиле `xiaomi-rd15-qsdk`: подключен новый открытый пакет `yt-9215s-client` (вместе с открытыми `kmod-yt-9215s-driver` и `kmod-yt-phy-driver`).
+  - Поскольку драйвера и утилита стали общими для всего таргета `rd15`, они удалены из индивидуальных списков `DEVICE_PACKAGES` (`xiaomi-rd15-prebuild` и `xiaomi-rd15-qsdk`), так как наследуются автоматически через `DEFAULT_PACKAGES`.
 
 ---
 
