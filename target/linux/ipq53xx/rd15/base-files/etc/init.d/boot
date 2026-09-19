@@ -49,12 +49,13 @@ boot() {
 	touch /tmp/.config_pending
 	/sbin/kmodloader
 
-	mkdir -p /tmp/.uci
-	[ -f /etc/uci-defaults/30_uboot-envtools ] && (. /etc/uci-defaults/30_uboot-envtools)
-
 	[ -f /etc/diag.sh ] && { . /etc/diag.sh; set_state booting; }
 
+	mkdir -p /tmp/.uci
+	[ -f /etc/uci-defaults/30_uboot-envtools ] && (. /etc/uci-defaults/30_uboot-envtools)
+	/bin/config_generate
 	rm -f /tmp/.config_pending
+	
 	uci_apply_defaults
 	sync
 

@@ -1,52 +1,51 @@
 #!/bin/sh
 # OpenWrt diag.sh for Xiaomi Router BE3600 (RD15)
-# Controls front RGB LED via /sys/class/leds/rgb
+# Controls front dual-color LEDs (blue:status, orange:status)
 
 . /lib/functions/leds.sh
 
-LED_SYSFS="/sys/class/leds/rgb"
-COLOR_OFF=0
-COLOR_BLUE=1207959552
-COLOR_ORANGE=4718592
-COLOR_PURPLE=573767680
-
-set_rgb_led() {
-	local color="$1"
-	local trigger="${2:-none}"
-	local delay_on="${3:-200}"
-	local delay_off="${4:-200}"
-
-	[ -d "$LED_SYSFS" ] || return 0
-
-	echo "$trigger" > "$LED_SYSFS/trigger" 2>/dev/null || true
-	echo "$color" > "$LED_SYSFS/brightness" 2>/dev/null || true
-
-	if [ "$trigger" = "timer" ]; then
-		echo "$delay_on" > "$LED_SYSFS/delay_on" 2>/dev/null || true
-		echo "$delay_off" > "$LED_SYSFS/delay_off" 2>/dev/null || true
-	fi
-}
+LED_BLUE="/sys/class/leds/blue:status"
+LED_ORANGE="/sys/class/leds/orange:status"
 
 set_state() {
 	case "$1" in
 	preinit|booting)
-		# Orange breathing / solid during system boot
-		set_rgb_led "$COLOR_ORANGE" none
+		# Solid orange during system boot
+		[ -d "$LED_BLUE" ] && echo 0 > "$LED_BLUE/brightness" 2>/dev/null
+		if [ -d "$LED_ORANGE" ]; then
+			echo none > "$LED_ORANGE/trigger" 2>/dev/null
+			echo 255 > "$LED_ORANGE/brightness" 2>/dev/null
+		fi
 		;;
 	failsafe)
-		# Fast orange blinking in failsafe mode
-		set_rgb_led "$COLOR_ORANGE" timer 100 100
+		# Fast orange blinking in failsafe mode (100ms on, 100ms off)
+		[ -d "$LED_BLUE" ] && echo 0 > "$LED_BLUE/brightness" 2>/dev/null
+		if [ -d "$LED_ORANGE" ]; then
+			echo timer > "$LED_ORANGE/trigger" 2>/dev/null
+			echo 100 > "$LED_ORANGE/delay_on" 2>/dev/null
+			echo 100 > "$LED_ORANGE/delay_off" 2>/dev/null
+		fi
 		;;
 	upgrade)
-		# Fast orange blinking during firmware flash
-		set_rgb_led "$COLOR_ORANGE" timer 150 150
+		# Fast orange blinking during firmware upgrade (150ms on, 150ms off)
+		[ -d "$LED_BLUE" ] && echo 0 > "$LED_BLUE/brightness" 2>/dev/null
+		if [ -d "$LED_ORANGE" ]; then
+			echo timer > "$LED_ORANGE/trigger" 2>/dev/null
+			echo 150 > "$LED_ORANGE/delay_on" 2>/dev/null
+			echo 150 > "$LED_ORANGE/delay_off" 2>/dev/null
+		fi
 		;;
 	done|running)
 		# Solid blue when system is fully ready
-		set_rgb_led "$COLOR_BLUE" none
+		[ -d "$LED_ORANGE" ] && echo 0 > "$LED_ORANGE/brightness" 2>/dev/null
+		if [ -d "$LED_BLUE" ]; then
+			echo none > "$LED_BLUE/trigger" 2>/dev/null
+			echo 255 > "$LED_BLUE/brightness" 2>/dev/null
+		fi
 		;;
 	off)
-		set_rgb_led "$COLOR_OFF" none
+		[ -d "$LED_BLUE" ] && echo 0 > "$LED_BLUE/brightness" 2>/dev/null
+		[ -d "$LED_ORANGE" ] && echo 0 > "$LED_ORANGE/brightness" 2>/dev/null
 		;;
 	esac
 }

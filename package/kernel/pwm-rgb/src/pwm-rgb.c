@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Xiaomi Multi-channel PWM RGB LED driver
+ * Xiaomi Multi-channel PWM Status LED driver for OpenWrt (RD15 / IPQ5332)
  *
- * Direct control of front RGB LEDs via standard OpenWrt LED sysfs class.
+ * Exposes each hardware PWM channel as a standard Linux LED class device
+ * (e.g., blue:status, orange:status) with standard 0..255 brightness.
+ * Fully compatible with OpenWrt LED subsystem, LuCI and /etc/diag.sh.
  */
 
 #include <linux/module.h>
@@ -10,79 +12,41 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/leds.h>
 #include <linux/pwm.h>
-#include <linux/workqueue.h>
 #include <linux/slab.h>
 
-#define MAX_COLORS 4
+#define DEFAULT_PWM_PERIOD 50000 /* 50 us -> 20 kHz */
 
-struct pwm_rgb_led {
+struct pwm_channel_led {
 	struct led_classdev cdev;
-	struct work_struct work;
-	u8 num_colors;
-	u8 can_sleep;
-	u32 color;
+	struct pwm_device *pwm;
 	u32 period;
-	struct pwm_device **pwms;
+	char name[32];
 };
 
 struct pwm_rgb_priv {
-	u8 num_leds;
-	struct pwm_rgb_led leds[];
+	int num_leds;
+	struct pwm_channel_led leds[];
 };
 
-static void pwm_rgb_update(struct pwm_rgb_led *led)
+static int pwm_channel_set_blocking(struct led_classdev *ldev, enum led_brightness value)
 {
-	u8 colors[MAX_COLORS];
-	int i;
+	struct pwm_channel_led *led = container_of(ldev, struct pwm_channel_led, cdev);
+	struct pwm_state state;
+	u64 duty;
 
-	colors[0] = (led->color >> 24) & 0xff;
-	colors[1] = (led->color >> 16) & 0xff;
-	colors[2] = (led->color >> 8) & 0xff;
-	colors[3] = led->color & 0xff;
+	if (!led->pwm)
+		return 0;
 
-	for (i = 0; i < led->num_colors; i++) {
-		struct pwm_state state;
-		u64 duty;
+	duty = DIV_ROUND_CLOSEST_ULL((u64)led->period * value, 255);
 
-		if (!led->pwms[i])
-			continue;
+	pwm_get_state(led->pwm, &state);
+	state.period = led->period;
+	state.duty_cycle = duty;
+	state.enabled = (duty > 0);
 
-		duty = DIV_ROUND_CLOSEST_ULL((u64)led->period * colors[i], 255);
-
-		pwm_get_state(led->pwms[i], &state);
-		if (state.duty_cycle != duty || state.period != led->period) {
-			state.period = led->period;
-			state.duty_cycle = duty;
-			pwm_apply_state(led->pwms[i], &state);
-		}
-
-		if (state.enabled != (duty > 0)) {
-			state.enabled = (duty > 0);
-			pwm_apply_state(led->pwms[i], &state);
-		}
-	}
-}
-
-static void pwm_rgb_work(struct work_struct *work)
-{
-	struct pwm_rgb_led *led = container_of(work, struct pwm_rgb_led, work);
-	pwm_rgb_update(led);
-}
-
-static int pwm_rgb_set_blocking(struct led_classdev *ldev, enum led_brightness value)
-{
-	struct pwm_rgb_led *led = container_of(ldev, struct pwm_rgb_led, cdev);
-
-	led->color = (u32)value;
-	if (led->can_sleep)
-		queue_work(system_wq, &led->work);
-	else
-		pwm_rgb_update(led);
-
-	return 0;
+	return pwm_apply_state(led->pwm, &state);
 }
 
 static void pwm_rgb_cleanup(struct pwm_rgb_priv *priv)
@@ -90,9 +54,16 @@ static void pwm_rgb_cleanup(struct pwm_rgb_priv *priv)
 	int i;
 
 	for (i = priv->num_leds - 1; i >= 0; i--) {
-		led_classdev_unregister(&priv->leds[i].cdev);
-		if (priv->leds[i].can_sleep)
-			cancel_work_sync(&priv->leds[i].work);
+		if (priv->leds[i].cdev.dev)
+			led_classdev_unregister(&priv->leds[i].cdev);
+
+		if (priv->leds[i].pwm) {
+			struct pwm_state state;
+			pwm_get_state(priv->leds[i].pwm, &state);
+			state.enabled = false;
+			state.duty_cycle = 0;
+			pwm_apply_state(priv->leds[i].pwm, &state);
+		}
 	}
 }
 
@@ -100,91 +71,120 @@ static int pwm_rgb_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
-	struct device_node *child, *color_node;
+	struct device_node *child, *channel_node;
 	struct pwm_rgb_priv *priv;
-	int num_leds = 0;
-	int led_idx = 0;
+	int total_leds = 0;
+	int idx = 0;
 
 	if (!node)
 		return -ENODEV;
 
-	for_each_child_of_node(node, child)
-		num_leds++;
+	/* Count channel nodes */
+	for_each_child_of_node(node, child) {
+		int sub_count = of_get_child_count(child);
+		if (sub_count > 0)
+			total_leds += sub_count;
+		else
+			total_leds++;
+	}
 
-	if (!num_leds)
+	if (!total_leds)
 		return -ENODEV;
 
-	priv = devm_kzalloc(dev, sizeof(*priv) + num_leds * sizeof(struct pwm_rgb_led), GFP_KERNEL);
+	priv = devm_kzalloc(dev, sizeof(*priv) + total_leds * sizeof(struct pwm_channel_led), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	priv->num_leds = num_leds;
+	priv->num_leds = total_leds;
 
 	for_each_child_of_node(node, child) {
-		struct pwm_rgb_led *led = &priv->leds[led_idx];
-		const char *label;
-		u32 period = 50000;
-		u32 brightness = 0;
-		int num_colors = 0;
-		int color_idx = 0;
-		int ret;
+		u32 group_period = DEFAULT_PWM_PERIOD;
+		int sub_count = of_get_child_count(child);
 
-		label = of_get_property(child, "label", NULL);
-		if (!label)
-			label = child->name;
+		of_property_read_u32(child, "period", &group_period);
 
-		of_property_read_u32(child, "period", &period);
-		of_property_read_u32(child, "brightness", &brightness);
+		if (sub_count > 0) {
+			/* Group node (e.g. group1 containing blue and orange) */
+			for_each_child_of_node(child, channel_node) {
+				struct pwm_channel_led *led = &priv->leds[idx];
+				const char *label;
+				u32 period = group_period;
+				int ret;
 
-		for_each_child_of_node(child, color_node)
-			num_colors++;
+				of_property_read_u32(channel_node, "period", &period);
 
-		if (num_colors < 1 || num_colors > MAX_COLORS) {
-			dev_err(dev, "invalid number of colors %d of pwm rgb led %s\n", num_colors, label);
-			continue;
-		}
+				label = of_get_property(channel_node, "label", NULL);
+				if (label) {
+					snprintf(led->name, sizeof(led->name), "%s", label);
+				} else if (!strcmp(channel_node->name, "blue")) {
+					snprintf(led->name, sizeof(led->name), "blue:status");
+				} else if (!strcmp(channel_node->name, "orange")) {
+					snprintf(led->name, sizeof(led->name), "orange:status");
+				} else {
+					snprintf(led->name, sizeof(led->name), "%s:status", channel_node->name);
+				}
 
-		led->pwms = devm_kcalloc(dev, num_colors, sizeof(struct pwm_device *), GFP_KERNEL);
-		if (!led->pwms) {
-			dev_err(dev, "failed to allocate memory for pwm of %s\n", label);
-			pwm_rgb_cleanup(priv);
-			return -ENOMEM;
-		}
+				led->pwm = devm_of_pwm_get(dev, channel_node, NULL);
+				if (IS_ERR(led->pwm)) {
+					ret = PTR_ERR(led->pwm);
+					dev_err(dev, "unable to request PWM for %s: %d\n", led->name, ret);
+					pwm_rgb_cleanup(priv);
+					return ret;
+				}
 
-		led->num_colors = num_colors;
-		led->period = period;
-		led->color = brightness;
+				led->period = period;
+				led->cdev.name = led->name;
+				led->cdev.brightness_set_blocking = pwm_channel_set_blocking;
+				led->cdev.max_brightness = LED_FULL;
+				led->cdev.brightness = LED_OFF;
 
-		for_each_child_of_node(child, color_node) {
-			struct pwm_device *pwm;
+				ret = led_classdev_register_ext(dev, &led->cdev, NULL);
+				if (ret) {
+					dev_err(dev, "failed to register LED %s: %d\n", led->name, ret);
+					pwm_rgb_cleanup(priv);
+					return ret;
+				}
 
-			pwm = devm_of_pwm_get(dev, color_node, NULL);
-			if (IS_ERR(pwm)) {
-				ret = PTR_ERR(pwm);
-				dev_err(dev, "unable to request PWM for %s: %d\n", label, ret);
+				dev_info(dev, "Registered PWM status LED: %s (period %u ns)\n", led->name, period);
+				idx++;
+			}
+		} else {
+			/* Direct channel node */
+			struct pwm_channel_led *led = &priv->leds[idx];
+			const char *label;
+			u32 period = group_period;
+			int ret;
+
+			label = of_get_property(child, "label", NULL);
+			if (label)
+				snprintf(led->name, sizeof(led->name), "%s", label);
+			else
+				snprintf(led->name, sizeof(led->name), "%s:status", child->name);
+
+			led->pwm = devm_of_pwm_get(dev, child, NULL);
+			if (IS_ERR(led->pwm)) {
+				ret = PTR_ERR(led->pwm);
+				dev_err(dev, "unable to request PWM for %s: %d\n", led->name, ret);
 				pwm_rgb_cleanup(priv);
 				return ret;
 			}
 
-			led->can_sleep = 1;
-			led->pwms[color_idx++] = pwm;
+			led->period = period;
+			led->cdev.name = led->name;
+			led->cdev.brightness_set_blocking = pwm_channel_set_blocking;
+			led->cdev.max_brightness = LED_FULL;
+			led->cdev.brightness = LED_OFF;
+
+			ret = led_classdev_register_ext(dev, &led->cdev, NULL);
+			if (ret) {
+				dev_err(dev, "failed to register LED %s: %d\n", led->name, ret);
+				pwm_rgb_cleanup(priv);
+				return ret;
+			}
+
+			dev_info(dev, "Registered PWM status LED: %s (period %u ns)\n", led->name, period);
+			idx++;
 		}
-
-		INIT_WORK(&led->work, pwm_rgb_work);
-		led->cdev.name = label;
-		led->cdev.brightness_set_blocking = pwm_rgb_set_blocking;
-		led->cdev.max_brightness = LED_FULL;
-		led->cdev.brightness = brightness;
-
-		ret = led_classdev_register_ext(dev, &led->cdev, NULL);
-		if (ret) {
-			dev_err(dev, "failed to register PWM RGB for %s: %d\n", label, ret);
-			pwm_rgb_cleanup(priv);
-			return ret;
-		}
-
-		pwm_rgb_update(led);
-		led_idx++;
 	}
 
 	platform_set_drvdata(pdev, priv);
@@ -219,5 +219,5 @@ static struct platform_driver pwm_rgb_driver = {
 module_platform_driver(pwm_rgb_driver);
 
 MODULE_ALIAS("platform:pwm-rgb");
-MODULE_DESCRIPTION("Xiaomi PWM RGB LED driver");
+MODULE_DESCRIPTION("Xiaomi RD15 PWM Status LED driver");
 MODULE_LICENSE("GPL");

@@ -1,64 +1,81 @@
 #!/bin/sh
 # xqled CLI utility for Xiaomi Router BE3600 (RD15)
-# Direct control of front RGB LED
+# Control of front dual-color LEDs (blue:status, orange:status)
 
-LED_SYSFS="/sys/class/leds/rgb"
-COLOR_OFF=0
-COLOR_BLUE=1207959552
-COLOR_ORANGE=4718592
-COLOR_PURPLE=573767680
+LED_BLUE="/sys/class/leds/blue:status"
+LED_ORANGE="/sys/class/leds/orange:status"
 
-if [ ! -d "$LED_SYSFS" ]; then
-	echo "Error: LED sysfs interface $LED_SYSFS not found (is kmod-pwm-rgb loaded?)" >&2
+if [ ! -d "$LED_BLUE" ] && [ ! -d "$LED_ORANGE" ]; then
+	echo "Error: LED sysfs interfaces not found (is kmod-pwm-rgb loaded?)" >&2
 	exit 1
 fi
 
-set_rgb() {
-	local color="$1"
-	local trigger="${2:-none}"
-	local delay_on="${3:-200}"
-	local delay_off="${4:-200}"
+set_led() {
+	local led="$1"
+	local brightness="${2:-255}"
+	local trigger="${3:-none}"
+	local delay_on="${4:-250}"
+	local delay_off="${5:-250}"
 
-	echo "$trigger" > "$LED_SYSFS/trigger" 2>/dev/null || true
-	echo "$color" > "$LED_SYSFS/brightness" 2>/dev/null || true
+	[ -d "$led" ] || return 0
+
+	echo "$trigger" > "$led/trigger" 2>/dev/null || true
+	echo "$brightness" > "$led/brightness" 2>/dev/null || true
 
 	if [ "$trigger" = "timer" ]; then
-		echo "$delay_on" > "$LED_SYSFS/delay_on" 2>/dev/null || true
-		echo "$delay_off" > "$LED_SYSFS/delay_off" 2>/dev/null || true
+		echo "$delay_on" > "$led/delay_on" 2>/dev/null || true
+		echo "$delay_off" > "$led/delay_off" 2>/dev/null || true
 	fi
 }
 
+BRI="${2:-255}"
+
 case "$1" in
 blue)
-	set_rgb "$COLOR_BLUE" none
-	echo "LED set to Blue"
+	set_led "$LED_ORANGE" 0 none
+	set_led "$LED_BLUE" "$BRI" none
+	echo "LED set to Blue (brightness: $BRI)"
 	;;
 orange)
-	set_rgb "$COLOR_ORANGE" none
-	echo "LED set to Orange"
+	set_led "$LED_BLUE" 0 none
+	set_led "$LED_ORANGE" "$BRI" none
+	echo "LED set to Orange (brightness: $BRI)"
 	;;
 purple)
-	set_rgb "$COLOR_PURPLE" none
-	echo "LED set to Purple"
+	set_led "$LED_BLUE" "$BRI" none
+	set_led "$LED_ORANGE" "$BRI" none
+	echo "LED set to Purple (brightness: $BRI)"
 	;;
 off)
-	set_rgb "$COLOR_OFF" none
+	set_led "$LED_BLUE" 0 none
+	set_led "$LED_ORANGE" 0 none
 	echo "LED turned OFF"
 	;;
 blink_blue)
-	set_rgb "$COLOR_BLUE" timer 250 250
+	set_led "$LED_ORANGE" 0 none
+	set_led "$LED_BLUE" "$BRI" timer "${3:-250}" "${4:-250}"
 	echo "LED blinking Blue"
 	;;
 blink_orange)
-	set_rgb "$COLOR_ORANGE" timer 250 250
+	set_led "$LED_BLUE" 0 none
+	set_led "$LED_ORANGE" "$BRI" timer "${3:-250}" "${4:-250}"
 	echo "LED blinking Orange"
 	;;
+blink_purple)
+	set_led "$LED_BLUE" "$BRI" timer "${3:-250}" "${4:-250}"
+	set_led "$LED_ORANGE" "$BRI" timer "${3:-250}" "${4:-250}"
+	echo "LED blinking Purple"
+	;;
 status)
-	echo "Trigger: $(cat "$LED_SYSFS/trigger")"
-	echo "Brightness: $(cat "$LED_SYSFS/brightness")"
+	echo "Blue LED   (${LED_BLUE}):"
+	echo "  Trigger:    $(cat "$LED_BLUE/trigger" 2>/dev/null)"
+	echo "  Brightness: $(cat "$LED_BLUE/brightness" 2>/dev/null) / $(cat "$LED_BLUE/max_brightness" 2>/dev/null)"
+	echo "Orange LED (${LED_ORANGE}):"
+	echo "  Trigger:    $(cat "$LED_ORANGE/trigger" 2>/dev/null)"
+	echo "  Brightness: $(cat "$LED_ORANGE/brightness" 2>/dev/null) / $(cat "$LED_ORANGE/max_brightness" 2>/dev/null)"
 	;;
 *)
-	echo "Usage: $0 {blue|orange|purple|off|blink_blue|blink_orange|status}"
+	echo "Usage: $0 {blue|orange|purple|off|blink_blue|blink_orange|blink_purple|status} [brightness 0-255]"
 	exit 1
 	;;
 esac
