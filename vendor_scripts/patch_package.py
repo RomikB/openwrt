@@ -261,11 +261,33 @@ stop_service() {
 # Copyright (c) 2024 Qualcomm Technologies, Inc. / OpenWrt
 # QCA Wi-Fi 6 / 7 Hostapd Service with UCI Integration for Xiaomi BE3600 (RD15)
 #
+# Note: setup_vaps() pre-creates ath0/ath1 via cfg80211 if they are not yet
+# visible. The qca-wifi driver may create them internally on module load;
+# in that case 'iw interface add' is guarded and skipped. The dmesg warning
+# "ath0 net dev exists already" from qca-wifi is benign — hostapd retries
+# and succeeds. DO NOT delete these netdevs before starting hostapd: the
+# driver holds internal state for them and cannot recreate them on demand.
+# wait_hostapd_sock() is added to fix the race where dependent services
+# (netifd) start before the control socket is ready.
+#
 
 START=21
 STOP=87
 
 . /lib/functions.sh
+
+# Wait up to $2 seconds for a hostapd control socket to appear
+wait_hostapd_sock() {
+\tlocal sock="$1"
+\tlocal timeout="${2:-15}"
+\tlocal i=0
+\twhile [ $i -lt $timeout ]; do
+\t\t[ -S "$sock" ] && return 0
+\t\tsleep 1
+\t\ti=$((i + 1))
+\tdone
+\treturn 1
+}
 
 setup_vaps() {
 \t# 1. Ensure driver is loaded
@@ -285,7 +307,8 @@ setup_vaps() {
 \tsysctl -w net.bridge.bridge-nf-call-arptables=0 2>/dev/null || true
 \tsysctl -w net.bridge.bridge-nf-call-ip6tables=0 2>/dev/null || true
 
-\t# Create VAPs once if they do not exist
+\t# Create VAPs once if they do not exist; the qca-wifi driver may have
+\t# pre-registered them already, in which case these commands are skipped.
 \tif [ ! -d /sys/class/net/ath0 ] && [ -d /sys/class/net/wifi0 ]; then
 \t\tiw phy "$phy0" interface add ath0 type __ap 2>/dev/null || true
 \tfi
@@ -332,6 +355,12 @@ start() {
 \t\tmkdir -p /var/run/hostapd
 \t\t/usr/sbin/hostapd -B -P "$pid_file" -e /var/run/entropy.bin "$conf" 2>/dev/null || true
 \t\tcp -f "$conf" "/var/run/hostapd-${ifname}.conf.active" 2>/dev/null || true
+
+\t\t# Wait for the control socket to be ready before returning,
+\t\t# so dependent services (netifd) don't race against hostapd startup.
+\t\tif ! wait_hostapd_sock "$sock_file" 15; then
+\t\t\tlogger -t qca-hostapd "WARNING: $sock_file not ready within 15s"
+\t\tfi
 \t}
 
 \t[ "$r0_disabled" -eq 0 ] && start_ap "ath0"
