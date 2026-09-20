@@ -118,5 +118,9 @@ kmod-udptunnel6
 kmod-vxlan
 kmod-yt-9215s-driver
 kmod-yt-phy-driver
+qca-hostapd-cli
 qca-ssdk-shell
+qca-wifi-scripts
+qca-wpa-cli
+wififw_mount_script
 yt-9215s-client

@@ -1,6 +1,6 @@
 # Миграция драйверов Qualcomm (QCA) на открытые исходники в OpenWrt (RD15 / IPQ53xx)
 
-Данный документ содержит архитектурный обзор, результаты бинарного анализа и практические особенности миграции проприетарных драйверов Qualcomm из вендорского фида (`vendor_feed`, блобы из заводской прошивки Xiaomi MiWiFi RD15 1.0.68) в нативные пакеты OpenWrt (`package/kernel/`), собираемые из открытых репозиториев **CodeLinaro (QSDK)**.
+Данный документ содержит архитектурный обзор, результаты бинарного анализа и практические особенности миграции проприетарных компонентов Qualcomm из вендорского фида (`vendor_feed`, блобы из заводской прошивки Xiaomi MiWiFi RD15 1.0.68) в нативные пакеты OpenWrt (`package/kernel/`, `package/network/utils/`, `package/utils/`), собираемые из открытых репозиториев **CodeLinaro (QSDK)** и нативного C-кода.
 
 ---
 
@@ -454,17 +454,156 @@
      * Проверен кабельный тестер: команда `port cdt run 1 0` успешно вызывает функцию `fal_port_cdt` и возвращает статус без сбоев.
      * Проверен опрос аппаратных таблиц коммутации FDB: `fdb entry show 0` отрабатывает штатно.
 
+
+### 4.2. `qca-hostapd-cli` (Qualcomm Hostapd CLI Utility & Control Scripts)
+* **Назначение:** Утилита управления точками доступа (`/usr/sbin/hostapd_cli`) и системные скрипты управления Wi-Fi (`/usr/sbin/hapd`, `/usr/sbin/wpsd`, хотплаг WPS кнопки `/etc/hotplug.d/button/50-wps`, `/lib/wifi/wps-hostapd-*`, `dpp-*`). Обеспечивает динамическое включение/выключение VAP интерфейсов (`ath0`, `ath1`), опрос статуса, реконфигурацию TBTT (`reconfig-remove`), управление WPS и DPP.
+* **Размещение пакета:** `package/network/utils/qca-hostapd-cli/`
+* **Исходники:** Тарбол `hostapd-2022-09-19.tar.bz2` (ревизия `01944c0957ba20ee1790eb2473cc5970f8b1f17e`, ветка CodeLinaro QSDK `NHSS.QSDK.12.4.5.r5`, коммит `5cba4ccb9f` от 25.11.2023).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Ликвидация 100% вендорных библиотек (`ld-vendor.so.1`):**
+     * Стоковый блоб Xiaomi был жестко привязан к вендорным библиотекам: `v_lnl-3.so.200`, `v_lnl-genl-3.so.200`, `v_lssl.so.1.1`, `v_lcrypto.so.1.1`, `v_lgcc_s.so.1`, `v_lc.so`.
+     * Нативный бинарник скомпилирован кросс-компилятором OpenWrt GCC 13.3.0 (Musl) и динамически линкуется исключительно с `/lib/ld-musl-armhf.so.1`, `libc.so` и `libgcc_s.so.1`. Зависимости от закрытого C-runtime вендора полностью устранены.
+  2. **Патч вендорных команд QCA (`001-qca-cli-commands.patch`):**
+     * Добавлены отсутствующие в апстриме команды: `reconfig-remove` (критично для `/lib/wifi/qcawificfg80211.sh:3865`), `enable-reconfig`, `reload_config`, `close_log`, `get_pmk`, `get_ptk`, `r0kh`, `r1kh`, а также QCA-расширения `channel_bw`, `color_change`, `req_link_measurement`, `notify_cw_change`.
+     * Сохранена 100% совместимость с синтаксисом вызовов из скриптов Qualcomm.
+  3. **Живое тестирование на роутере RD15 (192.168.11.24):**
+     * Пакет `qca-hostapd-cli_2022-09-19-r1_arm_cortex-a7_neon-vfpv4.ipk` установлен на физическое устройство.
+     * Проверен опрос контрольных сокетов: `hostapd_cli -i ath0 ping` -> `PONG`, `hostapd_cli -i ath1 ping` -> `PONG`.
+     * Проверены команды `status` (получение параметров частоты, BSSID, состояния `ENABLED`), `get_config`, `reconfig-remove 1`.
+     * Проверена работа скрипта `hapd` и хотплаг WPS.
+
+### 4.3. `qca-wpa-cli` (Qualcomm WPA Supplicant CLI Utility & WPS Scripts)
+* **Назначение:** Консольная утилита управления клиентом WPA Supplicant (`/usr/sbin/wpa_cli`) и системные скрипты обработки WPS для режима клиента/экстендера (`/etc/hotplug.d/button/52-wps-supplicant`, `/lib/wifi/wps-supplicant-update-uci`). Обеспечивает подключение к сетям, сканирование, запуск WPS PBC и опрос статуса демона `wpa_supplicant`.
+* **Размещение пакета:** `package/network/utils/qca-wpa-cli/`
+* **Исходники:** Тарбол `hostapd-2022-09-19.tar.bz2` (ревизия `01944c0957ba20ee1790eb2473cc5970f8b1f17e`, ветка CodeLinaro QSDK `NHSS.QSDK.12.4.5.r5`).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Ликвидация паразитных зависимостей:**
+     * Стоковый блоб был слинкован с `v_lnl-3.so`, `v_lssl.so`, `v_lcrypto.so`, `v_lc.so` через `ld-vendor.so.1`.
+     * Нативный `wpa_cli` скомпилирован кросс-компилятором OpenWrt GCC 13.3.0 (Musl) и динамически линкуется только с `/lib/ld-musl-armhf.so.1`, `libc.so` и `libgcc_s.so.1`.
+  2. **Поддержка Wi-Fi 7 MLO и PMKSA (`001-qca-wpa-cli-preferred-ap-mld.patch`):**
+     * Включена поддержка внешнего кэша PMKSA (`CONFIG_PMKSA_CACHE_EXTERNAL=y` -> команды `pmksa_get`, `pmksa_add`).
+     * Добавлено вендорное расширение Qualcomm для Multi-Link Operation: `preferred_ap_mld_addr <network id> <mld_addr>`.
+  3. **Живое тестирование на роутере RD15 (192.168.11.24):**
+     * Пакет `qca-wpa-cli_2022-09-19-r1_arm_cortex-a7_neon-vfpv4.ipk` установлен на устройство.
+     * Проверен IPC сокет: `wpa_cli -g /var/run/wpa_supplicantglobal ping` -> `PONG`.
+     * Проверено наличие команды `preferred_ap_mld_addr` в справке утилиты.
+
+### 4.4. `qca-wifi-scripts` (Qualcomm Wi-Fi Calibration & Helper Scripts)
+* **Назначение:** Набор системных shell-скриптов для извлечения калибровочных данных из раздела `0:ART` (`/lib/create_cfg_caldata.sh`, `/lib/read_caldata_to_fs.sh`), настройки affinity прерываний по ядрам CPU (`/lib/update_smp_affinity.sh`), вспомогательных функций сетевых интерфейсов (`/lib/wifi_interface_helper.sh`) и preinit хука загрузки (`/lib/preinit/81_load_wifi_board_bin`).
+* **Размещение пакета:** `package/network/utils/qca-wifi-scripts/`
+* **Исходники:** Стоковые скрипты Xiaomi RD15 / QSDK CodeLinaro (`oss/system/feeds/wlan/utils`).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Ликвидация паразитной зависимости `+libc-vendor`:**
+     * Пакет состоит исключительно из shell-скриптов и не содержит бинарных файлов. В исходном вендорном фиде пакет ошибочно имел `DEPENDS:=+libc-vendor`. Зависимость полностью снята.
+  2. **100% преемственность со стоком Xiaomi RD15:**
+     * Скрипт `create_cfg_caldata.sh` корректно обращается к `/ini/ftm.conf` для извлечения калибровок IPQ5332 (2.4G) и QCN6432 (5G) прямо в `/tmp/` (минуя попытки записи в read-only squashfs `/lib/firmware/`).
+     * Скрипт `update_smp_affinity.sh` распределяет прерывания DP/CE Wi-Fi по ядрам процессора.
+  3. **Живое тестирование на роутере RD15 (192.168.11.24):**
+     * Пакет `qca-wifi-scripts_1-r1_arm_cortex-a7_neon-vfpv4.ipk` установлен на устройство.
+     * Проверена целостность сгенерированных калибровок в `/tmp/IPQ5332/caldata.bin` (63488 байт) и `/tmp/qcn6432/caldata_1.b0060` (100352 байт).
+
+### 4.5. `wififw_mount_script` (Qualcomm Wi-Fi Firmware Mount & Crashdump Hotplug)
+* **Назначение:** Init-скрипты ранней инициализации Wi-Fi калибровок (`/etc/init.d/wifi_fw_mount` при `START=00`), проверки монтирования (`/etc/init.d/wifi_fw_done` при `START=96`) и hotplug-скрипт сбора аварийных дампов памяти Hexagon DSP (`/etc/hotplug.d/dump_q6v5/00-q6dump`).
+* **Размещение пакета:** `package/network/utils/wififw_mount_script/`
+* **Исходники:** Стоковые скрипты Xiaomi RD15 / QSDK CodeLinaro (`oss/system/feeds/platform/utils`).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Адаптация под структуру флеш-памяти RD15:**
+     * В отличие от эталонного QSDK, где скрипт `wifi_fw_mount` занимает 600 строк и пытается монтировать несуществующий раздел `0:WIFIFW`, стоковая версия Xiaomi адаптирована для RD15 (где вся прошивка лежит в rootfs) и выполняет безопасный запуск извлечения калибровки на `START=00` до загрузки драйверов `qca-wifi` (`START=12`).
+  2. **Ликвидация зависимости `+libc-vendor`:**
+     * Пакет переведен на нативный рантайм, зависит только от `libc` и `qca-wifi-scripts`.
+  3. **Живое тестирование на роутере RD15 (192.168.11.24):**
+     * Пакет `wififw_mount_script_1-r1_arm_cortex-a7_neon-vfpv4.ipk` установлен на физический роутер.
+     * Проверен запуск `/etc/init.d/wifi_fw_mount boot` -> `SUCCESS`.
+     * Обе радиокарты (`ath0` и `ath1`) успешно подняты и находятся в состоянии `state=ENABLED`.
+
 ---
 
-## 5. Архитектурная карта миграции и следующие шаги
+### 4.6. `yt-9215s-client` (Motorcomm YT9215S Switch Control Utility / `switch_ctl`)
+* **Назначение:** Консольная утилита управления 5-портовым гигабитным коммутатором Motorcomm YT9215S (`/usr/sbin/switch_ctl`). Обеспечивает прямое взаимодействие через `ioctl()` к символьному устройству `/dev/yt9215s`, управление светодиодами LAN-портов, чтение MIB-статистики портов, опрос состояний линков и настройку VLAN.
+* **Размещение пакета:** `package/network/utils/yt-9215s-client/`
+* **Исходники:** Открытая нативная реализация на C, собираемая в рамках дерева OpenWrt.
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и результаты валидации:**
+  1. **Ликвидация зависимости `+libc-vendor`:**
+     * Стоковый вендорный бинарник требовал `ld-vendor.so.1` и `v_lc.so`.
+     * Нативный пакет скомпилирован компилятором GCC 13.3.0 и динамически слинкован напрямую со стандартным Musl C-runtime (`/lib/ld-musl-armhf.so.1`, `libc.so`).
+  2. **Живое тестирование на физическом роутере RD15:**
+     * Утилита проверена на устройстве: команды опроса статуса портов, управления светодиодами индикации и считывания аппаратных счётчиков пакетов отрабатывают без ошибок.
 
-Текущее состояние зависимостей модулей на маршрутизаторе Xiaomi BE3600 (RD15):
+---
+
+### 4.7. `nvram-env` (U-Boot Env Wrapper for `nvram` & `bdata` with tmpfs Caching)
+* **Назначение:** Высокопроизводительный открытый аналог утилит `/usr/sbin/nvram` и `/usr/sbin/bdata` на C, заменяющий закрытый пакет `nvram-vendor` при сборке с ядром QSDK. Обеспечивает чтение и запись в стандартные MTD-разделы U-Boot environment (`0:APPSBLENV` на `/dev/mtd13` и `bdata` на `/dev/mtd21`) через бэкенд `uboot-envtools` (`fw_printenv` / `fw_setenv` и `fw_printsys` / `fw_setsys`) со сверхбыстрым in-memory кэшированием в `/tmp/state/`.
+* **Размещение пакета:** `package/utils/nvram-env/`
+* **Исходники:** Собственная C-реализация (`src/nvram-env.c`, `src/Makefile`).
+* **Статус:** **`[COMPATIBLE / TESTED ON DEVICE]`**
+* **Ключевые особенности и архитектура:**
+  1. **Мультикомандный бинарник (`argv[0]`-диспатчинг):**
+     * При вызове как `bdata` связывается с разделом калибровок Xiaomi (`/etc/fw_sys.config`, кэш `/tmp/state/bdata/`).
+     * При вызове как `nvram` связывается с U-Boot env (`/etc/fw_env.config`, кэш `/tmp/state/nvram/`).
+  2. **Двухуровневое кэширование и производительность:**
+     * **Чтение (`get`):** Первое обращение разово вычитывает переменные в RAM (`/tmp/state/<env>/vars/<key>`). Все последующие вызовы `get` читают файл напрямую без порождения внешних процессов `fork`/`exec` (время отклика — **1.7 мс** на полный запуск процесса из ash, <0.2 мс внутри процесса).
+     * **Запись (`set` / `unset`):** Атомарно обновляет переменную в RAM (`fchmod 0644`) и фиксирует имя ключа в журнале `/tmp/state/<env>/dirty`. Сохраняются любые спецсимволы, знаки `=`, пробелы и пустые значения `""`.
+     * **Сброс на Flash (`commit` / `sync`):** Проверяет журнал `dirty`. Если изменений не было, выход происходит мгновенно с нулевым износом Flash. При наличии изменений формируется пакетный файл для `fw_setenv -s` / `fw_setsys -s`, выполняющий запись в MTD за **одну атомарную транзакцию**.
+     * **Дамп (`show`):** Выводит переменные, отсортированные по алфавиту с помощью `qsort()`, сохраняя полную совместимость со стоковым выводом.
+     * **Цепочки команд:** Поддерживает вызовы вида `nvram set a=1 set b=2 commit`.
+  3. **Интеграция в профили сборки:**
+     * `Device/xiaomi-rd15-prebuild`: использует `nvram-vendor` (через проприетарный драйвер `/dev/nvram`).
+     * `Device/xiaomi-rd15-qsdk`: использует связку `uboot-envtools` + `nvram-env`.
+  4. **Живое тестирование на роутере RD15 (ARM Cortex-A7 @ 1.0 GHz):**
+     * Проверена работа обеих личностей (`nvram` и `bdata`), установка строковых и пустых значений, ключей со знаками `=`, удаление, алфавитная сортировка `show` и генерация пакетного коммита.
+
+---
+
+### 4.8. `qca-cnss-daemon-vendor` (PCIe Bus Daemon & Firmware Loader for QCN6432)
+* **Назначение:** Системный демон пространства пользователя (`/usr/sbin/cnssdaemon`) и утилита управления (`/usr/sbin/cnsscli`). Обеспечивает холодную инициализацию PCIe-модуля Wi-Fi 5GHz (QCN6432), загрузку микрокода радиомодуля через QMI IPC и мониторинг шины.
+* **Размещение пакета:** `vendor_feed/qca-cnss-daemon-vendor/`
+* **Статус:** **`[RETAINS IN VENDOR_FEED / PROCD SUPERVISED]`**
+* **Результаты исследования и обоснование:**
+  1. **Закрытость в QSDK:**
+     * Исходный код демона `cnssdaemon` и утилиты `cnsscli` отсутствует в открытых репозиториях CodeLinaro (располагается в закрытом вендорском фиде `feeds/qca` Qualcomm).
+  2. **Жесткая привязка к QMI IPC:**
+     * Драйвер ядра `kmod-qca-cnss` (`ipq_cnss2.ko`) при обнаружении чипа QCN6432 на шине PCIe ожидает установления канала IPC с сервисом `0x42E` через стек QMI (`qca-qmi-framework-vendor`: `v_lqmi_cci.so`, `v_lqmi_qrtr_cci.so`).
+     * Без работающего `cnssdaemon` инициализация чипа QCN6432 прерывается по таймауту, и радиомодуль 5GHz не поднимается.
+  3. **Решение:**
+     * Пакет сохраняется в `vendor_feed`, контролируется через init-скрипт procd (`/etc/init.d/load_cnss2` при `START=11`) с флагом `respawn` для автоматического перезапуска при сбоях.
+
+---
+
+### 4.9. `qca-cfg80211-vendor` (Netlink nl80211 Qualcomm Wrapper Library)
+* **Назначение:** Динамическая библиотека-обертка (`/usr/lib/v_lqca_nl80211_wrapper.so`, размер 16 КБ). Предоставляет слой абстракции над интерфейсом Netlink `nl80211` для утилит Qualcomm.
+* **Размещение пакета:** `vendor_feed/qca-cfg80211-vendor/`
+* **Статус:** **`[RETAINS IN VENDOR_FEED / DIAGNOSTICS ONLY]`**
+* **Результаты исследования и область применения:**
+  1. **Отсутствие в CodeLinaro OSS:**
+     * Исходники библиотеки закрыты и поставляются исключительно в бинарном виде в QSDK.
+  2. **Изоляция и независимость основных сервисов:**
+     * Анализ бинарных зависимостей (`scanelf` / `readelf`) показал, что ни один ключевой сервис маршрутизатора (`hostapd`, `wpa_supplicant`, `netifd`, `iwinfo`, `LuCI`) **НЕ использует** данную библиотеку.
+     * Библиотека используется исключительно 13 инженерно-диагностическими CLI-утилитами Qualcomm из состава `kmod-qca-wifi` (`athstats`, `athdiag`, `wlanconfig`, `wifitool`, `pktlogconf`, `radartool` и др.).
+  3. **Решение:**
+     * Пакет сохраняется в `vendor_feed`. Не создает фоновой нагрузки на процессор и не потребляет оперативную память при работе роутера.
+
+---
+
+## 5. Архитектурная карта миграции и текущий статус
+
+Текущее состояние модулей и компонентов на маршрутизаторе Xiaomi BE3600 (RD15):
 
 ```mermaid
 graph TD
-    subgraph "Уже мигрировано на OpenWrt Native (18 модулей ядра + qca-ssdk-shell ЗАВЕРШЕНО)"
+    subgraph "Уже мигрировано на OpenWrt Native (18 модулей ядра + 7 утилит/скриптов ЗАВЕРШЕНО)"
         SSDK["kmod-qca-ssdk-nohnat<br/>(qca-ssdk.ko)"]
         SSDK_SH["qca-ssdk-shell<br/>(ssdk_sh)<br/>[COMPATIBLE / TESTED]"]
+        YT["yt-9215s-client<br/>(switch_ctl)<br/>[NATIVE C / MUSL]"]
+        HAPD_CLI["qca-hostapd-cli<br/>(hostapd_cli, hapd, wpsd)<br/>[COMPATIBLE / TESTED]"]
+        WPA_CLI["qca-wpa-cli<br/>(wpa_cli, 52-wps)<br/>[COMPATIBLE / TESTED]"]
+        WIFI_SCRIPTS["qca-wifi-scripts<br/>(caldata, smp_affinity, helper)<br/>[100% PARITY / TESTED]"]
+        WIFIFW_MOUNT["wififw_mount_script<br/>(wifi_fw_mount, q6dump)<br/>[ADAPTED / TESTED]"]
+        NVRAM["nvram-env<br/>(nvram, bdata для QSDK)<br/>[NATIVE C / TMPFS CACHE]"]
         MCS["kmod-qca-mcs<br/>(qca-mcs.ko)"]
         SP["kmod-emesh-sp<br/>(emesh-sp.ko)<br/>[100% IDENTICAL]"]
         PPE["kmod-qca-nss-ppe<br/>(qca-nss-ppe.ko)<br/>[COMPATIBLE]"]
@@ -484,8 +623,14 @@ graph TD
         WIPLUG["kmod-qca-nss-ecm-wifi-plugin<br/>(ecm-wifi-plugin.ko)<br/>[COMPATIBLE / 100% ABI MATCH]"]
     end
 
-    subgraph "Осталось в vendor_feed (финальный этап)"
-        WIFI["kmod-qca-wifi-lowmem-profile-vendor<br/>(Wi-Fi Driver)"]
+    subgraph "Остаётся в vendor_feed (закрытое ядро)"
+        WIFI["kmod-qca-wifi-lowmem-profile-vendor<br/>(Wi-Fi Driver 7/Alder/QCN6432)"]
+        FW["qca-firmware-vendor<br/>(DSP Microcode)"]
+        HAPD["qca-hostap-vendor / qca-wpa-supplicant-vendor<br/>(Direct Connect Wi-Fi Stack)"]
+        CNSS_D["qca-cnss-daemon-vendor<br/>(cnssdaemon via QMI IPC)"]
+        QMI["qca-qmi-framework-vendor<br/>(QMI Libraries)"]
+        CFG["qca-cfg80211-vendor<br/>(v_lqca_nl80211_wrapper.so / 13 CLI tools)"]
+        RUNTIME["libc-vendor / libgcc-vendor<br/>(Изолированный рантайм glibc)"]
     end
 
     SSDK --> SSDK_SH
@@ -525,8 +670,32 @@ graph TD
     DS --> WIFI
     PPE --> WIFI
     WIPLUG --> WIFI
+    CNSS --> CNSS_D
+    QMI --> CNSS_D
+    FW --> WIFI
+    WIFI --> HAPD
 ```
 
+### Сводный статус миграции userspace-пакетов
+
+| Пакет | Статус | Реализация / Обоснование |
+|---|:---:|---|
+| **`qca-ssdk-shell`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/qca-ssdk-shell` (коммит `5a3e1d6d`), линкуется с musl libc |
+| **`yt-9215s-client`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/yt-9215s-client` (`switch_ctl`), линкуется с musl libc |
+| **`qca-hostapd-cli`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/qca-hostapd-cli` на базе QSDK hostapd с QCA-патчами |
+| **`qca-wpa-cli`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/qca-wpa-cli` на базе QSDK hostapd с MLO-патчем |
+| **`qca-wifi-scripts`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/qca-wifi-scripts` (калибровка, smp_affinity, без `libc-vendor`) |
+| **`wififw_mount_script`** | 🟢 **Мигрирован** | Открытый пакет `package/network/utils/wififw_mount_script` (адаптирован под RD15) |
+| **`nvram-env`** | 🟢 **Мигрирован для QSDK** | Открытый C-пакет `package/utils/nvram-env` (`nvram` и `bdata`) на базе `uboot-envtools` с кэшем в tmpfs |
+| **`qca-cnss-daemon-vendor`** | ❌ **Остаётся в vendor_feed** | Закрыт в QSDK, жестко связан с `ipq_cnss2.ko` через QMI IPC `0x42E`, контролируется procd (respawn) |
+| **`qca-qmi-framework-vendor`** | ❌ **Остаётся в vendor_feed** | Закрытые QMI IPC библиотеки, требуются исключительно для `cnssdaemon` |
+| **`qca-cfg80211-vendor`** | ❌ **Остаётся в vendor_feed** | Закрыт в QSDK, нужен только 13 CLI утилитам, основные сервисы (`hostapd`, `netifd`) не используют |
+| **`qca-hostap-vendor`** | ❌ **Остаётся в vendor_feed** | Закрытый Wi-Fi стек, требует Direct Connect драйвер `wifi_3_0` |
+| **`qca-wpa-supplicant-vendor`** | ❌ **Остаётся в vendor_feed** | Аналогично `qca-hostap` |
+| **`qca-firmware-vendor`** | ❌ **Остаётся в vendor_feed** | Бинарный DSP микрокод QCA |
+| **`libc-vendor`, `libgcc-vendor`** | ❌ **Остаётся в vendor_feed** | Изолированный вендорный C-runtime для оставшихся закрытых бинарников |
+
 ### Рекомендуемый следующий шаг:
-1. **`kmod-qca-wifi-lowmem-profile` (Wi-Fi Driver):**  
-   Финальный компонент миграции (Wi-Fi стек Qualcomm 802.11be / Alder / QCN6432).
+1. **Сборка и валидация образа с QSDK-ядром (`Device/xiaomi-rd15-qsdk`):**  
+   Интеграция нативного пакета `nvram-env` и `uboot-envtools` для полноценного перехода с prebuilt-ядра на сборку ядра из открытых исходников.
+

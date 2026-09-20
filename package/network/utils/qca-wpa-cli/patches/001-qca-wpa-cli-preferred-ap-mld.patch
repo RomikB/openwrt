@@ -1,0 +1,35 @@
+diff --git a/wpa_supplicant/wpa_cli.c b/wpa_supplicant/wpa_cli.c
+index 197efe0..d01293c 100644
+--- a/wpa_supplicant/wpa_cli.c
++++ b/wpa_supplicant/wpa_cli.c
+@@ -1291,6 +1291,19 @@ static int wpa_cli_cmd_passphrase(struct wpa_ctrl *ctrl, int argc,
+ }
+ 
+ 
++
++static int wpa_cli_cmd_preferred_ap_mld_addr(struct wpa_ctrl *ctrl, int argc,
++					     char *argv[])
++{
++	if (argc < 2) {
++		printf("Invalid preferred ap mld command: needs twoarguments "
++		       "(network id and preferred ap mld command)\n");
++		return -1;
++	}
++
++	return wpa_cli_cmd(ctrl, "PREFERRED_AP_MLD_ADDR", 2, argc, argv);
++}
++
+ static int wpa_cli_cmd_bssid(struct wpa_ctrl *ctrl, int argc, char *argv[])
+ {
+ 	if (argc < 2) {
+@@ -3436,6 +3449,10 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
+ 	{ "sim", wpa_cli_cmd_sim, wpa_cli_complete_network_id,
+ 	  cli_cmd_flag_sensitive,
+ 	  "<network id> <pin> = report SIM operation result" },
++	{ "preferred_ap_mld_addr", wpa_cli_cmd_preferred_ap_mld_addr,
++	  wpa_cli_complete_network_id, cli_cmd_flag_none,
++	  "<network id> <PREFERRED_AP_MLD_ADDR> = set preferred\n"
++	  " AP MLD addr for an SSID " },
+ 	{ "bssid", wpa_cli_cmd_bssid, wpa_cli_complete_network_id,
+ 	  cli_cmd_flag_none,
+ 	  "<network id> <BSSID> = set preferred BSSID for an SSID" },

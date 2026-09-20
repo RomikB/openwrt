@@ -37,6 +37,6 @@ define Device/xiaomi-rd15-qsdk
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	DEVICE_PACKAGES := uboot-envtools
+	DEVICE_PACKAGES := uboot-envtools nvram-env
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk

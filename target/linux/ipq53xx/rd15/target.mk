@@ -27,9 +27,9 @@ DEFAULT_PACKAGES += \
 	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
 	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
 	kmod-qca-nss-ecm-wifi-plugin \
-	qca-firmware-vendor wififw_mount_script-vendor qca-wifi-scripts-vendor \
+	qca-firmware-vendor wififw_mount_script qca-wifi-scripts \
 	qca-cnss-daemon-vendor \
-	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli-vendor qca-wpa-cli-vendor
+	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli qca-wpa-cli
 
 
 
