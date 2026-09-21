@@ -1,1 +1,5 @@
+case "$DEVNAME" in
+	mtdblock*|ubi*) exit 0;;
+esac
 [ "$ACTION" = "add" -o "$ACTION" = "remove" ] && /sbin/block hotplug
+

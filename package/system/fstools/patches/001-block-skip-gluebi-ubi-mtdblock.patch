@@ -1,0 +1,12 @@
+--- a/block.c
++++ b/block.c
+@@ -501,6 +501,9 @@ static bool mtdblock_is_nand(char *mtdnu
+ 	buf[sizeof(buf) - 1] = '\0'; /* make sure buf is 0-terminated */
+ 	buf[strlen(buf) - 1] = '\0'; /* strip final char (newline) */
+ 
++	if (!strcmp(buf, "ubi"))
++		return true;
++
+ 	if (strcmp(buf, "nand"))
+ 		return false;
+ 
