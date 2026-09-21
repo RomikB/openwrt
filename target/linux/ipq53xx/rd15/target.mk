@@ -6,15 +6,6 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES.router := \
-	dnsmasq \
-	firewall \
-	iptables-zz-legacy \
-	odhcp6c \
-	odhcpd-ipv6only \
-	ppp \
-	ppp-mod-pppoe
-
 DEFAULT_PACKAGES += \
 	-procd-ujail \
 	swconfig bridge ethtool ip-full block-mount nand-utils \
@@ -24,8 +15,7 @@ DEFAULT_PACKAGES += \
 	kmod-pwm-rgb kmod-gpio-button-hotplug \
 	qca-ssdk-shell \
 	kmod-yt-9215s-driver kmod-yt-phy-driver yt-9215s-client \
-	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
-	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
+	kmod-nft-bridge \
 	kmod-qca-nss-ecm-wifi-plugin \
 	qca-firmware-vendor wififw_mount_script qca-wifi-scripts \
 	qca-cnss-daemon-vendor \

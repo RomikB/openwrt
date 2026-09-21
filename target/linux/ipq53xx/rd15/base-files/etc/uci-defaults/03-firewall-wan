@@ -3,6 +3,9 @@
 [ -f /etc/config/firewall ] || exit 0
 
 uci -q batch << 'EOF'
+	set firewall.@defaults[0].flow_offloading='0'
+	set firewall.@defaults[0].flow_offloading_hw='0'
+
 	delete firewall.allow_ssh_wan
 	set firewall.allow_ssh_wan=rule
 	set firewall.allow_ssh_wan.name='Allow-SSH-WAN'

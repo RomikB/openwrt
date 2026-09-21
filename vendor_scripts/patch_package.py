@@ -183,16 +183,6 @@ def patch_vendor_package(pkg_dir: Path) -> None:
     dir_name = pkg_dir.name
     orig_pkg_name = dir_name[:-7] if dir_name.endswith("-vendor") else dir_name
 
-    # Enable automatic boot startup for qca-nss-ecm in OpenWrt rc.common
-    init_ecm = pkg_dir / "files" / "etc" / "init.d" / "qca-nss-ecm"
-    if init_ecm.is_file():
-        content = init_ecm.read_text()
-        if "#!/bin/sh  /etc/rc.common" in content:
-            content = content.replace("#!/bin/sh  /etc/rc.common", "#!/bin/sh /etc/rc.common")
-        if "[ -f /tmp/.wifi-config-done ]" in content:
-            content = content.replace("[ -f /tmp/.wifi-config-done ]", "[ -d /sys/module/wifi_3_0 ]")
-        init_ecm.write_text(content)
-
     # Configure init scripts for kmod-qca-wifi-lowmem-profile
     if orig_pkg_name == "kmod-qca-wifi-lowmem-profile":
         # 1. Update load_cnss2 to use procd supervision with START=11

@@ -108,71 +108,51 @@
 
 ---
 
-## 5. Пошаговый план перехода на `firewall4`
+## 5. Выполненная реализация перехода на `firewall4`
 
-Для перехода на `firewall4` потребуется внести изменения в 4 компонента проекта:
+Переход на `firewall4` успешно реализован в ветке `openwrt-24-rd15-fw4-migration`:
 
-### Шаг 1. Включение модулей ядра в `target/linux/ipq53xx/rd15/config-5.4`
-Для работы `firewall4` обязателен пакет `kmod-nft-fib`. Включаем поддержку FIB для IPv4 и IPv6:
-```ini
-CONFIG_NFT_FIB=m
-CONFIG_NFT_FIB_INET=m
-CONFIG_NFT_FIB_IPV4=m
-CONFIG_NFT_FIB_IPV6=m
-```
-*(Также необходимо убедиться в наличии `CONFIG_NFT_NAT=m`, `CONFIG_NFT_MASQ=m`, `CONFIG_NFT_REJECT=m`, которые уже активированы в ядре).*
+### Шаг 1. Модули ядра и синхронизация с эталонным конфигом
+* Эталонный файл `target/linux/ipq53xx/rd15/config-5.4` сохранён в неизменном виде (соответствует стоковому ядру вендора).
+* Необходимые для `firewall4` и хука ECM модули ядра (`kmod-nft-core`, `kmod-nft-fib`, `kmod-nft-nat`, `kmod-nft-bridge`, `kmod-nft-offload`) выбираются системой пакетов OpenWrt и компилируются как внешние модули (`=m`).
+* В скрипт `compare_kernel_config.py` добавлен специальный блок `COMPATIBLE_EXTENSIONS`, в который вынесены данные опции (`CONFIG_NFT_FIB*`, `CONFIG_NFT_BRIDGE*`, `CONFIG_NFT_OBJREF`, `CONFIG_NF_CONNTRACK_BRIDGE`, `CONFIG_NF_TABLES_SET`). Они отображаются в отдельной секции и учитываются как полностью совместимые платформенные расширения.
 
 ---
 
-### Шаг 2. Переключение пакетов в `target/linux/ipq53xx/rd15/target.mk`
-В списке `DEFAULT_PACKAGES`:
-1. Убираем запрет `-firewall4 -nftables -kmod-nft-offload`.
-2. Заменяем `firewall iptables-zz-legacy xtables-legacy` на `firewall4`.
-3. Добавляем `iptables-nft` (позволит утилитам, скриптам или пакетам, всё ещё вызывающим `iptables`, прозрачно транслировать правила в `nftables`).
-4. Заменяем зависимые расширения `kmod-ipt-*` на нативные эквиваленты или удаляем устаревшие.
-
-*Было:*
-```makefile
-DEFAULT_PACKAGES += \
-	-procd-ujail \
-	-firewall4 -nftables -kmod-nft-offload \
-	firewall iptables-zz-legacy xtables-legacy swconfig bridge ethtool ip-full block-mount nand-utils \
-	...
-	kmod-ipt-conntrack-extra kmod-ipt-raw kmod-ipt-ipopt \
-	kmod-ipt-offload kmod-ipt-filter kmod-ipt-extra kmod-ipt-nat6 \
-```
-
-*Станет:*
-```makefile
-DEFAULT_PACKAGES += \
-	-procd-ujail \
-	firewall4 nftables iptables-nft swconfig bridge ethtool ip-full block-mount nand-utils \
-	...
-```
+### Шаг 2. Унификация пакетов в `target/linux/ipq53xx/rd15/target.mk`
+1. Полностью удалено локальное переопределение `DEFAULT_PACKAGES.router` из `target.mk`. Теперь список сетевых сервисов маршрутизатора формируется стандартным апстримным `include/target.mk` OpenWrt 24:
+   * `firewall4`, `nftables`, `kmod-nft-offload`, `dnsmasq`, `odhcp6c`, `odhcpd-ipv6only`, `ppp`, `ppp-mod-pppoe`.
+2. В `target.mk` добавлен модуль `kmod-nft-bridge` (необходим для работы хука ECM `meta ibrname "br-lan"`).
+3. Удалены устаревшие модули `kmod-ipt-*` (`kmod-ipt-conntrack-extra`, `kmod-ipt-raw`, `kmod-ipt-ipopt`, `kmod-ipt-offload`, `kmod-ipt-filter`, `kmod-ipt-extra`, `kmod-ipt-nat6`).
+4. Проведен аудит скриптов и пакетов репозитория на наличие вызовов `iptables`/`ip6tables`. Активных вызовов не обнаружено; пакет `iptables-nft` оставлен опциональным в дереве пакетов и не включается в образ по умолчанию для экономии памяти SquashFS.
 
 ---
 
-### Шаг 3. Адаптация хука ECM под `nftables` в `vendor_scripts/patch_package.py`
-В составе пакета `kmod-qca-nss-ecm-premium-vendor` есть файл `/etc/firewall.d/qca-nss-ecm`. Механизм каталога `firewall.d` является специфичным для `firewall3`.
-
-В скрипте `vendor_scripts/patch_package.py` для пакета `kmod-qca-nss-ecm-premium` добавляем генерацию хука для `firewall4` в `/etc/nftables.d/10-ecm.nft`:
-```nft
-chain ecm_forward {
-	type filter hook forward priority filter - 1; policy accept;
-	meta ibrname "br-lan" accept
-}
-```
-Это гарантирует пропуск локального трафика моста между Wi-Fi и LAN без лишней фильтрации.
+### Шаг 3. Обработка скриптов ECM и специфика L2 моста
+1. В пакете `package/kernel/qca-nss-ecm`:
+   * Удалён устаревший скрипт `/etc/firewall.d/qca-nss-ecm` (он вызывал `iptables -I FORWARD -m physdev --physdev-is-bridged -j ACCEPT`).
+   * В `files/etc/uci-defaults/99-qca-nss-ecm` удалена устаревшая секция `firewall.qcanssecm`.
+   * В `Makefile` пакета устаревшая зависимость `+kmod-ipt-conntrack` заменена на нативные модули Netfilter conntrack: `+kmod-nf-conntrack` и `+kmod-nf-conntrack6`. Это позволило полностью исключить из сборки транзитивно затягивавшиеся 15 модулей старого iptables (`kmod-ipt-conntrack`, `kmod-ipt-core`, `kmod-nf-ipt`).
+   * В `vendor_scripts/patch_package.py` удален мертвый код патчинга ECM.
+2. **Почему отдельный хук для ECM в `/etc/nftables.d/` НЕ требуется:**
+   * В старом `fw3` правило требовалось из-за включения `net.bridge.bridge-nf-call-iptables=1`, которое направляло L2-мостовые пакеты в стек L3 Netfilter `FORWARD`.
+   * В `firewall4` и на ядре 5.4 `net.bridge.bridge-nf-call-iptables=0` (выключен). L2-мостовой трафик обрабатывается на уровне L2 аппаратно коммутатором Motorcomm и мостом ядра `br-lan`, не затрагивая цепочку `FORWARD`.
+   * Кроме того, `fw4` включает файлы `/etc/nftables.d/*.nft` внутрь `table inet fw4`. В семействе `inet` ядра 5.4 выражение `meta ibrname` не поддерживается (оно допустимо только в `table bridge`), что приводило к синтаксической ошибке `Could not process rule: Not supported` и сбою старта фаервола.
+   * Маршрутизируемый трафик LAN-to-LAN в `fw4` и так по умолчанию разрешён (`oifname "br-lan" counter accept`).
+   * Без лишнего файла в `/etc/nftables.d/` фаервол стартует штатно, и правила успешно загружаются в ядро.
 
 ---
 
 ### Шаг 4. Настройка конфигурации по умолчанию (`/etc/config/firewall`)
-В скрипте генерации или дефолтном конфиге фаервола убедиться, что:
-```uci
-set firewall.@defaults[0].flow_offloading='0'
-set firewall.@defaults[0].flow_offloading_hw='0'
+В `target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/03-firewall-wan` добавлено принудительное отключение софтверного оффлоада:
+```sh
+uci -q batch << 'EOF'
+	set firewall.@defaults[0].flow_offloading='0'
+	set firewall.@defaults[0].flow_offloading_hw='0'
+	...
+EOF
 ```
-Это оставит управление ускорением за драйвером `ecm.ko` и аппаратным блоком PPE, исключив софтверный конфликт.
+Это предотвращает запуск `flowtable` и гарантирует передачу всего транзитного трафика через аппаратный ускоритель Qualcomm PPE/ECM.
 
 ---
 

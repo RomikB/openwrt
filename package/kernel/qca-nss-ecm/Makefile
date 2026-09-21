@@ -21,7 +21,8 @@ define KernelPackage/qca-nss-ecm-premium
   SUBMENU:=Network Support
   TITLE:=QCA NSS Enhanced Connection Manager (ECM Premium)
   DEPENDS:=@TARGET_ipq53xx \
-	+kmod-ipt-conntrack \
+	+kmod-nf-conntrack \
+	+kmod-nf-conntrack6 \
 	+kmod-vxlan \
 	+kmod-pppoe \
 	+kmod-qca-mcs \
@@ -52,8 +53,7 @@ define KernelPackage/qca-nss-ecm-premium/Description
 endef
 
 define KernelPackage/qca-nss-ecm-premium/install
-	$(INSTALL_DIR) $(1)/etc/firewall.d $(1)/etc/init.d $(1)/usr/bin $(1)/lib/netifd/offload $(1)/etc/config $(1)/etc/uci-defaults $(1)/etc/sysctl.d
-	$(INSTALL_DATA) ./files/etc/firewall.d/qca-nss-ecm $(1)/etc/firewall.d/qca-nss-ecm
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/bin $(1)/lib/netifd/offload $(1)/etc/config $(1)/etc/uci-defaults $(1)/etc/sysctl.d
 	$(INSTALL_BIN) ./files/etc/init.d/qca-nss-ecm $(1)/etc/init.d/qca-nss-ecm
 	$(INSTALL_BIN) ./files/usr/bin/ecm_dump.sh $(1)/usr/bin/
 	$(INSTALL_BIN) ./files/lib/netifd/offload/on-demand-down $(1)/lib/netifd/offload/on-demand-down
