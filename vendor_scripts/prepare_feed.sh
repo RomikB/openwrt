@@ -127,10 +127,8 @@ for pkg_dir in "$FEED_DIR"/*; do
     fi
 done
 
-# Configure feeds.conf to include vendor_feed
+# Configure feeds.conf to include vendor_feed and custom bypass/proxy feeds
 FEEDS_CONF="feeds.conf"
-FEED_PATH="../vendor_feed"
-FEED_ENTRY="src-link vendor_feed $FEED_PATH"
 
 if [ ! -f "$FEEDS_CONF" ]; then
 	if [ -f "feeds.conf.default" ]; then
@@ -139,10 +137,19 @@ if [ ! -f "$FEEDS_CONF" ]; then
 		touch "$FEEDS_CONF"
 	fi
 fi
+add_feed_entry() {
+	local name="$1"
+	local entry="$2"
+	if ! grep -q "^[[:space:]]*src-[^[:space:]]*[[:space:]]\+$name[[:space:]]" "$FEEDS_CONF"; then
+		echo "$entry" >> "$FEEDS_CONF"
+		echo "Added $name to $FEEDS_CONF"
+	else
+		echo "$name is already present in $FEEDS_CONF"
+	fi
+}
 
-if ! grep -q "vendor_feed" "$FEEDS_CONF"; then
-	echo "$FEED_ENTRY" >> "$FEEDS_CONF"
-	echo "Added vendor_feed to $FEEDS_CONF"
-else
-	echo "vendor_feed is already present in $FEEDS_CONF"
-fi
+add_feed_entry "vendor_feed" "src-link vendor_feed ../vendor_feed"
+add_feed_entry "amneziawg" "src-git amneziawg https://github.com/RomikB/amneziawg-openwrt.git"
+add_feed_entry "podkop" "src-git podkop https://github.com/itdoginfo/podkop.git"
+add_feed_entry "ruantiblock" "src-git ruantiblock https://github.com/gSpotx2f/ruantiblock_openwrt.git"
+add_feed_entry "zapret2" "src-git zapret2 https://github.com/remittor/zapret-openwrt.git;master"

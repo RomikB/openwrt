@@ -6,22 +6,33 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES += \
+DEFAULT_PACKAGES.router:=\
 	-procd-ujail \
-	swconfig bridge ethtool ip-full block-mount nand-utils \
-	luci iperf3 htop iw iwinfo \
-	kmod-bootconfig \
-	kmod-qca-nss-ppe-pppoe-mgr kmod-qca-nss-ppe-lag-mgr \
-	kmod-pwm-rgb kmod-gpio-button-hotplug \
-	qca-ssdk-shell \
-	kmod-yt-9215s-driver kmod-yt-phy-driver yt-9215s-client \
+	dnsmasq-full \
+	firewall4 \
+	nftables \
+	kmod-nft-offload \
+	odhcp6c \
+	odhcpd-ipv6only \
+	ppp \
+	ppp-mod-pppoe
+
+DEFAULT_PACKAGES += \
+	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \
 	kmod-nft-bridge \
-	kmod-qca-nss-ecm-wifi-plugin \
-	qca-firmware-vendor wififw_mount_script qca-wifi-scripts \
-	qca-cnss-daemon-vendor \
-	qca-hostap-vendor qca-wpa-supplicant-vendor qca-hostapd-cli qca-wpa-cli
-
-
+	kmod-yt-9215s-driver kmod-yt-phy-driver swconfig yt-9215s-client \
+	kmod-qca-nss-ppe-lag-mgr kmod-qca-nss-ppe-pppoe-mgr qca-ssdk-shell \
+	block-mount ethtool ip-full nand-utils \
+	luci \
+	iw iwinfo kmod-qca-nss-ecm-wifi-plugin \
+	qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
+	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script \
+	iperf3 htop \
+	amneziawg-tools luci-proto-amneziawg \
+	kmod-nft-tproxy ruantiblock luci-app-ruantiblock \
+	kmod-nft-queue zapret2 luci-app-zapret2 \
+	kmod-nft-socket \
+	kmod-tcp-bbr
 
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.

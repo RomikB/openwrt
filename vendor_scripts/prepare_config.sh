@@ -51,6 +51,7 @@ disable KERNEL_NF_CONNTRACK_TIMEOUT
 disable KERNEL_BLK_DEV_THROTTLING
 disable KERNEL_KALLSYMS
 disable KERNEL_KEYS
+enable LUCI_LANG_ru
 
 make defconfig
 
