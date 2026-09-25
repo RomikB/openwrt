@@ -142,6 +142,54 @@ def patch_ruantiblock_config_script(config_script_path):
         print(f"[patch_feeds] Warning: Target block not found in {config_script_path}")
         return False
 
+def patch_podkop_makefile(makefile_path):
+    if not os.path.isfile(makefile_path):
+        print(f"[patch_feeds] Note: {makefile_path} not found, skipping.")
+        return False
+
+    with open(makefile_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    if "DEPENDS:=sing-box " in content:
+        print(f"[patch_feeds] Already patched: {makefile_path}")
+        return True
+
+    old = "DEPENDS:=+sing-box "
+    new = "DEPENDS:=sing-box "
+    if old in content:
+        content = content.replace(old, new, 1)
+        with open(makefile_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"[patch_feeds] Successfully patched: {makefile_path} (use non-selecting dependency for sing-box)")
+        return True
+    else:
+        print(f"[patch_feeds] Warning: Target block not found in {makefile_path}")
+        return False
+
+def patch_luci_app_podkop_makefile(makefile_path):
+    if not os.path.isfile(makefile_path):
+        print(f"[patch_feeds] Note: {makefile_path} not found, skipping.")
+        return False
+
+    with open(makefile_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    if "# $(eval $(call BuildPackage,$(PKG_NAME)))" in content:
+        print(f"[patch_feeds] Already patched: {makefile_path}")
+        return True
+
+    old = "$(eval $(call BuildPackage,$(PKG_NAME)))"
+    new = "# BuildPackage is invoked automatically by luci.mk\n# $(eval $(call BuildPackage,$(PKG_NAME)))"
+    if old in content:
+        content = content.replace(old, new, 1)
+        with open(makefile_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"[patch_feeds] Successfully patched: {makefile_path} (remove duplicate BuildPackage)")
+        return True
+    else:
+        print(f"[patch_feeds] Warning: Target block not found in {makefile_path}")
+        return False
+
 def main():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     print(f"[patch_feeds] Applying patches to external feeds in {repo_root}...")
@@ -165,6 +213,14 @@ def main():
     # Patch feeds/ruantiblock config_script (dynamic dnsmasq confdir fallback)
     ruantiblock_config_script = os.path.join(repo_root, "feeds/ruantiblock/ruantiblock/files/usr/share/ruantiblock/config_script")
     patch_ruantiblock_config_script(ruantiblock_config_script)
+
+    # Patch feeds/podkop podkop Makefile (non-selecting sing-box dependency)
+    podkop_makefile = os.path.join(repo_root, "feeds/podkop/podkop/Makefile")
+    patch_podkop_makefile(podkop_makefile)
+
+    # Patch feeds/podkop luci-app-podkop Makefile (remove duplicate BuildPackage)
+    luci_app_podkop_makefile = os.path.join(repo_root, "feeds/podkop/luci-app-podkop/Makefile")
+    patch_luci_app_podkop_makefile(luci_app_podkop_makefile)
 
     print("[patch_feeds] Feed patching complete.")
 

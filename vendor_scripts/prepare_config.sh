@@ -53,6 +53,16 @@ disable KERNEL_KALLSYMS
 disable KERNEL_KEYS
 enable LUCI_LANG_ru
 
+# Minimal profile for sing-box (exclude heavy Go subsystems: WireGuard, Tailscale, Tor, gRPC, ACME, V2Ray API, DHCP, gVisor)
+disable SINGBOX_WITH_ACME
+disable SINGBOX_WITH_DHCP
+disable SINGBOX_WITH_EMBEDDED_TOR
+disable SINGBOX_WITH_GRPC
+disable SINGBOX_WITH_GVISOR
+disable SINGBOX_WITH_TAILSCALE
+disable SINGBOX_WITH_V2RAY_API
+disable SINGBOX_WITH_WIREGUARD
+
 make defconfig
 
 echo "Configuration successfully prepared."

@@ -32,7 +32,8 @@ DEFAULT_PACKAGES += \
 	kmod-nft-tproxy ruantiblock luci-app-ruantiblock \
 	kmod-nft-queue zapret2 luci-app-zapret2 \
 	kmod-nft-socket \
-	kmod-tcp-bbr
+	kmod-tcp-bbr \
+	sing-box podkop luci-app-podkop
 
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.
