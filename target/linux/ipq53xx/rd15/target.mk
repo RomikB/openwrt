@@ -6,16 +6,7 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES.router:=\
-	-procd-ujail \
-	dnsmasq-full \
-	firewall4 \
-	nftables \
-	kmod-nft-offload \
-	odhcp6c \
-	odhcpd-ipv6only \
-	ppp \
-	ppp-mod-pppoe
+DEFAULT_PACKAGES.router += -procd-ujail
 
 DEFAULT_PACKAGES += \
 	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \
@@ -24,16 +15,15 @@ DEFAULT_PACKAGES += \
 	kmod-qca-nss-ppe-lag-mgr kmod-qca-nss-ppe-pppoe-mgr qca-ssdk-shell \
 	block-mount ethtool ip-full nand-utils \
 	luci \
+	luci-theme-material luci-theme-openwrt-2020 \
+	luci-theme-argon luci-app-argon-config \
+	luci-theme-design \
 	iw iwinfo kmod-qca-nss-ecm-wifi-plugin \
 	qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
 	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script \
 	iperf3 htop \
 	amneziawg-tools luci-proto-amneziawg \
-	kmod-nft-tproxy ruantiblock luci-app-ruantiblock \
-	kmod-nft-queue zapret2 luci-app-zapret2 \
-	kmod-nft-socket \
-	kmod-tcp-bbr \
-	sing-box podkop luci-app-podkop
+	zapret2 luci-app-zapret2
 
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.

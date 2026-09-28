@@ -153,3 +153,8 @@ add_feed_entry "amneziawg" "src-git amneziawg https://github.com/RomikB/amneziaw
 add_feed_entry "podkop" "src-git podkop https://github.com/itdoginfo/podkop.git"
 add_feed_entry "ruantiblock" "src-git ruantiblock https://github.com/gSpotx2f/ruantiblock_openwrt.git"
 add_feed_entry "zapret2" "src-git zapret2 https://github.com/remittor/zapret-openwrt.git;master"
+
+# Clone and update standalone single-package addons (e.g. LuCI themes)
+if [ -f "vendor_scripts/update_addons.sh" ]; then
+	./vendor_scripts/update_addons.sh
+fi

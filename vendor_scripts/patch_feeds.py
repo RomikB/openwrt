@@ -222,7 +222,35 @@ def main():
     luci_app_podkop_makefile = os.path.join(repo_root, "feeds/podkop/luci-app-podkop/Makefile")
     patch_luci_app_podkop_makefile(luci_app_podkop_makefile)
 
+    # Patch package/addons/luci-theme-argon Makefile (use uclient-fetch instead of heavy GNU wget)
+    argon_makefile = os.path.join(repo_root, "package/addons/luci-theme-argon/Makefile")
+    patch_argon_makefile(argon_makefile)
+
     print("[patch_feeds] Feed patching complete.")
+
+def patch_argon_makefile(makefile_path):
+    if not os.path.isfile(makefile_path):
+        print(f"[patch_feeds] Note: {makefile_path} not found, skipping.")
+        return False
+
+    with open(makefile_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    if "LUCI_DEPENDS:=+uclient-fetch +jsonfilter" in content:
+        print(f"[patch_feeds] Already patched: {makefile_path}")
+        return True
+
+    old = "LUCI_DEPENDS:=+USE_APK:wget-any +!USE_APK:wget +jsonfilter"
+    new = "LUCI_DEPENDS:=+uclient-fetch +jsonfilter"
+    if old in content:
+        content = content.replace(old, new, 1)
+        with open(makefile_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"[patch_feeds] Successfully patched: {makefile_path} (use uclient-fetch instead of GNU wget)")
+        return True
+    else:
+        print(f"[patch_feeds] Warning: Target block not found in {makefile_path}")
+        return False
 
 if __name__ == "__main__":
     main()

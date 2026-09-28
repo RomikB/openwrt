@@ -1,4 +1,13 @@
 DTC_FLAGS :=
+PREBUILD_PACKAGES := nvram-vendor
+QSDK_PACKAGES := uboot-envtools nvram-env
+RUANTIBLOCK_PACKAGES := \
+	-dnsmasq dnsmasq-full \
+	ruantiblock luci-app-ruantiblock \
+	https-dns-proxy luci-app-https-dns-proxy
+PODKOP_PACKAGES := \
+	sing-box podkop luci-app-podkop \
+	kmod-tcp-bbr
 
 define Image/Prepare
 	@echo "-=RB=-Image/Prepare: Cleaning up modules.builtin* for rd15"
@@ -20,15 +29,23 @@ define Device/Default
 endef
 
 define Device/xiaomi-rd15-prebuild
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel)
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, ruantiblock)
 	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := nvram-vendor
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(RUANTIBLOCK_PACKAGES)
 endef
 TARGET_DEVICES += xiaomi-rd15-prebuild
 
+define Device/xiaomi-rd15-prebuild-podkop
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, podkop)
+	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(PODKOP_PACKAGES)
+endef
+TARGET_DEVICES += xiaomi-rd15-prebuild-podkop
+
 define Device/xiaomi-rd15-qsdk
-	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel)
+	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, ruantiblock)
 	DEVICE_DTS := ipq5332-rd15
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
 	DEVICE_DTS_DELIMITER := @
@@ -37,6 +54,20 @@ define Device/xiaomi-rd15-qsdk
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	DEVICE_PACKAGES := uboot-envtools nvram-env
+	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(RUANTIBLOCK_PACKAGES)
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk
+
+define Device/xiaomi-rd15-qsdk-podkop
+	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, podkop)
+	DEVICE_DTS := ipq5332-rd15
+	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
+	DEVICE_DTS_DELIMITER := @
+	DEVICE_DTS_CONFIG := config@1
+	KERNEL_LOADADDR := 0x40008000
+	KERNEL_ENTRY := 0x40008000
+	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
+	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
+	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(PODKOP_PACKAGES)
+endef
+TARGET_DEVICES += xiaomi-rd15-qsdk-podkop

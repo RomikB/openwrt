@@ -19,7 +19,9 @@ enable TARGET_ipq53xx_rd15
 enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP
