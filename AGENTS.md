@@ -87,4 +87,5 @@
 * **Дорожная карта, бюджет флеш-памяти и активный бэклог (AmneziaWG, LuCI)**:
   $\to$ [docs/roadmap.md](file:///home/romikb/openwrt/docs/roadmap.md)
 * **Архив исторических логов и завершенных отчетов**:
-  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`)
+  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
+

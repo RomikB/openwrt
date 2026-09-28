@@ -44,6 +44,23 @@ define Device/xiaomi-rd15-prebuild-podkop
 endef
 TARGET_DEVICES += xiaomi-rd15-prebuild-podkop
 
+define Build/fit-rd15
+	$(call locked,$(TOPDIR)/scripts/mkits.sh \
+		-D $(DEVICE_NAME) -o $@.its -k $@ \
+		-C $(word 1,$(1)) \
+		$(if $(word 2,$(1)),\
+			$(if $(findstring 11,$(if $(DEVICE_DTS_OVERLAY),1)$(if $(findstring $(KERNEL_BUILD_DIR)/image-,$(word 2,$(1))),,1)), \
+				-d $(KERNEL_BUILD_DIR)/image-$$(basename $(word 2,$(1))), \
+				-d $(word 2,$(1)))) \
+		-a $(KERNEL_LOADADDR) -e $(if $(KERNEL_ENTRY),$(KERNEL_ENTRY),$(KERNEL_LOADADDR)) \
+		$(if $(DEVICE_DTS_DELIMITER),-l $(DEVICE_DTS_DELIMITER)) \
+		-c $(if $(DEVICE_DTS_CONFIG),$(DEVICE_DTS_CONFIG),"config-1") \
+		-A $(LINUX_KARCH) -v $(LINUX_VERSION))
+	sed -i '/kernel@1 {/a \\t\t\tmiwifirom = "1.0.81";' $@.its
+	PATH=$(LINUX_DIR)/scripts/dtc:$(PATH) mkimage -f $@.its $@.new
+	@mv $@.new $@
+endef
+
 define Device/xiaomi-rd15-qsdk
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, ruantiblock)
 	DEVICE_DTS := ipq5332-rd15
@@ -52,7 +69,7 @@ define Device/xiaomi-rd15-qsdk
 	DEVICE_DTS_CONFIG := config@1
 	KERNEL_LOADADDR := 0x40008000
 	KERNEL_ENTRY := 0x40008000
-	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
+	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(RUANTIBLOCK_PACKAGES)
 endef
@@ -66,7 +83,7 @@ define Device/xiaomi-rd15-qsdk-podkop
 	DEVICE_DTS_CONFIG := config@1
 	KERNEL_LOADADDR := 0x40008000
 	KERNEL_ENTRY := 0x40008000
-	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
+	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(PODKOP_PACKAGES)
 endef
