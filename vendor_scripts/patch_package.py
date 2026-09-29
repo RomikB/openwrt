@@ -242,142 +242,14 @@ stop_service() {
                 c = re.sub(r"^START=\d+", "START=", c, flags=re.MULTILINE)
                 init_file.write_text(c)
 
-    # Configure init script for qca-hostap
+    # Remove obsolete init script for qca-hostap (managed natively by netifd in OpenWrt 24)
     if orig_pkg_name == "qca-hostap":
         init_hostapd = pkg_dir / "files" / "etc" / "init.d" / "qca-hostapd"
         if init_hostapd.is_file():
-            hostapd_content = """#!/bin/sh /etc/rc.common
-#
-# Copyright (c) 2024 Qualcomm Technologies, Inc. / OpenWrt
-# QCA Wi-Fi 6 / 7 Hostapd Service with UCI Integration for Xiaomi BE3600 (RD15)
-#
-# Note: setup_vaps() pre-creates ath0/ath1 via cfg80211 if they are not yet
-# visible. The qca-wifi driver may create them internally on module load;
-# in that case 'iw interface add' is guarded and skipped. The dmesg warning
-# "ath0 net dev exists already" from qca-wifi is benign — hostapd retries
-# and succeeds. DO NOT delete these netdevs before starting hostapd: the
-# driver holds internal state for them and cannot recreate them on demand.
-# wait_hostapd_sock() is added to fix the race where dependent services
-# (netifd) start before the control socket is ready.
-#
-
-START=21
-STOP=87
-
-. /lib/functions.sh
-
-# Wait up to $2 seconds for a hostapd control socket to appear
-wait_hostapd_sock() {
-\tlocal sock="$1"
-\tlocal timeout="${2:-15}"
-\tlocal i=0
-\twhile [ $i -lt $timeout ]; do
-\t\t[ -S "$sock" ] && return 0
-\t\tsleep 1
-\t\ti=$((i + 1))
-\tdone
-\treturn 1
-}
-
-setup_vaps() {
-\t# 1. Ensure driver is loaded
-\t[ -d /sys/module/wifi_3_0 ] || {
-\t\t[ -x /etc/init.d/qca-wifi ] && /etc/init.d/qca-wifi start
-\t}
-
-\tlocal phy0=$(cat /sys/class/net/wifi0/phy80211/name 2>/dev/null || echo "phy1")
-\tlocal phy1=$(cat /sys/class/net/wifi1/phy80211/name 2>/dev/null || echo "phy2")
-
-\t# Ensure br-lan is up
-\t[ -d /sys/class/net/br-lan ] || brctl addbr br-lan 2>/dev/null || true
-\tip link set br-lan up 2>/dev/null || true
-
-\t# Disable bridge netfilter dropping
-\tsysctl -w net.bridge.bridge-nf-call-iptables=0 2>/dev/null || true
-\tsysctl -w net.bridge.bridge-nf-call-arptables=0 2>/dev/null || true
-\tsysctl -w net.bridge.bridge-nf-call-ip6tables=0 2>/dev/null || true
-
-\t# Create VAPs once if they do not exist; the qca-wifi driver may have
-\t# pre-registered them already, in which case these commands are skipped.
-\tif [ ! -d /sys/class/net/ath0 ] && [ -d /sys/class/net/wifi0 ]; then
-\t\tiw phy "$phy0" interface add ath0 type __ap 2>/dev/null || true
-\tfi
-\t[ -d /sys/class/net/ath0 ] && brctl addif br-lan ath0 2>/dev/null || true
-\t[ -d /sys/class/net/ath0 ] && ip link set ath0 up 2>/dev/null || true
-
-\tif [ ! -d /sys/class/net/ath1 ] && [ -d /sys/class/net/wifi1 ]; then
-\t\tiw phy "$phy1" interface add ath1 type __ap 2>/dev/null || true
-\tfi
-\t[ -d /sys/class/net/ath1 ] && brctl addif br-lan ath1 2>/dev/null || true
-\t[ -d /sys/class/net/ath1 ] && ip link set ath1 up 2>/dev/null || true
-}
-
-start() {
-\tsetup_vaps
-
-\tif [ -x /lib/wifi/hostapd_config.sh ]; then
-\t\t/lib/wifi/hostapd_config.sh all
-\tfi
-
-\tconfig_load wireless
-\tlocal r0_disabled r1_disabled
-\tconfig_get_bool r0_disabled "radio0" disabled 0
-\tconfig_get_bool r1_disabled "radio1" disabled 0
-
-\tstart_ap() {
-\t\tlocal ifname="$1"
-\t\tlocal conf="/var/run/hostapd-${ifname}.conf"
-\t\tlocal pid_file="/var/run/hostapd-${ifname}.pid"
-\t\tlocal sock_file="/var/run/hostapd/${ifname}"
-\t\t[ -f "$conf" ] || return 0
-
-\t\tlocal pids=$(pgrep -f "hostapd-${ifname}.conf")
-\t\tif [ -n "$pids" ] && [ -S "$sock_file" ]; then
-\t\t\treturn 0
-\t\tfi
-
-\t\tif [ -n "$pids" ]; then
-\t\t\tkill -15 $pids 2>/dev/null || true
-\t\t\tsleep 1
-\t\t\tkill -9 $pids 2>/dev/null || true
-\t\tfi
-\t\trm -f "$pid_file" "$sock_file" "/var/run/hostapd-${ifname}.conf.active"
-\t\tmkdir -p /var/run/hostapd
-\t\t/usr/sbin/hostapd -B -P "$pid_file" -e /var/run/entropy.bin "$conf" 2>/dev/null || true
-\t\tcp -f "$conf" "/var/run/hostapd-${ifname}.conf.active" 2>/dev/null || true
-
-\t\t# Wait for the control socket to be ready before returning,
-\t\t# so dependent services (netifd) don't race against hostapd startup.
-\t\tif ! wait_hostapd_sock "$sock_file" 15; then
-\t\t\tlogger -t qca-hostapd "WARNING: $sock_file not ready within 15s"
-\t\tfi
-\t}
-
-\t[ "$r0_disabled" -eq 0 ] && start_ap "ath0"
-\t[ "$r1_disabled" -eq 0 ] && start_ap "ath1"
-}
-
-stop() {
-\tkillall hostapd 2>/dev/null || true
-\trm -f /var/run/hostapd-*.pid /var/run/hostapd-*.conf.active
-}
-
-restart() {
-\tstop
-\tsleep 1
-\tstart
-}
-
-reload() {
-\tsetup_vaps
-\tif [ -x /lib/wifi/hostapd_config.sh ]; then
-\t\t/lib/wifi/hostapd_config.sh all
-\tfi
-\tstart
-}
-"""
-            init_hostapd.write_text(hostapd_content)
-            init_hostapd.chmod(0o755)
+            init_hostapd.unlink()
+        init_dir = pkg_dir / "files" / "etc" / "init.d"
+        if init_dir.is_dir() and not any(init_dir.iterdir()):
+            init_dir.rmdir()
 
 
 

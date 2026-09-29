@@ -6,8 +6,8 @@
 
 . /lib/functions.sh
 
-CONF_DIR="/var/run"
-mkdir -p /var/run/hostapd
+CONF_DIR="${CONF_DIR:-/var/run}"
+mkdir -p "${CONF_DIR}/hostapd"
 
 get_ht40_capab() {
 	local band="$1"
@@ -64,7 +64,11 @@ generate_hostapd_conf() {
 	local dev="$2"
 
 	local ssid channel band htmode hwmode country disabled
-	local encryption key isolate hidden bridge
+	local encryption key isolate hidden bridge mode network wds pmf
+
+	# Only generate hostapd configs for AP modes
+	config_get mode "$iface" mode "ap"
+	[ "$mode" != "ap" ] && [ "$mode" != "ap-wds" ] && return 0
 
 	# Read device properties
 	config_get channel "$dev" channel ""
@@ -83,15 +87,29 @@ generate_hostapd_conf() {
 	[ -z "$key" ] && key="12345678"
 	config_get_bool isolate "$iface" isolate 0
 	config_get_bool hidden "$iface" hidden 0
-	config_get ifname "$iface" ifname "$iface"
+	config_get ifname "$iface" ifname ""
+	[ -z "$ifname" ] && {
+		if [ "$dev" = "radio0" ]; then
+			ifname="ath0"
+		else
+			ifname="ath1"
+		fi
+	}
 	config_get_bool if_disabled "$iface" disabled 0
+	config_get network "$iface" network "lan"
+	config_get bridge "$iface" bridge ""
+	config_get_bool wds "$iface" wds 0
+	[ "$mode" = "ap-wds" ] && wds=1
 
-	[ -z "$ifname" ] && return 0
 	[ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ] && return 0
 
 	local conf_file="${CONF_DIR}/hostapd-${ifname}.conf"
 	local br_dev="br-lan"
-	[ -n "$bridge" ] && [ "$bridge" != "lan" ] && br_dev="br-$bridge"
+	if [ -n "$bridge" ]; then
+		br_dev="$bridge"
+	elif [ "$network" != "lan" ] && [ -n "$network" ]; then
+		br_dev="br-$network"
+	fi
 
 	# Hardware map radio0 to 2.4G and radio1 to 5G
 	if [ "$dev" = "radio0" ] || [ "$ifname" = "ath0" ]; then
@@ -218,7 +236,15 @@ generate_hostapd_conf() {
 			none|open|"")
 				echo "wpa=0"
 				;;
-			*sae*|*wpa3*)
+			sae|wpa3)
+				echo "wpa=2"
+				echo "wpa_key_mgmt=SAE"
+				echo "wpa_pairwise=CCMP"
+				echo "rsn_pairwise=CCMP"
+				echo "ieee80211w=2"
+				echo "sae_password=${key}"
+				;;
+			sae-mixed|*sae*|*wpa3*)
 				echo "wpa=2"
 				echo "wpa_key_mgmt=WPA-PSK SAE"
 				echo "wpa_pairwise=CCMP"
@@ -233,6 +259,13 @@ generate_hostapd_conf() {
 				echo "wpa_pairwise=TKIP CCMP"
 				echo "wpa_passphrase=${key}"
 				;;
+			owe)
+				echo "wpa=2"
+				echo "wpa_key_mgmt=OWE"
+				echo "wpa_pairwise=CCMP"
+				echo "rsn_pairwise=CCMP"
+				echo "ieee80211w=2"
+				;;
 			*)
 				echo "wpa=2"
 				echo "wpa_key_mgmt=WPA-PSK"
@@ -243,6 +276,13 @@ generate_hostapd_conf() {
 				;;
 		esac
 
+		# Optional PMF override from LuCI
+		config_get pmf "$iface" ieee80211w ""
+		[ -n "$pmf" ] && echo "ieee80211w=${pmf}"
+
+		# WDS 4-address station support
+		[ "$wds" -eq 1 ] && echo "wds_sta=1"
+
 		# Additional options
 		[ "$isolate" -eq 1 ] && echo "ap_isolate=1"
 		[ "$hidden" -eq 1 ] && echo "ignore_broadcast_ssid=1"
@@ -251,11 +291,11 @@ generate_hostapd_conf() {
 
 	# Create symlinks for iwinfo nl80211 phy lookup
 	local phy=$(cat "/sys/class/net/${ifname}/phy80211/name" 2>/dev/null)
-	[ -n "$phy" ] && ln -sf "hostapd-${ifname}.conf" "/var/run/hostapd-${phy}.conf"
+	[ -n "$phy" ] && ln -sf "hostapd-${ifname}.conf" "${CONF_DIR}/hostapd-${phy}.conf" 2>/dev/null || true
 	if [ "$ifname" = "ath0" ]; then
-		ln -sf "hostapd-ath0.conf" "/var/run/hostapd-phy1.conf"
+		ln -sf "hostapd-ath0.conf" "${CONF_DIR}/hostapd-phy1.conf" 2>/dev/null || true
 	elif [ "$ifname" = "ath1" ]; then
-		ln -sf "hostapd-ath1.conf" "/var/run/hostapd-phy2.conf"
+		ln -sf "hostapd-ath1.conf" "${CONF_DIR}/hostapd-phy2.conf" 2>/dev/null || true
 	fi
 
 	echo "Generated hostapd configuration: $conf_file"

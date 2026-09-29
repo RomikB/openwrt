@@ -26,44 +26,7 @@ unlock_wifi() {
 
 wifi_config() {
 	if [ ! -s /etc/config/wireless ]; then
-		echo "Creating default /etc/config/wireless..."
-		cat << 'EOF' > /etc/config/wireless
-config wifi-device 'radio0'
-	option type 'mac80211'
-	option channel '1'
-	option band '2g'
-	option htmode 'HE40'
-	option hwmode '11ax'
-	option country 'CN'
-	option disabled '0'
-
-config wifi-iface 'default_radio0'
-	option device 'radio0'
-	option network 'lan'
-	option mode 'ap'
-	option ssid 'OpenWrt_RD15_2.4G'
-	option encryption 'psk2'
-	option key '12345678'
-	option ifname 'ath0'
-
-config wifi-device 'radio1'
-	option type 'mac80211'
-	option channel '36'
-	option band '5g'
-	option htmode 'HE160'
-	option hwmode '11axa'
-	option country 'CN'
-	option disabled '0'
-
-config wifi-iface 'default_radio1'
-	option device 'radio1'
-	option network 'lan'
-	option mode 'ap'
-	option ssid 'OpenWrt_RD15_5G'
-	option encryption 'psk2'
-	option key '12345678'
-	option ifname 'ath1'
-EOF
+		[ -f /rom/etc/config/wireless ] && cp -f /rom/etc/config/wireless /etc/config/wireless
 	fi
 }
 
@@ -71,12 +34,13 @@ wifi_up() {
 	local dev="$1"
 	lock_wifi
 
+	wifi_config
 	if [ -n "$dev" ]; then
-		uci set wireless."$dev".disabled='0' 2>/dev/null || true
-		uci commit wireless 2>/dev/null || true
+		ubus call network.wireless up "{\"device\":\"$dev\"}" 2>/dev/null || true
+	else
+		ubus call network.wireless up 2>/dev/null || true
 	fi
 
-	/etc/init.d/qca-hostapd start
 	unlock_wifi
 }
 
@@ -85,15 +49,9 @@ wifi_down() {
 	lock_wifi
 
 	if [ -n "$dev" ]; then
-		uci set wireless."$dev".disabled='1' 2>/dev/null || true
-		uci commit wireless 2>/dev/null || true
-		local ifname="ath0"
-		[ "$dev" = "radio1" ] && ifname="ath1"
-		local pid=$(cat "/var/run/hostapd-${ifname}.pid" 2>/dev/null)
-		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-		rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active"
+		ubus call network.wireless down "{\"device\":\"$dev\"}" 2>/dev/null || true
 	else
-		/etc/init.d/qca-hostapd stop
+		ubus call network.wireless down 2>/dev/null || true
 	fi
 
 	unlock_wifi
@@ -103,7 +61,12 @@ wifi_reload() {
 	local dev="$1"
 	lock_wifi
 
-	/etc/init.d/qca-hostapd reload
+	wifi_config
+	ubus call network reload 2>/dev/null || true
+	if [ -n "$dev" ]; then
+		ubus call network.wireless reconf "{\"device\":\"$dev\"}" 2>/dev/null || true
+	fi
+
 	unlock_wifi
 }
 
@@ -123,7 +86,7 @@ wifi_status() {
 	echo "Driver wifi_3_0: $([ -d /sys/module/wifi_3_0 ] && echo 'Loaded' || echo 'Not Loaded')"
 	echo ""
 	echo "--- VAP Interfaces ---"
-	for iface in ath0 ath1; do
+	for iface in ath0 ath01 ath1 ath11; do
 		if [ -d "/sys/class/net/$iface" ]; then
 			local state=$(cat /sys/class/net/$iface/operstate 2>/dev/null || echo "unknown")
 			local addr=$(cat /sys/class/net/$iface/address 2>/dev/null || echo "unknown")
@@ -131,14 +94,15 @@ wifi_status() {
 			if command -v iw >/dev/null 2>&1; then
 				iw dev "$iface" info 2>/dev/null | grep -E "type|channel|txpower|ssid"
 			fi
-		else
-			echo "Interface $iface: DOWN / Not Created"
+			echo ""
 		fi
-		echo ""
 	done
 
 	echo "--- Running Hostapd Daemons ---"
 	ps | grep hostapd | grep -v grep || echo "No hostapd process running"
+	echo ""
+	echo "--- Running WPA Supplicant Daemons ---"
+	ps | grep wpa_supplicant | grep -v grep || echo "No wpa_supplicant process running"
 }
 
 case "$1" in
