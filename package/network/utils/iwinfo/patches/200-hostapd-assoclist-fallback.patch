@@ -11,15 +11,20 @@
  
  	if (!fp)
  		return 0;
-@@ -1632,6 +1636,17 @@
+@@ -1632,6 +1636,22 @@
  	return NL_SKIP;
  }
  
 +static const char *get_hostapd_sock_name(const char *ifname)
 +{
-+	if (strstr(ifname, "ath1") || strstr(ifname, "radio1") || strstr(ifname, "phy2") || strstr(ifname, "wifi1"))
++	char path[128];
++	snprintf(path, sizeof(path), "/var/run/hostapd/%s", ifname);
++	if (access(path, F_OK) == 0)
++		return ifname;
++
++	if (strstr(ifname, "radio1") || strstr(ifname, "phy2") || strstr(ifname, "wifi1"))
 +		return "ath1";
-+	if (strstr(ifname, "ath0") || strstr(ifname, "radio0") || strstr(ifname, "phy1") || strstr(ifname, "wifi0"))
++	if (strstr(ifname, "radio0") || strstr(ifname, "phy1") || strstr(ifname, "wifi0"))
 +		return "ath0";
 +	return ifname;
 +}

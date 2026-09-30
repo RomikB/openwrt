@@ -1,0 +1,59 @@
+#!/bin/sh
+# Xiaomi Router BE3600 (RD15): Guest Network DHCP & Firewall Defaults
+
+# 1. Ensure DHCP pool for guest interface exists
+uci -q get dhcp.guest >/dev/null || {
+	uci set dhcp.guest=dhcp
+	uci set dhcp.guest.interface='guest'
+	uci set dhcp.guest.start='100'
+	uci set dhcp.guest.limit='150'
+	uci set dhcp.guest.leasetime='1h'
+	uci commit dhcp
+}
+
+# 2. Ensure Firewall zone and rules for guest exist
+uci -q get firewall.guest_zone >/dev/null || {
+	uci set firewall.guest_zone=zone
+	uci set firewall.guest_zone.name='guest'
+	uci set firewall.guest_zone.network='guest'
+	uci set firewall.guest_zone.input='REJECT'
+	uci set firewall.guest_zone.output='ACCEPT'
+	uci set firewall.guest_zone.forward='REJECT'
+}
+
+uci -q get firewall.guest_fwd_wan >/dev/null || {
+	uci set firewall.guest_fwd_wan=forwarding
+	uci set firewall.guest_fwd_wan.src='guest'
+	uci set firewall.guest_fwd_wan.dest='wan'
+}
+
+uci -q get firewall.guest_dhcp_rule >/dev/null || {
+	uci set firewall.guest_dhcp_rule=rule
+	uci set firewall.guest_dhcp_rule.name='Allow-Guest-DHCP'
+	uci set firewall.guest_dhcp_rule.src='guest'
+	uci set firewall.guest_dhcp_rule.proto='udp'
+	uci set firewall.guest_dhcp_rule.dest_port='67'
+	uci set firewall.guest_dhcp_rule.target='ACCEPT'
+}
+
+uci -q get firewall.guest_dns_rule >/dev/null || {
+	uci set firewall.guest_dns_rule=rule
+	uci set firewall.guest_dns_rule.name='Allow-Guest-DNS'
+	uci set firewall.guest_dns_rule.src='guest'
+	uci set firewall.guest_dns_rule.proto='tcp udp'
+	uci set firewall.guest_dns_rule.dest_port='53'
+	uci set firewall.guest_dns_rule.target='ACCEPT'
+}
+
+uci -q get firewall.guest_block_admin >/dev/null || {
+	uci set firewall.guest_block_admin=rule
+	uci set firewall.guest_block_admin.name='Block-Guest-Router-Admin'
+	uci set firewall.guest_block_admin.src='guest'
+	uci set firewall.guest_block_admin.proto='tcp'
+	uci set firewall.guest_block_admin.dest_port='22 80 443'
+	uci set firewall.guest_block_admin.target='REJECT'
+}
+
+uci commit firewall
+
+exit 0

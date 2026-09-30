@@ -76,6 +76,8 @@
 
 * **Архитектура гибрида, Wi-Fi стек, системные патчи procd/netifd/busybox, BDF**:
   $\to$ [docs/architecture.md](file:///home/romikb/openwrt/docs/architecture.md)
+* **Режимы Wi-Fi (AP, Multi-SSID Guest, STA/WISP), LuCI, матрица и статус**:
+  $\to$ [docs/wifi_architecture_and_modes.md](file:///home/romikb/openwrt/docs/wifi_architecture_and_modes.md)
 * **Коммутатор Motorcomm YT9215S, регистры, 4 патча драйвера, 2.5G PHY, DSA**:
   $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
 * **Ядро QSDK 12.4, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:

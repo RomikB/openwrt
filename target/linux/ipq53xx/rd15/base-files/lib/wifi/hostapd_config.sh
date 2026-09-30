@@ -101,9 +101,11 @@ generate_hostapd_conf() {
 	config_get_bool wds "$iface" wds 0
 	[ "$mode" = "ap-wds" ] && wds=1
 
-	[ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ] && return 0
-
 	local conf_file="${CONF_DIR}/hostapd-${ifname}.conf"
+	if [ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ]; then
+		rm -f "$conf_file"
+		return 0
+	fi
 	local br_dev="br-lan"
 	if [ -n "$bridge" ]; then
 		br_dev="$bridge"

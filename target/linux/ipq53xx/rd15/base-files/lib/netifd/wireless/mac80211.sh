@@ -210,7 +210,6 @@ mac80211_setup_vif() {
 	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid
 	json_select ..
 
-	[ "${disabled:-0}" -eq 1 ] && return 0
 	[ -z "$mode" ] && mode="ap"
 
 	if [ -z "$ifname" ]; then
@@ -227,7 +226,7 @@ mac80211_setup_vif() {
 					ifname="ath0"
 					primary_ap_used_r0=1
 				else
-					vap_count_r0=$(( ${vap_count_r0:-0} + 1 ))
+					vap_count_r0=$(( ${vap_count_r0:-1} + 1 ))
 					ifname="ath0${vap_count_r0}"
 				fi
 			else
@@ -235,11 +234,26 @@ mac80211_setup_vif() {
 					ifname="ath1"
 					primary_ap_used_r1=1
 				else
-					vap_count_r1=$(( ${vap_count_r1:-0} + 1 ))
+					vap_count_r1=$(( ${vap_count_r1:-1} + 1 ))
 					ifname="ath1${vap_count_r1}"
 				fi
 			fi
 		fi
+	fi
+
+	if [ "${disabled:-0}" -eq 1 ]; then
+		if [ -n "$ifname" ]; then
+			local hpid=$(cat "/var/run/hostapd-${ifname}.pid" 2>/dev/null)
+			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
+			local spid=$(cat "/var/run/wpa_supplicant-${ifname}.pid" 2>/dev/null)
+			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
+			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
+			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
+			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+				ip link set "$ifname" down 2>/dev/null || true
+			fi
+		fi
+		return 0
 	fi
 
 	# Ensure kernel VAP exists
@@ -251,7 +265,15 @@ mac80211_setup_vif() {
 		restart_supplicant_instance "$ifname" "$br"
 	else
 		local br="$network_bridge"
-		[ -z "$br" ] && [ "$network" = "lan" -o -z "$network" ] && br="br-lan"
+		if [ -z "$br" ]; then
+			if [ "$network" = "lan" ] || [ -z "$network" ]; then
+				br="br-lan"
+			elif [ -d "/sys/class/net/br-${network}" ]; then
+				br="br-${network}"
+			elif [ -d "/sys/class/net/${network}" ]; then
+				br="${network}"
+			fi
+		fi
 		restart_hostapd_instance "$ifname" "$br"
 	fi
 
@@ -269,6 +291,76 @@ drv_mac80211_setup() {
 	primary_ap_used_r1=0
 	vap_count_r0=0
 	vap_count_r1=0
+
+	local prefix="ath0"
+	[ "$dev" = "radio1" ] && prefix="ath1"
+
+	# Terminate any leftover daemons whose configs no longer exist (e.g. interface disabled)
+	for ifname in "${prefix}" "${prefix}1" "${prefix}2" "${prefix}3"; do
+		if [ ! -f "/var/run/hostapd-${ifname}.conf" ]; then
+			local hpid=$(cat "/var/run/hostapd-${ifname}.pid" 2>/dev/null)
+			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
+			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
+			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+				ip link set "$ifname" down 2>/dev/null || true
+			fi
+		fi
+		if [ ! -f "/var/run/wpa_supplicant-${ifname}.conf" ]; then
+			local spid=$(cat "/var/run/wpa_supplicant-${ifname}.pid" 2>/dev/null)
+			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
+			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
+			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+				ip link set "$ifname" down 2>/dev/null || true
+			fi
+		fi
+	done
+
+	# Clean up orphaned wireless client network interfaces if their wifi-iface was deleted
+	local sys_nets="loopback lan wan wan6 guest eth0 eth1 eth0_1 eth0_2 eth0_3"
+	local wireless_nets=$(uci -q show wireless | grep -E "\.network=" | cut -d"=" -f2 | tr -d "'" | sort -u)
+	local net_changed=0
+
+	for net in $(uci -q show network | grep "=interface" | cut -d. -f2 | cut -d= -f1); do
+		local is_sys=0
+		for s in $sys_nets; do [ "$net" = "$s" ] && is_sys=1; done
+		if [ $is_sys -eq 0 ]; then
+			local is_used=0
+			for w in $wireless_nets; do [ "$net" = "$w" ] && is_used=1; done
+			if [ $is_used -eq 0 ]; then
+				local dev=$(uci -q get "network.${net}.device")
+				if [ -z "$dev" ] || [ "$dev" = "ath01" ] || [ "$dev" = "ath11" ]; then
+					logger -t mac80211 "Cleaning up orphaned network interface: $net"
+					uci -q delete "network.${net}"
+					net_changed=1
+				fi
+			fi
+		fi
+	done
+
+	# For any active STA interface, ensure it has a distinct route metric to prevent clashing with WAN
+	local sta_nets=$(uci -q show wireless | grep -E "\.mode='sta'|\.mode='sta-wds'" | while read -r line; do
+		local sec=$(echo "$line" | cut -d. -f2)
+		local dis=$(uci -q get "wireless.${sec}.disabled")
+		if [ "${dis:-0}" -eq 0 ]; then
+			uci -q get "wireless.${sec}.network"
+		fi
+	done | sort -u)
+
+	for snet in $sta_nets; do
+		if [ -n "$snet" ] && uci -q get "network.${snet}" >/dev/null; then
+			local cur_metric=$(uci -q get "network.${snet}.metric")
+			if [ -z "$cur_metric" ]; then
+				logger -t mac80211 "Setting default fallback metric 20 on STA network: $snet"
+				uci -q set "network.${snet}.metric=20"
+				net_changed=1
+			fi
+		fi
+	done
+
+	if [ "$net_changed" -eq 1 ]; then
+		uci commit network
+		ubus call network reload 2>/dev/null || true
+	fi
 
 	# Process configured VAPs for this device
 	for_each_interface "ap sta adhoc mesh monitor" mac80211_setup_vif

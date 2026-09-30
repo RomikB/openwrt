@@ -63,6 +63,7 @@ config interface 'wan'
 	option proto 'dhcp'
 	option ipv6 '1'
 	option wantype 'eth'
+	option metric '10'
 
 config interface 'wan6'
 	option device 'eth0.1'
@@ -81,3 +82,14 @@ config interface 'eth0_2'
 
 config interface 'eth0_3'
 	option device 'eth0.3'
+
+config device 'br_guest_dev'
+	option name 'br-guest'
+	option type 'bridge'
+	option bridge_empty '1'
+
+config interface 'guest'
+	option device 'br-guest'
+	option proto 'static'
+	option ipaddr '192.168.2.1'
+	option netmask '255.255.255.0'

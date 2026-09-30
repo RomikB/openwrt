@@ -16,8 +16,6 @@ generate_supplicant_conf() {
 	local ssid encryption key bssid disabled if_disabled ifname mode wds
 	config_get_bool disabled "$dev" disabled 0
 	config_get_bool if_disabled "$iface" disabled 0
-	[ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ] && return 0
-
 	config_get mode "$iface" mode "sta"
 	[ "$mode" != "sta" ] && [ "$mode" != "sta-wds" ] && return 0
 
@@ -30,6 +28,12 @@ generate_supplicant_conf() {
 		fi
 	}
 
+	local conf_file="${CONF_DIR}/wpa_supplicant-${ifname}.conf"
+	if [ "$disabled" -eq 1 ] || [ "$if_disabled" -eq 1 ]; then
+		rm -f "$conf_file"
+		return 0
+	fi
+
 	config_get ssid "$iface" ssid ""
 	config_get encryption "$iface" encryption "none"
 	config_get key "$iface" key ""
@@ -39,7 +43,6 @@ generate_supplicant_conf() {
 	config_get_bool wds "$iface" wds 0
 	[ "$mode" = "sta-wds" ] && wds=1
 
-	local conf_file="${CONF_DIR}/wpa_supplicant-${ifname}.conf"
 	local ctrl_dir="/var/run/wpa_supplicant"
 
 	{
