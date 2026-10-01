@@ -105,6 +105,7 @@ generate_supplicant_conf() {
 }
 
 generate_all_supplicant() {
+	rm -f "${CONF_DIR}"/wpa_supplicant-ath*.conf
 	config_load wireless
 	config_foreach_iface() {
 		local iface="$1"

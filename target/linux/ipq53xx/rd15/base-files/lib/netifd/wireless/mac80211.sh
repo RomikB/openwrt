@@ -13,7 +13,7 @@ drv_mac80211_init_device_config() {
 }
 
 drv_mac80211_init_iface_config() {
-	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr
+	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr wps_pushbutton
 }
 
 drv_mac80211_init_vlan_config() {
@@ -202,12 +202,12 @@ restart_supplicant_instance() {
 
 mac80211_setup_vif() {
 	local vif="$1"
-	local ifname mode network disabled ssid encryption key wds isolate hidden bssid
+	local ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton
 	local network_bridge
 
 	json_get_var network_bridge bridge
 	json_select config
-	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid
+	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton
 	json_select ..
 
 	[ -z "$mode" ] && mode="ap"
@@ -302,7 +302,11 @@ drv_mac80211_setup() {
 			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
 			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
 			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
-				ip link set "$ifname" down 2>/dev/null || true
+				if [ -d "/sys/class/net/${ifname}" ]; then
+					ip link set "$ifname" down 2>/dev/null || true
+					iw dev "$ifname" del 2>/dev/null || true
+					wlanconfig "$ifname" destroy 2>/dev/null || true
+				fi
 			fi
 		fi
 		if [ ! -f "/var/run/wpa_supplicant-${ifname}.conf" ]; then
@@ -310,7 +314,11 @@ drv_mac80211_setup() {
 			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
 			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
 			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
-				ip link set "$ifname" down 2>/dev/null || true
+				if [ -d "/sys/class/net/${ifname}" ]; then
+					ip link set "$ifname" down 2>/dev/null || true
+					iw dev "$ifname" del 2>/dev/null || true
+					wlanconfig "$ifname" destroy 2>/dev/null || true
+				fi
 			fi
 		fi
 	done
@@ -323,16 +331,24 @@ drv_mac80211_setup() {
 	for net in $(uci -q show network | grep "=interface" | cut -d. -f2 | cut -d= -f1); do
 		local is_sys=0
 		for s in $sys_nets; do [ "$net" = "$s" ] && is_sys=1; done
-		if [ $is_sys -eq 0 ]; then
-			local is_used=0
-			for w in $wireless_nets; do [ "$net" = "$w" ] && is_used=1; done
-			if [ $is_used -eq 0 ]; then
-				local dev=$(uci -q get "network.${net}.device")
-				if [ -z "$dev" ] || [ "$dev" = "ath01" ] || [ "$dev" = "ath11" ]; then
-					logger -t mac80211 "Cleaning up orphaned network interface: $net"
-					uci -q delete "network.${net}"
-					net_changed=1
-				fi
+		[ $is_sys -eq 1 ] && continue
+
+		# Never delete virtual, relay, tunnel, or VPN interfaces
+		local proto=$(uci -q get "network.${net}.proto")
+		case "$proto" in
+			relay|wireguard|amneziawg|gre*|vxlan|ipip|6*|dslite|map|ppp*|qmi|mbim)
+				continue
+				;;
+		esac
+
+		local is_used=0
+		for w in $wireless_nets; do [ "$net" = "$w" ] && is_used=1; done
+		if [ $is_used -eq 0 ]; then
+			local dev=$(uci -q get "network.${net}.device")
+			if [ -z "$dev" ] || [ "$dev" = "ath01" ] || [ "$dev" = "ath11" ]; then
+				logger -t mac80211 "Cleaning up orphaned network interface: $net"
+				uci -q delete "network.${net}"
+				net_changed=1
 			fi
 		fi
 	done
@@ -393,8 +409,6 @@ drv_mac80211_teardown() {
 			fi
 		fi
 	done
-
-	wireless_set_down
 }
 
 add_driver mac80211

@@ -289,6 +289,28 @@ generate_hostapd_conf() {
 		[ "$isolate" -eq 1 ] && echo "ap_isolate=1"
 		[ "$hidden" -eq 1 ] && echo "ignore_broadcast_ssid=1"
 
+		# WPS (Wi-Fi Protected Setup - Push Button Configuration)
+		local default_wps=1
+		[ "$network" = "guest" -o "$isolate" -eq 1 ] && default_wps=0
+		case "$encryption" in
+			none|open|owe|sae|wpa3) default_wps=0 ;;
+		esac
+		local wps_pbc
+		config_get_bool wps_pbc "$iface" wps_pushbutton "$default_wps"
+
+		if [ "$wps_pbc" -eq 1 ]; then
+			echo "wps_state=2"
+			echo "eap_server=1"
+			echo "wps_independent=1"
+			echo "config_methods=push_button virtual_push_button physical_push_button"
+			echo "device_name=Xiaomi Router BE3600"
+			echo "manufacturer=Xiaomi"
+			echo "model_name=RD15"
+			echo "model_number=BE3600"
+			echo "device_type=6-0050F204-1"
+			echo "os_version=01020300"
+		fi
+
 	} > "$conf_file"
 
 	# Create symlinks for iwinfo nl80211 phy lookup
@@ -304,6 +326,7 @@ generate_hostapd_conf() {
 }
 
 generate_all() {
+	rm -f "${CONF_DIR}"/hostapd-ath*.conf
 	config_load wireless
 	config_foreach_iface() {
 		local iface="$1"
