@@ -6,7 +6,7 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES.router += -procd-ujail
+DEFAULT_PACKAGES.router += -procd-ujail librt
 
 DEFAULT_PACKAGES += \
 	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \
@@ -21,7 +21,6 @@ DEFAULT_PACKAGES += \
 	iw iwinfo kmod-qca-nss-ecm-wifi-plugin \
 	qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
 	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script \
-	iperf3 htop \
 	amneziawg-tools luci-proto-amneziawg \
 	zapret2 luci-app-zapret2
 

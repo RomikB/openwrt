@@ -1,11 +1,8 @@
 #!/bin/sh
 
-[ -f /etc/config/firewall ] || exit 0
+[ -f /etc/config/firewall ] || return 0 2>/dev/null || exit 0
 
 uci -q batch << 'EOF'
-	set firewall.@defaults[0].flow_offloading='0'
-	set firewall.@defaults[0].flow_offloading_hw='0'
-
 	delete firewall.allow_ssh_wan
 	set firewall.allow_ssh_wan=rule
 	set firewall.allow_ssh_wan.name='Allow-SSH-WAN'
@@ -30,7 +27,15 @@ uci -q batch << 'EOF'
 	set firewall.allow_https_wan.dest_port='443'
 	set firewall.allow_https_wan.target='ACCEPT'
 
+	delete firewall.allow_iperf3_wan
+	set firewall.allow_iperf3_wan=rule
+	set firewall.allow_iperf3_wan.name='Allow-IPERF3-WAN'
+	set firewall.allow_iperf3_wan.src='wan'
+	set firewall.allow_iperf3_wan.proto='tcp udp'
+	set firewall.allow_iperf3_wan.dest_port='5201'
+	set firewall.allow_iperf3_wan.target='ACCEPT'
+
 	commit firewall
 EOF
 
-exit 0
+return 0 2>/dev/null || exit 0

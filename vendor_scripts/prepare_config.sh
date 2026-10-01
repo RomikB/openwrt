@@ -22,6 +22,7 @@ enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP

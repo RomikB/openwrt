@@ -12,7 +12,8 @@
 * **Wi-Fi**: 2.4 GHz On-SoC IPQ5312 (`ath0`, HE40) + 5 GHz PCIe QCN6432 (`ath1`, HE160/EHT160).
 * **Целевой сабтаргет**: `target/linux/ipq53xx/rd15/`
 * **Профили сборки (`target/linux/ipq53xx/image/rd15.mk`)**:
-  * `xiaomi-rd15-qsdk` — ядро из открытых исходников QSDK 12.4 (FIT-образ `ipq5332-rd15.dtb`, нативный `uboot-envtools` + `nvram-env`). **Основной профиль разработки**.
+  * `xiaomi-rd15-qsdk` — ядро из открытых исходников QSDK 12.4 (FIT-образ `ipq5332-rd15.dtb`, нативный `uboot-envtools` + `nvram-env`). **Основной релизный профиль**.
+  * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`).
   * `xiaomi-rd15-prebuild` — со стоковым ядром вендора `target/linux/ipq53xx/rd15/kernel` и закрытым `nvram-vendor`.
 
 ---
