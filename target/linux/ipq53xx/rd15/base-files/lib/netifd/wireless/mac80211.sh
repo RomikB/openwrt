@@ -13,7 +13,10 @@ drv_mac80211_init_device_config() {
 }
 
 drv_mac80211_init_iface_config() {
-	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr wps_pushbutton
+	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr wps_pushbutton \
+		ieee80211r mobility_domain nasid reassociation_deadline ft_over_ds ft_psk_generate_local r0_key_lifetime r1_key_holder pmk_r1_push \
+		ieee80211k rrm_neighbor_report rrm_beacon_report \
+		ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp
 }
 
 drv_mac80211_init_vlan_config() {
@@ -129,7 +132,8 @@ restart_hostapd_instance() {
 	if [ -n "$bridge" ] && [ -d "/sys/class/net/${bridge}" ]; then
 		brctl addif "$bridge" "$ifname" 2>/dev/null || true
 	fi
-	ip link set "$ifname" up 2>/dev/null || true
+	# Ensure interface is down before hostapd initializes driver mode
+	ip link set "$ifname" down 2>/dev/null || true
 
 	# Start fresh hostapd daemon
 	/usr/sbin/hostapd -B -P "$pid_file" -e /var/run/entropy.bin "$conf" 2>/dev/null || true
@@ -383,6 +387,25 @@ drv_mac80211_setup() {
 
 	# Mark radio as up in netifd / ubus
 	wireless_set_up
+
+	# Asynchronously synchronize 802.11k neighbor reports between bands
+	(
+		sleep 2
+		if [ -S /var/run/hostapd/ath0 ] && [ -S /var/run/hostapd/ath1 ]; then
+			local nr0=$(hostapd_cli -i ath0 show_neighbor 2>/dev/null | grep -E '^[0-9a-fA-F]{2}:' | head -n 1)
+			local nr1=$(hostapd_cli -i ath1 show_neighbor 2>/dev/null | grep -E '^[0-9a-fA-F]{2}:' | head -n 1)
+			if [ -n "$nr0" ] && [ -n "$nr1" ]; then
+				local b0=$(echo "$nr0" | awk '{print $1}')
+				local s0=$(echo "$nr0" | awk '{print $2}')
+				local r0=$(echo "$nr0" | awk '{print $3}')
+				local b1=$(echo "$nr1" | awk '{print $1}')
+				local s1=$(echo "$nr1" | awk '{print $2}')
+				local r1=$(echo "$nr1" | awk '{print $3}')
+				hostapd_cli -i ath0 set_neighbor "$b1" "$s1" "$r1" >/dev/null 2>&1 || true
+				hostapd_cli -i ath1 set_neighbor "$b0" "$s0" "$r0" >/dev/null 2>&1 || true
+			fi
+		fi
+	) </dev/null >/dev/null 2>&1 &
 }
 
 drv_mac80211_teardown() {

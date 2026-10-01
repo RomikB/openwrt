@@ -233,54 +233,133 @@ generate_hostapd_conf() {
 			esac
 		fi
 
-		# Security & Encryption
-		case "$encryption" in
-			none|open|"")
-				echo "wpa=0"
-				;;
-			sae|wpa3)
-				echo "wpa=2"
-				echo "wpa_key_mgmt=SAE"
-				echo "wpa_pairwise=CCMP"
-				echo "rsn_pairwise=CCMP"
-				echo "ieee80211w=2"
-				echo "sae_password=${key}"
-				;;
-			sae-mixed|*sae*|*wpa3*)
-				echo "wpa=2"
-				echo "wpa_key_mgmt=WPA-PSK SAE"
-				echo "wpa_pairwise=CCMP"
-				echo "rsn_pairwise=CCMP"
-				echo "ieee80211w=1"
-				echo "wpa_passphrase=${key}"
-				echo "sae_password=${key}"
-				;;
-			psk|wpa)
-				echo "wpa=1"
-				echo "wpa_key_mgmt=WPA-PSK"
-				echo "wpa_pairwise=TKIP CCMP"
-				echo "wpa_passphrase=${key}"
-				;;
-			owe)
-				echo "wpa=2"
-				echo "wpa_key_mgmt=OWE"
-				echo "wpa_pairwise=CCMP"
-				echo "rsn_pairwise=CCMP"
-				echo "ieee80211w=2"
-				;;
-			*)
-				echo "wpa=2"
-				echo "wpa_key_mgmt=WPA-PSK"
-				echo "wpa_pairwise=CCMP"
-				echo "rsn_pairwise=CCMP"
-				echo "ieee80211w=1"
-				echo "wpa_passphrase=${key}"
-				;;
-		esac
+	# 802.11r Fast Transition
+	local ieee80211r mobility_domain nasid reassociation_deadline ft_over_ds ft_psk_generate_local r0_key_lifetime r1_key_holder pmk_r1_push
+	config_get_bool ieee80211r "$iface" ieee80211r 0
+	config_get mobility_domain "$iface" mobility_domain ""
+	config_get nasid "$iface" nasid ""
+	config_get reassociation_deadline "$iface" reassociation_deadline "1000"
+	config_get_bool ft_over_ds "$iface" ft_over_ds 0
+	config_get_bool ft_psk_generate_local "$iface" ft_psk_generate_local 1
+	config_get r0_key_lifetime "$iface" r0_key_lifetime "10000"
+	config_get r1_key_holder "$iface" r1_key_holder ""
+	config_get_bool pmk_r1_push "$iface" pmk_r1_push 0
 
-		# Optional PMF override from LuCI
-		config_get pmf "$iface" ieee80211w ""
-		[ -n "$pmf" ] && echo "ieee80211w=${pmf}"
+	# 802.11k RRM
+	local ieee80211k rrm_neighbor_report rrm_beacon_report
+	config_get_bool ieee80211k "$iface" ieee80211k 0
+	config_get_bool rrm_neighbor_report "$iface" rrm_neighbor_report "$ieee80211k"
+	config_get_bool rrm_beacon_report "$iface" rrm_beacon_report "$ieee80211k"
+
+	# 802.11v WNM/BSS-TM
+	local ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp
+	config_get_bool ieee80211v "$iface" ieee80211v 0
+	config_get time_advertisement "$iface" time_advertisement "0"
+	config_get time_zone "$iface" time_zone ""
+	config_get_bool wnm_sleep_mode "$iface" wnm_sleep_mode "$ieee80211v"
+	config_get_bool wnm_sleep_mode_no_keys "$iface" wnm_sleep_mode_no_keys "$ieee80211v"
+	config_get_bool bss_transition "$iface" bss_transition "$ieee80211v"
+	config_get_bool proxy_arp "$iface" proxy_arp 0
+
+	# Security & Encryption
+	case "$encryption" in
+		none|open|"")
+			echo "wpa=0"
+			;;
+		sae|wpa3)
+			echo "wpa=2"
+			if [ "$ieee80211r" -eq 1 ]; then
+				echo "wpa_key_mgmt=SAE FT-SAE"
+			else
+				echo "wpa_key_mgmt=SAE"
+			fi
+			echo "wpa_pairwise=CCMP"
+			echo "rsn_pairwise=CCMP"
+			echo "ieee80211w=2"
+			echo "sae_password=${key}"
+			;;
+		sae-mixed|*sae*|*wpa3*)
+			echo "wpa=2"
+			if [ "$ieee80211r" -eq 1 ]; then
+				echo "wpa_key_mgmt=WPA-PSK SAE FT-PSK FT-SAE"
+			else
+				echo "wpa_key_mgmt=WPA-PSK SAE"
+			fi
+			echo "wpa_pairwise=CCMP"
+			echo "rsn_pairwise=CCMP"
+			echo "ieee80211w=1"
+			echo "wpa_passphrase=${key}"
+			echo "sae_password=${key}"
+			;;
+		psk|wpa)
+			echo "wpa=1"
+			echo "wpa_key_mgmt=WPA-PSK"
+			echo "wpa_pairwise=TKIP CCMP"
+			echo "wpa_passphrase=${key}"
+			;;
+		owe)
+			echo "wpa=2"
+			echo "wpa_key_mgmt=OWE"
+			echo "wpa_pairwise=CCMP"
+			echo "rsn_pairwise=CCMP"
+			echo "ieee80211w=2"
+			;;
+		*)
+			echo "wpa=2"
+			if [ "$ieee80211r" -eq 1 ]; then
+				echo "wpa_key_mgmt=WPA-PSK FT-PSK"
+			else
+				echo "wpa_key_mgmt=WPA-PSK"
+			fi
+			echo "wpa_pairwise=CCMP"
+			echo "rsn_pairwise=CCMP"
+			echo "ieee80211w=1"
+			echo "wpa_passphrase=${key}"
+			;;
+	esac
+
+	# Optional PMF override from LuCI
+	config_get pmf "$iface" ieee80211w ""
+	[ -n "$pmf" ] && echo "ieee80211w=${pmf}"
+
+	# 802.11r Fast Transition
+	if [ "$ieee80211r" -eq 1 ]; then
+		[ -z "$mobility_domain" ] && mobility_domain=$(echo -n "$ssid" | md5sum | cut -c1-4)
+		local mac_clean=$(cat "/sys/class/net/${ifname}/address" 2>/dev/null | tr -d ':')
+		[ -z "$nasid" ] && nasid="${mac_clean:-$ifname}"
+		[ -z "$r1_key_holder" ] && r1_key_holder="${mac_clean:-00004f577274}"
+
+		echo "mobility_domain=${mobility_domain}"
+		echo "nas_identifier=${nasid}"
+		echo "ft_psk_generate_local=${ft_psk_generate_local}"
+		echo "ft_over_ds=${ft_over_ds}"
+		echo "reassociation_deadline=${reassociation_deadline}"
+		echo "r0_key_lifetime=${r0_key_lifetime}"
+		echo "r1_key_holder=${r1_key_holder}"
+		[ "$pmk_r1_push" -eq 1 ] && echo "pmk_r1_push=1"
+
+		local ft_key=$(echo -n "${mobility_domain}/${key}" | md5sum | cut -d' ' -f1)
+		echo "r0kh=ff:ff:ff:ff:ff:ff * ${ft_key}"
+		echo "r1kh=00:00:00:00:00:00 00:00:00:00:00:00 ${ft_key}"
+	fi
+
+	# 802.11k Radio Resource Measurement (RRM)
+	if [ "$ieee80211k" -eq 1 -o "$rrm_neighbor_report" -eq 1 ]; then
+		echo "rrm_neighbor_report=1"
+		[ "$rrm_beacon_report" -eq 1 ] && echo "rrm_beacon_report=1"
+	fi
+
+	# 802.11v Wireless Network Management (WNM / BSS-TM)
+	if [ "$ieee80211v" -eq 1 -o "$bss_transition" -eq 1 ]; then
+		echo "bss_transition=1"
+		[ "$wnm_sleep_mode" -eq 1 ] && echo "wnm_sleep_mode=1"
+		[ "$wnm_sleep_mode_no_keys" -eq 1 ] && echo "wnm_sleep_mode_no_keys=1"
+		if [ "$time_advertisement" = "2" ]; then
+			echo "time_advertisement=2"
+			[ -n "$time_zone" ] && echo "time_zone=${time_zone}"
+		fi
+		[ "$proxy_arp" -eq 1 ] && echo "proxy_arp=1"
+	fi
 
 		# WDS 4-address station support
 		[ "$wds" -eq 1 ] && echo "wds_sta=1"
