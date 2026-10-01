@@ -1,14 +1,20 @@
 DTC_FLAGS :=
 PREBUILD_PACKAGES := nvram-vendor
 QSDK_PACKAGES := uboot-envtools nvram-env
+SECURITY_PACKAGES := \
+	amneziawg-tools luci-proto-amneziawg \
+	zapret2 luci-app-zapret2
 RUANTIBLOCK_PACKAGES := \
 	-dnsmasq dnsmasq-full \
 	ruantiblock luci-app-ruantiblock \
-	https-dns-proxy luci-app-https-dns-proxy
+	https-dns-proxy luci-app-https-dns-proxy \
+	$(SECURITY_PACKAGES)
 PODKOP_PACKAGES := \
 	sing-box podkop luci-app-podkop \
-	kmod-tcp-bbr
+	kmod-tcp-bbr \
+	$(SECURITY_PACKAGES)
 DEV_PACKAGES := \
+	$(SECURITY_PACKAGES) \
 	rd15-dev-mode iperf3 htop tcpdump
 
 define Image/Prepare
@@ -31,12 +37,20 @@ define Device/Default
 endef
 
 define Device/xiaomi-rd15-prebuild
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel)
+	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES)
+endef
+TARGET_DEVICES += xiaomi-rd15-prebuild
+
+define Device/xiaomi-rd15-prebuild-ruantiblock
 	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, ruantiblock)
 	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(RUANTIBLOCK_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd15-prebuild
+TARGET_DEVICES += xiaomi-rd15-prebuild-ruantiblock
 
 define Device/xiaomi-rd15-prebuild-podkop
 	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, podkop)
@@ -64,6 +78,20 @@ define Build/fit-rd15
 endef
 
 define Device/xiaomi-rd15-qsdk
+	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel)
+	DEVICE_DTS := ipq5332-rd15
+	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
+	DEVICE_DTS_DELIMITER := @
+	DEVICE_DTS_CONFIG := config@1
+	KERNEL_LOADADDR := 0x40008000
+	KERNEL_ENTRY := 0x40008000
+	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
+	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
+	DEVICE_PACKAGES := $(QSDK_PACKAGES)
+endef
+TARGET_DEVICES += xiaomi-rd15-qsdk
+
+define Device/xiaomi-rd15-qsdk-ruantiblock
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, ruantiblock)
 	DEVICE_DTS := ipq5332-rd15
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
@@ -75,7 +103,7 @@ define Device/xiaomi-rd15-qsdk
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(RUANTIBLOCK_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd15-qsdk
+TARGET_DEVICES += xiaomi-rd15-qsdk-ruantiblock
 
 define Device/xiaomi-rd15-qsdk-podkop
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, podkop)

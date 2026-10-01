@@ -25,8 +25,7 @@ endef
 
 define Package/rd15-dev-mode/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/99-rd15-dev-firewall $(1)/etc/uci-defaults/
-	$(INSTALL_BIN) ./files/etc/uci-defaults/99-rd15-dev-uhttpd $(1)/etc/uci-defaults/
+	$(INSTALL_BIN) ./files/etc/uci-defaults/* $(1)/etc/uci-defaults/
 	$(INSTALL_DIR) $(1)/etc/profile.d
 	$(INSTALL_DATA) ./files/etc/profile.d/99-rd15-dev.sh $(1)/etc/profile.d/
 endef

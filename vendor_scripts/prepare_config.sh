@@ -19,8 +19,10 @@ enable TARGET_ipq53xx_rd15
 enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-ruantiblock
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
+enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-ruantiblock
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
 enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
 disable USE_SECCOMP
@@ -65,6 +67,13 @@ disable SINGBOX_WITH_GVISOR
 disable SINGBOX_WITH_TAILSCALE
 disable SINGBOX_WITH_V2RAY_API
 disable SINGBOX_WITH_WIREGUARD
+
+# Exclude non-standard feeds from target distfeeds.conf (keep standard base, luci, packages, routing, telephony)
+disable FEED_vendor_feed
+disable FEED_amneziawg
+disable FEED_podkop
+disable FEED_ruantiblock
+disable FEED_zapret2
 
 make defconfig
 

@@ -20,9 +20,7 @@ DEFAULT_PACKAGES += \
 	luci-theme-design \
 	iw iwinfo kmod-qca-nss-ecm-wifi-plugin \
 	qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
-	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script \
-	amneziawg-tools luci-proto-amneziawg \
-	zapret2 luci-app-zapret2
+	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script
 
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.
