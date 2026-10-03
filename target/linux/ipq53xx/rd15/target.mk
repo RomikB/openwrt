@@ -6,7 +6,7 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES.router += -procd-ujail librt
+DEFAULT_PACKAGES.router += -procd-ujail
 
 DEFAULT_PACKAGES += \
 	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \
@@ -18,10 +18,11 @@ DEFAULT_PACKAGES += \
 	luci-theme-material luci-theme-openwrt-2020 \
 	luci-theme-argon luci-app-argon-config \
 	luci-theme-design \
+	luci-theme-aurora luci-app-aurora-config \
 	iw iwinfo kmod-qca-nss-ecm-wifi-plugin \
-	qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
+	qca-cfg80211tool-vendor qca-cnss-daemon-vendor qca-firmware-vendor qca-hostap-vendor \
 	qca-hostapd-cli qca-wpa-cli qca-wpa-supplicant-vendor wififw_mount_script
-
+	
 define Target/Description
 	Build firmware image for Xiaomi Router BE3600.
 endef

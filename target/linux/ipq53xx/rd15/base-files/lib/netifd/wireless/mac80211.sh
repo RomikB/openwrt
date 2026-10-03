@@ -16,7 +16,7 @@ drv_mac80211_init_iface_config() {
 	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr wps_pushbutton \
 		ieee80211r mobility_domain nasid reassociation_deadline ft_over_ds ft_psk_generate_local r0_key_lifetime r1_key_holder pmk_r1_push \
 		ieee80211k rrm_neighbor_report rrm_beacon_report \
-		ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp
+		ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp extap
 }
 
 drv_mac80211_init_vlan_config() {
@@ -43,6 +43,7 @@ ensure_vap_netdev() {
 	local dev="$1"
 	local ifname="$2"
 	local mode="$3"
+	local macaddr="$4"
 
 	[ -d "/sys/class/net/${ifname}" ] && return 0
 
@@ -62,15 +63,32 @@ ensure_vap_netdev() {
 
 	local pmode="ap"
 	local wlanmode="__ap"
-	if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ]; then
+	if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ] || [ "$mode" = "sta-extap" ]; then
 		pmode="sta"
 		wlanmode="managed"
+		if [ -z "$macaddr" ] && [ -f "/sys/class/net/${wlandev}/address" ]; then
+			local bmac=$(cat "/sys/class/net/${wlandev}/address" 2>/dev/null)
+			if [ -n "$bmac" ]; then
+				local b0=$(echo "$bmac" | cut -d: -f1)
+				local b1=$(echo "$bmac" | cut -d: -f2)
+				local b2=$(echo "$bmac" | cut -d: -f3)
+				local b3=$(echo "$bmac" | cut -d: -f4)
+				local b4=$(echo "$bmac" | cut -d: -f5)
+				local b5=$(echo "$bmac" | cut -d: -f6)
+				local b0_hex=$(printf "%02x" $(( 0x$b0 ^ 0x06 )))
+				macaddr="${b0_hex}:${b1}:${b2}:${b3}:${b4}:${b5}"
+			fi
+		fi
 	fi
 
+	local bssid_opt=""
+	[ -n "$macaddr" ] && bssid_opt="-bssid $macaddr"
+
 	if ! iw phy "$phy" interface add "$ifname" type "$wlanmode" 2>/dev/null; then
-		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" -cfg80211 2>/dev/null || \
-		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" 2>/dev/null || true
+		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt -cfg80211 2>/dev/null || \
+		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt 2>/dev/null || true
 	fi
+	[ -n "$macaddr" ] && ip link set "$ifname" address "$macaddr" 2>/dev/null || true
 }
 
 restart_hostapd_instance() {
@@ -145,9 +163,38 @@ restart_hostapd_instance() {
 	fi
 }
 
+ensure_supplicant_bridge() {
+	local ifname="$1"
+	local bridge="$2"
+	local extap="${3:-0}"
+
+	[ -n "$bridge" ] && [ -d "/sys/class/net/${bridge}" ] || return 0
+
+	# If already enslaved, affirm extap if needed
+	if [ -d "/sys/class/net/${bridge}/brif/${ifname}" ]; then
+		[ "${extap:-0}" -eq 1 ] && [ -x /usr/sbin/cfg80211tool ] && /usr/sbin/cfg80211tool "$ifname" extap 1 2>/dev/null || true
+		return 0
+	fi
+
+	ip link set "$ifname" down 2>/dev/null || true
+	if [ "${extap:-0}" -eq 1 ]; then
+		[ -x /usr/sbin/cfg80211tool ] && /usr/sbin/cfg80211tool "$ifname" extap 1 2>/dev/null || true
+		iw dev "$ifname" set 4addr on 2>/dev/null || iw "$ifname" set 4addr on 2>/dev/null || true
+		[ -e /proc/sys/net/ecm/src_interface_check ] && echo 0 > /proc/sys/net/ecm/src_interface_check
+		logger -t mac80211 "Configured Qualcomm ExtAP hardware L2 bridge on $ifname -> $bridge"
+	fi
+	brctl addif "$bridge" "$ifname" 2>/dev/null || ip link set "$ifname" master "$bridge" 2>/dev/null || true
+	ip link set "$ifname" up 2>/dev/null || true
+
+	if [ "${extap:-0}" -eq 1 ]; then
+		[ -x /usr/sbin/cfg80211tool ] && /usr/sbin/cfg80211tool "$ifname" extap 1 2>/dev/null || true
+	fi
+}
+
 restart_supplicant_instance() {
 	local ifname="$1"
 	local bridge="$2"
+	local extap="${3:-0}"
 	local conf="/var/run/wpa_supplicant-${ifname}.conf"
 	local active="/var/run/wpa_supplicant-${ifname}.conf.active"
 	local pid_file="/var/run/wpa_supplicant-${ifname}.pid"
@@ -158,11 +205,13 @@ restart_supplicant_instance() {
 	local pids=$(pgrep -f "wpa_supplicant.*${conf}")
 	if [ -n "$pids" ]; then
 		if [ -S "$sock_file" ] && [ -f "$active" ] && cmp -s "$conf" "$active"; then
+			ensure_supplicant_bridge "$ifname" "$bridge" "$extap"
 			return 0
 		fi
 
 		if [ ! -S "$sock_file" ]; then
 			if wait_hostapd_sock "$sock_file" 5 && [ -f "$active" ] && cmp -s "$conf" "$active"; then
+				ensure_supplicant_bridge "$ifname" "$bridge" "$extap"
 				return 0
 			fi
 		fi
@@ -171,6 +220,7 @@ restart_supplicant_instance() {
 			if [ "$(wpa_cli -i "$ifname" reconfigure 2>/dev/null)" = "OK" ]; then
 				cp -f "$conf" "$active" 2>/dev/null || true
 				logger -t mac80211 "Successfully reconfigured wpa_supplicant for $ifname"
+				ensure_supplicant_bridge "$ifname" "$bridge" "$extap"
 				return 0
 			fi
 		fi
@@ -185,11 +235,8 @@ restart_supplicant_instance() {
 	rm -f "$pid_file" "$sock_file" "$active"
 	mkdir -p /var/run/wpa_supplicant
 
-	# If WDS 4-address mode, bridge association is permitted
-	if [ -n "$bridge" ] && [ -d "/sys/class/net/${bridge}" ]; then
-		brctl addif "$bridge" "$ifname" 2>/dev/null || true
-	fi
-	ip link set "$ifname" up 2>/dev/null || true
+	# Attach interface to bridge with Qualcomm ExtAP and 4addr
+	ensure_supplicant_bridge "$ifname" "$bridge" "$extap"
 
 	local br_opt=""
 	[ -n "$bridge" ] && br_opt="-b $bridge"
@@ -206,15 +253,24 @@ restart_supplicant_instance() {
 
 mac80211_setup_vif() {
 	local vif="$1"
-	local ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton
+	local ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap
 	local network_bridge
 
 	json_get_var network_bridge bridge
 	json_select config
-	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton
+	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap
 	json_select ..
 
 	[ -z "$mode" ] && mode="ap"
+
+	# If STA is attached to LAN or has WDS/ExtAP enabled, automatically activate Qualcomm ExtAP hardware L2 bridge
+	if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ] || [ "$mode" = "sta-extap" ]; then
+		if [ "$network" = "lan" ] || [ "${wds:-0}" -eq 1 ] || [ "${extap:-0}" -eq 1 ]; then
+			extap=1
+			mode="sta"
+			[ -z "$network" ] && network="lan"
+		fi
+	fi
 
 	if [ -z "$ifname" ]; then
 		if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ]; then
@@ -251,22 +307,38 @@ mac80211_setup_vif() {
 			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
 			local spid=$(cat "/var/run/wpa_supplicant-${ifname}.pid" 2>/dev/null)
 			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
+			pkill -9 -f "wpa_supplicant.*${ifname}" 2>/dev/null || true
+			pkill -9 -f "hostapd.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
 			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
 			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+				ip link set "$ifname" nomaster 2>/dev/null || true
 				ip link set "$ifname" down 2>/dev/null || true
+				iw dev "$ifname" del 2>/dev/null || true
+				wlanconfig "$ifname" destroy 2>/dev/null || true
 			fi
 		fi
 		return 0
 	fi
 
 	# Ensure kernel VAP exists
-	ensure_vap_netdev "$__netifd_device" "$ifname" "$mode"
+	ensure_vap_netdev "$__netifd_device" "$ifname" "$mode" "$macaddr"
 
 	if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ]; then
 		local br=""
-		[ "$mode" = "sta-wds" -o "${wds:-0}" -eq 1 ] && br="$network_bridge"
-		restart_supplicant_instance "$ifname" "$br"
+		if [ "${extap:-0}" -eq 1 ] || [ "$mode" = "sta-wds" ] || [ "${wds:-0}" -eq 1 ] || [ "$network" = "lan" ]; then
+			br="$network_bridge"
+			if [ -z "$br" ]; then
+				if [ "$network" = "lan" ] || [ -z "$network" ]; then
+					br="br-lan"
+				elif [ -d "/sys/class/net/br-${network}" ]; then
+					br="br-${network}"
+				elif [ -d "/sys/class/net/${network}" ]; then
+					br="${network}"
+				fi
+			fi
+		fi
+		restart_supplicant_instance "$ifname" "$br" "$extap"
 	else
 		local br="$network_bridge"
 		if [ -z "$br" ]; then
@@ -304,9 +376,11 @@ drv_mac80211_setup() {
 		if [ ! -f "/var/run/hostapd-${ifname}.conf" ]; then
 			local hpid=$(cat "/var/run/hostapd-${ifname}.pid" 2>/dev/null)
 			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
+			pkill -9 -f "hostapd.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
 			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
 				if [ -d "/sys/class/net/${ifname}" ]; then
+					ip link set "$ifname" nomaster 2>/dev/null || true
 					ip link set "$ifname" down 2>/dev/null || true
 					iw dev "$ifname" del 2>/dev/null || true
 					wlanconfig "$ifname" destroy 2>/dev/null || true
@@ -316,9 +390,11 @@ drv_mac80211_setup() {
 		if [ ! -f "/var/run/wpa_supplicant-${ifname}.conf" ]; then
 			local spid=$(cat "/var/run/wpa_supplicant-${ifname}.pid" 2>/dev/null)
 			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
+			pkill -9 -f "wpa_supplicant.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
 			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
 				if [ -d "/sys/class/net/${ifname}" ]; then
+					ip link set "$ifname" nomaster 2>/dev/null || true
 					ip link set "$ifname" down 2>/dev/null || true
 					iw dev "$ifname" del 2>/dev/null || true
 					wlanconfig "$ifname" destroy 2>/dev/null || true
@@ -358,7 +434,7 @@ drv_mac80211_setup() {
 	done
 
 	# For any active STA interface, ensure it has a distinct route metric to prevent clashing with WAN
-	local sta_nets=$(uci -q show wireless | grep -E "\.mode='sta'|\.mode='sta-wds'" | while read -r line; do
+	local sta_nets=$(uci -q show wireless | grep -E "\.mode='sta'" | while read -r line; do
 		local sec=$(echo "$line" | cut -d. -f2)
 		local dis=$(uci -q get "wireless.${sec}.disabled")
 		if [ "${dis:-0}" -eq 0 ]; then
@@ -367,7 +443,7 @@ drv_mac80211_setup() {
 	done | sort -u)
 
 	for snet in $sta_nets; do
-		if [ -n "$snet" ] && uci -q get "network.${snet}" >/dev/null; then
+		if [ -n "$snet" ] && [ "$snet" != "lan" ] && uci -q get "network.${snet}" >/dev/null; then
 			local cur_metric=$(uci -q get "network.${snet}.metric")
 			if [ -z "$cur_metric" ]; then
 				logger -t mac80211 "Setting default fallback metric 20 on STA network: $snet"

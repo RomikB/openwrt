@@ -80,6 +80,8 @@
   $\to$ [docs/architecture.md](file:///home/romikb/openwrt/docs/architecture.md)
 * **Режимы Wi-Fi (AP, Multi-SSID Guest, STA/WISP), LuCI, матрица и статус**:
   $\to$ [docs/wifi_architecture_and_modes.md](file:///home/romikb/openwrt/docs/wifi_architecture_and_modes.md)
+* **Режим моста/Mesh на стоке Xiaomi (QSDK WDS, 4-address mode, topomon, PPE)**:
+  $\to$ [docs/stock_wifi_bridge_and_mesh_analysis.md](file:///home/romikb/openwrt/docs/stock_wifi_bridge_and_mesh_analysis.md)
 * **Коммутатор Motorcomm YT9215S, регистры, 4 патча драйвера, 2.5G PHY, DSA**:
   $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
 * **Ядро QSDK 12.4, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:

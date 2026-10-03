@@ -1,5 +1,6 @@
 kmod-qca-wifi-lowmem-profile
 nvram
+qca-cfg80211tool
 qca-cnss-daemon
 qca-firmware
 qca-hostap

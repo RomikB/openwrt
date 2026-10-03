@@ -40,8 +40,17 @@ generate_supplicant_conf() {
 	[ -z "$key" ] && config_get key "$iface" password ""
 	[ -z "$key" ] && config_get key "$iface" sae_password ""
 	config_get bssid "$iface" bssid ""
-	config_get_bool wds "$iface" wds 0
-	[ "$mode" = "sta-wds" ] && wds=1
+	local channel scan_freq
+	config_get channel "$dev" channel ""
+	[ -z "$channel" ] && config_get channel "$iface" channel ""
+	if [ -n "$channel" ] && [ "$channel" != "auto" ] && [ "$channel" -gt 0 ] 2>/dev/null; then
+		if [ "$channel" -le 14 ]; then
+			scan_freq=$(( 2407 + channel * 5 ))
+			[ "$channel" -eq 14 ] && scan_freq=2484
+		elif [ "$channel" -ge 36 ] && [ "$channel" -le 177 ]; then
+			scan_freq=$(( 5000 + channel * 5 ))
+		fi
+	fi
 
 	local ctrl_dir="/var/run/wpa_supplicant"
 
@@ -53,7 +62,7 @@ generate_supplicant_conf() {
 		echo "	scan_ssid=1"
 		[ -n "$ssid" ] && echo "	ssid=\"${ssid}\""
 		[ -n "$bssid" ] && echo "	bssid=${bssid}"
-		[ "$wds" -eq 1 ] && echo "	wds=1"
+		[ -n "$scan_freq" ] && echo "	scan_freq=${scan_freq}"
 
 		case "$encryption" in
 			none|open|"")

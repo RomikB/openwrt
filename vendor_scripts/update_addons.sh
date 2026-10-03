@@ -26,5 +26,7 @@ clone_or_update() {
 clone_or_update "luci-theme-argon" "https://github.com/jerrykuku/luci-theme-argon.git" "master"
 clone_or_update "luci-app-argon-config" "https://github.com/jerrykuku/luci-app-argon-config.git" "master"
 clone_or_update "luci-theme-design" "https://github.com/0x676e67/luci-theme-design.git" "js"
+clone_or_update "luci-theme-aurora" "https://github.com/eamonxg/luci-theme-aurora.git" "master"
+clone_or_update "luci-app-aurora-config" "https://github.com/eamonxg/luci-app-aurora-config.git" "master"
 
 echo "Addons update complete in $ADDONS_DIR"

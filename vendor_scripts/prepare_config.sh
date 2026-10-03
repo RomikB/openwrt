@@ -58,6 +58,10 @@ disable KERNEL_KALLSYMS
 disable KERNEL_KEYS
 enable LUCI_LANG_ru
 
+# Modular packages to build as standalone .ipk without embedding into ROM (=m)
+enable PACKAGE_kmod-netlink-diag m
+enable PACKAGE_librt m
+
 # Minimal profile for sing-box (exclude heavy Go subsystems: WireGuard, Tailscale, Tor, gRPC, ACME, V2Ray API, DHCP, gVisor)
 disable SINGBOX_WITH_ACME
 disable SINGBOX_WITH_DHCP

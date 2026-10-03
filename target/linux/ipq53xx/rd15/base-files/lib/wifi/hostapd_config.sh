@@ -361,8 +361,6 @@ generate_hostapd_conf() {
 		[ "$proxy_arp" -eq 1 ] && echo "proxy_arp=1"
 	fi
 
-		# WDS 4-address station support
-		[ "$wds" -eq 1 ] && echo "wds_sta=1"
 
 		# Additional options
 		[ "$isolate" -eq 1 ] && echo "ap_isolate=1"
