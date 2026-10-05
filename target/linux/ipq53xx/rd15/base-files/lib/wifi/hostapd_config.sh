@@ -5,59 +5,10 @@
 #
 
 . /lib/functions.sh
+. /lib/wifi/qcawifi_modes.sh
 
 CONF_DIR="${CONF_DIR:-/var/run}"
 mkdir -p "${CONF_DIR}/hostapd"
-
-get_ht40_capab() {
-	local band="$1"
-	local ch="$2"
-
-	if [ "$band" = "5g" ]; then
-		case "$ch" in
-			36|44|52|60|100|108|116|124|132|140|149|157)
-				echo "[HT40+]"
-				;;
-			40|48|56|64|104|112|120|128|136|144|153|161)
-				echo "[HT40-]"
-				;;
-			165)
-				echo ""
-				;;
-			*)
-				echo "[HT40+]"
-				;;
-		esac
-	else
-		if [ "$ch" -le 7 ]; then
-			echo "[HT40+]"
-		else
-			echo "[HT40-]"
-		fi
-	fi
-}
-
-get_80mhz_center() {
-	local ch="$1"
-	case "$ch" in
-		36|40|44|48) echo "42" ;;
-		52|56|60|64) echo "58" ;;
-		100|104|108|112) echo "106" ;;
-		116|120|124|128) echo "122" ;;
-		132|136|140|144) echo "138" ;;
-		149|153|157|161) echo "155" ;;
-		*) echo "42" ;;
-	esac
-}
-
-get_160mhz_center() {
-	local ch="$1"
-	case "$ch" in
-		36|40|44|48|52|56|60|64) echo "50" ;;
-		100|104|108|112|116|120|124|128) echo "114" ;;
-		*) echo "50" ;;
-	esac
-}
 
 generate_hostapd_conf() {
 	local iface="$1"
@@ -119,11 +70,10 @@ generate_hostapd_conf() {
 	elif [ "$dev" = "radio1" ] || [ "$ifname" = "ath1" ]; then
 		band="5g"
 	elif [ "$band" != "5g" ] && [ "$band" != "2g" ]; then
-		if [ "$hwmode" = "11a" ] || [ "$hwmode" = "11axa" ] || [ "$hwmode" = "11ac" ]; then
-			band="5g"
-		else
-			band="2g"
-		fi
+		case "$hwmode" in
+			*a*|*11be*|*11bea*) band="5g" ;;
+			*)                  band="2g" ;;
+		esac
 	fi
 
 	# Auto-resolve channel
@@ -135,14 +85,14 @@ generate_hostapd_conf() {
 		fi
 	fi
 
-	# Auto-resolve htmode
-	if [ -z "$htmode" ]; then
-		if [ "$band" = "5g" ]; then
-			htmode="HE160"
-		else
-			htmode="HE40"
-		fi
-	fi
+	# Evaluate generation and bandwidth modes using shared helper
+	local QC_HTMODE QC_IS_BE QC_IS_AX QC_IS_AC QC_IS_N QC_DRIVER_MODE
+	qcawifi_eval_modes "$band" "$hwmode" "$htmode" "$dev" "$ifname" "$channel"
+	htmode="$QC_HTMODE"
+	local is_be=$QC_IS_BE
+	local is_ax=$QC_IS_AX
+	local is_ac=$QC_IS_AC
+	local is_n=$QC_IS_N
 
 	{
 		echo "driver=nl80211"
@@ -151,87 +101,137 @@ generate_hostapd_conf() {
 		echo "ssid=${ssid}"
 		echo "ctrl_interface=/var/run/hostapd"
 
-		# Country / Regulatory
-		if [ -n "$country" ]; then
-			echo "country_code=${country}"
-			echo "ieee80211d=0"
+		# Note: Do not pass country_code or ieee80211d to hostapd.
+		# In QSDK 12.4, hostapd issuing COUNTRY_UPDATE calls wlan_cfg80211_set_country,
+		# which wipes the kernel driver's Pre-CAC cleared channels and triggers a 60s CAC penalty.
+		# Country is already set once at boot on the radio level via cfg80211tool/driver.
+
+		# Read base hardware capabilities exported by Qualcomm driver via sysfs
+		local base_ht_caps=""
+		local base_vht_caps=""
+		if [ -f "/sys/class/net/${ifname}/cfg80211_htcaps" ]; then
+			base_ht_caps=$(cat "/sys/class/net/${ifname}/cfg80211_htcaps" 2>/dev/null)
+		fi
+		[ -z "$base_ht_caps" ] && base_ht_caps="[LDPC][TX-STBC][RX-STBC-1][MAX-AMSDU-7935][DSSS_CCK-40]"
+		if [ -f "/sys/class/net/${ifname}/cfg80211_vhtcaps" ]; then
+			base_vht_caps=$(cat "/sys/class/net/${ifname}/cfg80211_vhtcaps" 2>/dev/null)
+		fi
+		if [ -z "$base_vht_caps" ]; then
+			if [ "$band" = "5g" ]; then
+				base_vht_caps="[MAX-MPDU-11454][VHT160][RXLDPC][SHORT-GI-80][SHORT-GI-160][TX-STBC-2BY1][RX-STBC1][SU-BEAMFORMER][SOUNDING-DIMENSION-2][SU-BEAMFORMEE][MAX-A-MPDU-LEN-EXP7][MU-BEAMFORMER][RX-ANTENNA-PATTERN][TX-ANTENNA-PATTERN]"
+			else
+				base_vht_caps="[MAX-MPDU-11454][RXLDPC][TX-STBC-2BY1][RX-STBC1][SU-BEAMFORMER][SOUNDING-DIMENSION-2][SU-BEAMFORMEE][BF-ANTENNA-4][MAX-A-MPDU-LEN-EXP7][MU-BEAMFORMER][RX-ANTENNA-PATTERN][TX-ANTENNA-PATTERN]"
+			fi
 		fi
 
 		# Band and mode configuration
 		if [ "$band" = "5g" ]; then
 			echo "hw_mode=a"
 			echo "channel=${channel}"
-			echo "ieee80211n=1"
-			echo "ieee80211ac=1"
-			echo "ieee80211ax=1"
+			[ "$is_n" -eq 1 ] && echo "ieee80211n=1"
+			[ "$is_ac" -eq 1 ] && echo "ieee80211ac=1"
+			[ "$is_ax" -eq 1 ] && echo "ieee80211ax=1"
+			[ "$is_be" -eq 1 ] && echo "ieee80211be=1"
 
-			local ht_cap=$(get_ht40_capab "$band" "$channel")
+			[ -n "$base_vht_caps" ] && [ "$is_ac" -eq 1 ] && echo "vht_capab=${base_vht_caps}"
 
 			case "$htmode" in
-				*160*|*EHT160*|*HE160*)
-					local seg0=$(get_160mhz_center "$channel")
-					[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
-					echo "he_oper_chwidth=2"
-					echo "he_oper_centr_freq_seg0_idx=${seg0}"
-					echo "vht_oper_chwidth=2"
-					echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+				*160*)
+					local seg0=$(qcawifi_get_160mhz_center "$channel")
+					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
+					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
+					if [ "$is_be" -eq 1 ]; then
+						echo "eht_oper_chwidth=2"
+						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
+						echo "puncture_bitmap= 0xffff"
+					elif [ "$is_ax" -eq 1 ]; then
+						echo "he_oper_chwidth=2"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					elif [ "$is_ac" -eq 1 ]; then
+						echo "vht_oper_chwidth=2"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					fi
 					;;
-				*80*|*VHT80*|*HE80*)
-					local seg0=$(get_80mhz_center "$channel")
-					[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
-					echo "he_oper_chwidth=1"
-					echo "he_oper_centr_freq_seg0_idx=${seg0}"
-					echo "vht_oper_chwidth=1"
-					echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+				*80*)
+					local seg0=$(qcawifi_get_80mhz_center "$channel")
+					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
+					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
+					if [ "$is_be" -eq 1 ]; then
+						echo "eht_oper_chwidth=1"
+						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
+						echo "puncture_bitmap= 0xffff"
+					elif [ "$is_ax" -eq 1 ]; then
+						echo "he_oper_chwidth=1"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					elif [ "$is_ac" -eq 1 ]; then
+						echo "vht_oper_chwidth=1"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					fi
 					;;
-				*40*|*VHT40*|*HE40*)
-					[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
-					echo "he_oper_chwidth=0"
-					echo "vht_oper_chwidth=0"
+				*40*)
+					local seg0=$(qcawifi_get_40mhz_center "$band" "$channel")
+					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
+					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
+					if [ "$is_be" -eq 1 ]; then
+						echo "eht_oper_chwidth=0"
+						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
+						echo "puncture_bitmap= 0xffff"
+					elif [ "$is_ax" -eq 1 ]; then
+						echo "he_oper_chwidth=0"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					elif [ "$is_ac" -eq 1 ]; then
+						echo "vht_oper_chwidth=0"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					fi
 					;;
 				*)
-					echo "he_oper_chwidth=0"
-					echo "vht_oper_chwidth=0"
-					;;
-			esac
-
-			case "$htmode" in
-				*EHT160*|*eht160*)
-					local seg0=$(get_160mhz_center "$channel")
-					echo "ieee80211be=1"
-					echo "eht_oper_chwidth=2"
-					echo "eht_oper_centr_freq_seg0_idx=${seg0}"
-					;;
-				*EHT80*|*eht80*)
-					local seg0=$(get_80mhz_center "$channel")
-					echo "ieee80211be=1"
-					echo "eht_oper_chwidth=1"
-					echo "eht_oper_centr_freq_seg0_idx=${seg0}"
-					;;
-				*EHT*|*eht*)
-					echo "ieee80211be=1"
-					echo "eht_oper_chwidth=0"
+					local ht_cap="${base_ht_caps} [HT20] [SHORT-GI-20]"
+					[ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
+					if [ "$is_be" -eq 1 ]; then
+						echo "eht_oper_chwidth=0"
+						echo "eht_oper_centr_freq_seg0_idx=${channel}"
+						echo "puncture_bitmap= 0xffff"
+					elif [ "$is_ax" -eq 1 ]; then
+						echo "he_oper_chwidth=0"
+						echo "he_oper_centr_freq_seg0_idx=${channel}"
+					elif [ "$is_ac" -eq 1 ]; then
+						echo "vht_oper_chwidth=0"
+						echo "vht_oper_centr_freq_seg0_idx=${channel}"
+					fi
 					;;
 			esac
 		else
 			echo "hw_mode=g"
 			echo "channel=${channel}"
-			echo "ieee80211n=1"
-			echo "ieee80211ax=1"
+			[ "$is_n" -eq 1 ] && echo "ieee80211n=1"
+			[ "$is_ac" -eq 1 ] && echo "ieee80211ac=1"
+			[ "$is_ax" -eq 1 ] && echo "ieee80211ax=1"
+			[ "$is_be" -eq 1 ] && echo "ieee80211be=1"
 
-			case "$htmode" in
-				*EHT*|*eht*)
-					echo "ieee80211be=1"
-					;;
-			esac
+			[ -n "$base_vht_caps" ] && [ "$is_ac" -eq 1 ] && echo "vht_capab=${base_vht_caps}"
 
 			case "$htmode" in
 				*40*|*EHT40*|*HE40*|*HT40*)
-					local ht_cap=$(get_ht40_capab "$band" "$channel")
-					[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
+					if [ "$is_n" -eq 1 ]; then
+						local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
+						[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
+					fi
+					;;
+				*)
+					if [ "$is_n" -eq 1 ]; then
+						local ht_cap="${base_ht_caps} [HT20][SHORT-GI-20]"
+						[ -n "$ht_cap" ] && echo "ht_capab=${ht_cap}"
+					fi
 					;;
 			esac
 		fi
+
+		echo "wmm_enabled=1"
+		echo "dtim_period=1"
+		echo "noauth_pasn_activated=1"
+		echo "owe_ptk_workaround=1"
+		# Offload probe response generation to Qualcomm firmware to ensure correct EHT/HE channel width
+		echo "send_probe_response=0"
 
 	# 802.11r Fast Transition
 	local ieee80211r mobility_domain nasid reassociation_deadline ft_over_ds ft_psk_generate_local r0_key_lifetime r1_key_holder pmk_r1_push
@@ -313,14 +313,12 @@ generate_hostapd_conf() {
 			fi
 			echo "wpa_pairwise=CCMP"
 			echo "rsn_pairwise=CCMP"
-			echo "ieee80211w=1"
+			# PMF for WPA2-PSK: default off unless specified in UCI (matches stock behavior)
+			config_get pmf "$iface" ieee80211w ""
+			[ -n "$pmf" ] && echo "ieee80211w=${pmf}"
 			echo "wpa_passphrase=${key}"
 			;;
 	esac
-
-	# Optional PMF override from LuCI
-	config_get pmf "$iface" ieee80211w ""
-	[ -n "$pmf" ] && echo "ieee80211w=${pmf}"
 
 	# 802.11r Fast Transition
 	if [ "$ieee80211r" -eq 1 ]; then
@@ -403,7 +401,6 @@ generate_hostapd_conf() {
 }
 
 generate_all() {
-	rm -f "${CONF_DIR}"/hostapd-ath*.conf
 	config_load wireless
 	config_foreach_iface() {
 		local iface="$1"

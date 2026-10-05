@@ -4,11 +4,15 @@
 # Usage: ./upload_ubi_rd15.sh [HOST] [FILE|FLAVOR]
 # Examples:
 #   ./upload_ubi_rd15.sh                              # Interactive selection
-#   ./upload_ubi_rd15.sh qsdk                         # QSDK native + RuAntiBlock
-#   ./upload_ubi_rd15.sh qsdk-podkop                  # QSDK native + Podkop
-#   ./upload_ubi_rd15.sh prebuild                     # Prebuild vendor + RuAntiBlock
+#   ./upload_ubi_rd15.sh prebuild                     # Prebuild vendor Base
+#   ./upload_ubi_rd15.sh qsdk                         # QSDK native Base [Main]
+#   ./upload_ubi_rd15.sh prebuild-ru                  # Prebuild vendor + RuAntiBlock
+#   ./upload_ubi_rd15.sh qsdk-ru                      # QSDK native + RuAntiBlock
 #   ./upload_ubi_rd15.sh prebuild-podkop              # Prebuild vendor + Podkop
-#   ./upload_ubi_rd15.sh 192.168.1.1 qsdk-podkop      # Specify IP and image flavor
+#   ./upload_ubi_rd15.sh qsdk-podkop                  # QSDK native + Podkop
+#   ./upload_ubi_rd15.sh prebuild-dev                 # Prebuild vendor Dev
+#   ./upload_ubi_rd15.sh qsdk-dev                     # QSDK native Dev
+#   ./upload_ubi_rd15.sh 192.168.1.1 qsdk             # Specify IP and image flavor
 #   ./upload_ubi_rd15.sh bin/.../image.ubi            # Specify explicit image path
 #
 
@@ -18,33 +22,45 @@ DEFAULT_HOST="192.168.11.36"
 HOST="$DEFAULT_HOST"
 FILE=""
 
-# Flavor shortcuts
-QSDK_RU_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi"
-QSDK_PODKOP_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-podkop-squashfs-factory.ubi"
-PREBUILD_RU_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi"
+# Standard image definitions
+PREBUILD_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi"
+QSDK_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi"
+PREBUILD_RU_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-ruantiblock-squashfs-factory.ubi"
+QSDK_RU_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-ruantiblock-squashfs-factory.ubi"
 PREBUILD_PODKOP_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-podkop-squashfs-factory.ubi"
+QSDK_PODKOP_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-podkop-squashfs-factory.ubi"
+PREBUILD_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-dev-squashfs-factory.ubi"
+QSDK_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-dev-squashfs-factory.ubi"
 
 resolve_flavor() {
     case "$1" in
-        qsdk-podkop|podkop-qsdk)
-            echo "$QSDK_PODKOP_IMG"
+        # Base flavors
+        prebuild|prebuild-base|base-prebuild)
+            echo "$PREBUILD_BASE_IMG"
             ;;
-        qsdk|qsdk-ru|ruantiblock-qsdk)
+        qsdk|qsdk-base|base-qsdk|base)
+            echo "$QSDK_BASE_IMG"
+            ;;
+        # RuAntiBlock flavors
+        prebuild-ru|prebuild-ruantiblock|ruantiblock-prebuild|ru-prebuild)
+            echo "$PREBUILD_RU_IMG"
+            ;;
+        qsdk-ru|qsdk-ruantiblock|ruantiblock-qsdk|ru-qsdk|ru|ruantiblock)
             echo "$QSDK_RU_IMG"
             ;;
+        # Podkop flavors
         prebuild-podkop|podkop-prebuild)
             echo "$PREBUILD_PODKOP_IMG"
             ;;
-        prebuild|prebuild-ru|ruantiblock-prebuild)
-            echo "$PREBUILD_RU_IMG"
-            ;;
-        podkop)
-            # Default podkop flavor prefers QSDK native
+        qsdk-podkop|podkop-qsdk|podkop)
             echo "$QSDK_PODKOP_IMG"
             ;;
-        ruantiblock)
-            # Default ruantiblock flavor prefers QSDK native
-            echo "$QSDK_RU_IMG"
+        # Dev flavors
+        prebuild-dev|dev-prebuild)
+            echo "$PREBUILD_DEV_IMG"
+            ;;
+        qsdk-dev|dev-qsdk|dev)
+            echo "$QSDK_DEV_IMG"
             ;;
         *)
             echo ""
@@ -53,22 +69,45 @@ resolve_flavor() {
 }
 
 get_image_label() {
-    local fn="$1"
-    case "$fn" in
-        *qsdk-podkop*)
-            echo "QSDK Native Kernel + Podkop / sing-box"
+    local bname; bname="$(basename "$1")"
+    case "$bname" in
+        # RuAntiBlock profiles
+        *prebuild-ruantiblock*|*prebuild-ru*)
+            echo "Vendor Prebuild Kernel + RuAntiBlock / DoH"
             ;;
-        *qsdk*)
-            echo "QSDK Native Kernel + RuAntiBlock / DoH [Main]"
+        *qsdk-ruantiblock*|*qsdk-ru*)
+            echo "QSDK Native Kernel + RuAntiBlock / DoH"
             ;;
+        # Podkop profiles
         *prebuild-podkop*)
             echo "Vendor Prebuild Kernel + Podkop / sing-box"
             ;;
+        *qsdk-podkop*)
+            echo "QSDK Native Kernel + Podkop / sing-box"
+            ;;
+        # Dev profiles
+        *prebuild-dev*)
+            echo "Vendor Prebuild Kernel + Dev"
+            ;;
+        *qsdk-dev*)
+            echo "QSDK Native Kernel + Dev"
+            ;;
+        # Base profiles
+        *xiaomi-rd15-prebuild-squashfs*|*-prebuild-squashfs*|*prebuild-base*|*-prebuild-factory.ubi)
+            echo "Vendor Prebuild Kernel + Base"
+            ;;
+        *xiaomi-rd15-qsdk-squashfs*|*-qsdk-squashfs*|*qsdk-base*|*-qsdk-factory.ubi)
+            echo "QSDK Native Kernel + Base [Main]"
+            ;;
+        # Other images
         *prebuild*)
-            echo "Vendor Prebuild Kernel + RuAntiBlock / DoH"
+            echo "Vendor Prebuild Kernel + Other"
+            ;;
+        *qsdk*)
+            echo "QSDK Native Kernel + Other"
             ;;
         *)
-            basename "$fn"
+            echo "Unknown Kernel + Other"
             ;;
     esac
 }
@@ -79,7 +118,7 @@ for arg in "$@"; do
         *.ubi)
             FILE="$arg"
             ;;
-        qsdk*|prebuild*|podkop*|ruantiblock*)
+        base*|qsdk*|prebuild*|podkop*|ruantiblock*|ru*|dev*)
             resolved=$(resolve_flavor "$arg")
             if [ -n "$resolved" ]; then
                 FILE="$resolved"
@@ -100,21 +139,46 @@ done
 
 # If no explicit file was passed, scan BIN_DIR
 if [ -z "$FILE" ]; then
-    # Collect all existing standard images in priority order
+    # Collect standard images in order:
+    # 1. Base (prebuilt -> qsdk)
+    # 2. RuAntiBlock (prebuilt -> qsdk)
+    # 3. Podkop (prebuilt -> qsdk)
+    # 4. Dev (prebuilt -> qsdk)
     FOUND_IMGS=""
-    for img in "$QSDK_RU_IMG" "$QSDK_PODKOP_IMG" "$PREBUILD_RU_IMG" "$PREBUILD_PODKOP_IMG"; do
+    for img in \
+        "$PREBUILD_BASE_IMG" "$QSDK_BASE_IMG" \
+        "$PREBUILD_RU_IMG"   "$QSDK_RU_IMG" \
+        "$PREBUILD_PODKOP_IMG" "$QSDK_PODKOP_IMG" \
+        "$PREBUILD_DEV_IMG"  "$QSDK_DEV_IMG"; do
         if [ -f "$img" ]; then
             FOUND_IMGS="$FOUND_IMGS $img"
         fi
     done
 
-    # Also check if there are any other .ubi images not in standard list
+    # 5. Other .ubi images at the end (sorted: prebuilt first, then qsdk, then others)
+    OTHER_PREBUILD=""
+    OTHER_QSDK=""
+    OTHER_REST=""
     for img in "$BIN_DIR"/*.ubi; do
         [ -f "$img" ] || continue
         case " $FOUND_IMGS " in
-            *" $img "*) ;; # already included
-            *) FOUND_IMGS="$FOUND_IMGS $img" ;;
+            *" $img "*) continue ;; # already included
         esac
+        case "$(basename "$img")" in
+            *prebuild*)
+                OTHER_PREBUILD="$OTHER_PREBUILD $img"
+                ;;
+            *qsdk*)
+                OTHER_QSDK="$OTHER_QSDK $img"
+                ;;
+            *)
+                OTHER_REST="$OTHER_REST $img"
+                ;;
+        esac
+    done
+
+    for img in $OTHER_PREBUILD $OTHER_QSDK $OTHER_REST; do
+        FOUND_IMGS="$FOUND_IMGS $img"
     done
 
     # Trim leading space

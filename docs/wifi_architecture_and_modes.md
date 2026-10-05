@@ -7,20 +7,22 @@
 ## 1. Системный профиль радиоподсистемы
 
 * **SoC / On-Chip Wi-Fi (2.4 ГГц)**: Qualcomm IPQ5312 (PHY: `phy1`, VAP префикс: `ath0`).
-  * Конфигурация: 2x2 MIMO, 802.11b/g/n/ax (HE40).
-  * Регуляторный профиль в прошивке чипа: `US: DFS-FCC` (каналы 1–11).
+  * Конфигурация: 2x2 MIMO, 802.11b/g/n/ax/be (HE40 / EHT40).
+  * Регуляторный профиль в прошивке чипа: `CN: DFS-UNSET` (каналы 1–13, мощность до 33 dBm).
 * **PCIe Wi-Fi (5 ГГц)**: Qualcomm QCN6432 (PHY: `phy2`, VAP префикс: `ath1`).
-  * Конфигурация: 2x2 MIMO, 802.11a/n/ac/ax (VHT80 / HE160 / EHT160).
+  * Конфигурация: 2x2 MIMO, 802.11a/n/ac/ax/be (VHT80 / HE80 / HE160 / EHT80 / EHT160).
   * Диапазоны: UNII-1 (каналы 36–48, non-DFS) и UNII-2A/2C (каналы 52–64, 100–144, DFS).
 * **Архитектура драйвера**: Qualcomm QSDK 12.4 Direct Connect (`wifi_3_0.ko`).
 * **Демоны управления**:
   * Точки доступа (AP): специализированный `qca-hostapd` с нативным контрольным сокетом `/var/run/hostapd/<ifname>`.
   * Клиенты (STA): `wpa_supplicant` с контрольным сокетом `/var/run/wpa_supplicant/<ifname>`.
 * **Управление и скрипты платформы**:
-  * [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) — драйвер интеграции с OpenWrt `netifd`.
-  * [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh) — динамический генератор конфигурации AP из UCI.
+  * [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) — драйвер интеграции с OpenWrt `netifd` (двухэтапная инициализация `wlanconfig` + `iw`, поддержка `11be`, `11ax`, `11ac`, `11n`, аппаратный тюнинг радиомодулей).
+  * [qcawifi_modes.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/qcawifi_modes.sh) — модуль преобразования поколений и режимов (EHT/HE/VHT/HT, расчет центральных частот `seg0_idx` и суффиксов `PLUS`/`MINUS`).
+  * [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh) — динамический генератор конфигурации AP из UCI (`ieee80211be`, `send_probe_response=0`, `eht_oper_*`, `puncture_bitmap`).
   * [wpa_supplicant_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/wpa_supplicant_config.sh) — генератор конфигурации STA из UCI.
   * [wifi](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/sbin/wifi) — утилита CLI контроля подсистемы (`wifi reload`, `wifi status`).
+  * `/sbin/wifi-stock-test` — тестовый стенд валидации стокового стека (пакет `rd15-dev-mode` в профиле `xiaomi-rd15-qsdk-dev`, лог 171 вызова в [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)).
 
 ---
 
@@ -28,8 +30,8 @@
 
 | Режим | Интерфейс | Диапазон | Статус | Особенности и ограничения |
 | :--- | :--- | :--- | :--- | :--- |
-| **Основная AP (2.4G)** | `ath0` | 2.4 ГГц | ✅ **Реализовано** | До 574 Мбит/с (HE40), WPA2/WPA3-SAE, мост `br-lan`. |
-| **Основная AP (5G)** | `ath1` | 5 ГГц | ✅ **Реализовано** | До 2402 Мбит/с (HE160), WPA2/WPA3-SAE, мост `br-lan`. |
+| **Основная AP (2.4G)** | `ath0` | 2.4 ГГц | ✅ **Реализовано** | До 688 Мбит/с (EHT40) / 574 Мбит/с (HE40), WPA2/WPA3-SAE, мост `br-lan`. |
+| **Основная AP (5G)** | `ath1` | 5 ГГц | ✅ **Реализовано** | До 2882 Мбит/с (EHT160) / 2402 Мбит/с (HE160) / 1201 Мбит/с (HE80/EHT80), WPA2/WPA3-SAE, мост `br-lan`. |
 | **Гостевая AP (2.4G)** | `ath02` | 2.4 ГГц | ✅ **Реализовано** | Multi-SSID, изолированный мост `br-guest`, подсеть `192.168.2.0/24`. |
 | **Гостевая AP (5G)** | `ath12` | 5 ГГц | ✅ **Реализовано** | Multi-SSID, изолированный мост `br-guest`, подсеть `192.168.2.0/24`. |
 | **Клиент WISP (2.4G)** | `ath01` | 2.4 ГГц | ✅ **Реализовано** | Подключение к внешним AP по WPA2/WPA3 через `wpa_supplicant`. |
@@ -51,6 +53,10 @@
 ### 3.1. Основная сеть (AP Mode)
 * **Горячее применение параметров**: При изменении пароля, типа шифрования или скрытия SSID скрипт [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) выполняет переконфигурацию через сокет `hostapd_cli reload_config` (~50 мс), не перезагружая радиомодуль и не прерывая связь.
 * **Смена SSID**: При изменении имени сети выполняется полный перезапуск экземпляра AP для корректной регистрации нового beacon SSID в ядре (`wlan_cfg80211_start_ap`).
+* **Двухэтапная инициализация VAP (QSDK 12.4)**: Внедрено создание интерфейсов строго по формуле стока: сначала `wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" -cfg80211` (выделение структур VAP в `umac.ko`), затем `iw phy "$phy" interface add "$ifname" type "$wlanmode"`.
+* **Аппаратный оффлоад ответов Probe Response**: Параметр `send_probe_response=0` в `hostapd_config.sh` передаёт генерацию Probe Response микрокоду Qualcomm Firmware, обеспечивая безошибочное определение ширины полосы (80/160 МГц) всеми клиентскими сканерами.
+* **Тюнинг 2.4 ГГц и защита от схлопывания**: Режим 2.4G задаётся с суффиксом направления (`11GEHT40PLUS`/`MINUS`), а команда `disablecoext 1` блокирует автоматический сброс полосы 40 $\to$ 20 МГц при наличии соседних сетей.
+* **Аппаратное формирование луча (Beamforming)**: На логических VAP активируются `set_eht_mu_bfmr 3`, `set_eht_ulmumimo 3`, `vhtmubfer 1`, `he_mubfer 1`, `dyn_bw_rts 1` и `vhtstscap 3`.
 
 ### 3.2. Гостевая сеть (Guest AP / Multi-SSID)
 * **Сетевая архитектура**:
@@ -152,17 +158,30 @@
   2. Добавлен гарантированный отстрел фоновых демонов по маске: `pkill -9 -f "wpa_supplicant.*${ifname}"`.
   3. Вспомогательная функция `ensure_supplicant_bridge` гарантирует, что даже при пересоздании моста `br-lan` сетевым стеком OpenWrt (например, при получении DHCP или рестарте сети) интерфейс прозрачно возвращается в состав `br-lan` с параметрами `extap 1` и `4addr on`.
 
+### 4.6. Аномалия ширины полосы (20 МГц в Wi-Fi Analyzer) и её устранение
+* **Симптом**: В мобильном приложении Wi-Fi Analyzer и сторонних сканерах сеть OpenWrt в режиме 802.11be (канал 36, ширина 80 или 160 МГц) отображалась с полосой 20 МГц, хотя в выводе `cfg80211tool ath1 get_mode` фиксировался корректный режим (`11AEHT80` / `11AEHT160`).
+* **Первопричина**:
+  1. По умолчанию `hostapd` формирует ответы на зондирование (Probe Response) в пространстве пользователя (`send_probe_response=1`). Демон `hostapd 2.11` для стандарта 802.11be генерировал Probe Response без корректных EHT/VHT дескрипторов полосы, отдавая клиентам базовую ширину 20 МГц.
+  2. При создании VAP через `iw` без предварительного `wlanconfig create ... -cfg80211` закрытый драйвер `umac.ko` пропускал выделение аппаратных структур VAP.
+* **Решение**:
+  1. В [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh) включен аппаратный оффлоад: `send_probe_response=0`. Микрокод Qualcomm Firmware генерирует Probe Response аппаратно на канальной скорости на базе регистров кремния (`mode 11AEHT80` / `160`).
+  2. В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) внедрено двухэтапное создание VAP (`wlanconfig` + `iw`).
+  3. Для 2.4 ГГц добавлен суффикс направления (`11GEHT40PLUS`) и блокировка сброса полосы (`disablecoext 1`).
+  4. После старта демона передаются параметры стока `ap_bridge 1`, `vhtstscap 3`, `dyn_bw_rts 1`.
+* **Результат**: Wi-Fi Analyzer и клиентские устройства стабильно и безошибочно фиксируют реальную ширину полосы 80 МГц и 160 МГц.
+
 ---
 
 ## 5. Известные ограничения и правила эксплуатации
 
 ### 5.1. Каналы 12–13 на 2.4 ГГц (Self-Managed US)
 * Прошивка чипа Qualcomm IPQ5312 жестко работает в регуляторном домене `US: DFS-FCC`, физически исключая каналы 12 и 13 из списка разрешенных частот.
-* Подробное исследование и пути решения зафиксированы в [docs/channel_12_13_regulatory.md](file:///home/romikb/openwrt/docs/channel_12_13_regulatory.md).
+* Подробное исследование и пути решения зафиксированы в архивном документе [docs/archive/channel_12_13_regulatory.md](file:///home/romikb/openwrt/docs/archive/channel_12_13_regulatory.md).
 
-### 5.2. Радарные каналы DFS (52–64) и 60-секундная тишина CAC
-* При работе на каналах 52–64 чип обязан выполнять **Channel Availability Check (CAC)** в течение 60 секунд. В этот период передатчик маяков выключен, и смартфон не видит сеть.
-* **Рекомендация**: Для домашнего использования рекомендуется оставлять стандартный non-DFS **канал 36** (UNII-1), который стартует мгновенно без радарных задержек.
+### 5.2. Радарные каналы DFS (52–64, 100–144) и обязательный таймер молчания CAC
+* На частотах 52–144, а также при включении полосы 160 МГц на каналах 36–48 (так как верхние 80 МГц полосы 36–64 попадают в диапазон 52–64), чип аппаратно обязан выполнять **Channel Availability Check (CAC)** в течение 60 секунд.
+* При любом перезапуске сетевого интерфейса или переключении режима драйвер заново инициирует регламентный 60-секундный таймер молчания (передатчик маяков выключен, сеть не видна клиентам).
+* **Мгновенный старт без CAC (0 секунд)** доступен исключительно на не-DFS каналах 36–48 **при полосе 80 МГц** (где вся полоса 36–48 лежит строго вне DFS).
 
 ### 5.3. Инструкция пользователю: Как правильно отключать режим WISP (STA) в LuCI
 1. **Отключение**: Перейдите в **Сеть $\to$ Беспроводная сеть**, найдите интерфейс клиента (независимо от того, как вы его назвали: `wwan`, `wisp`, `sta` и др.) и нажмите **«Отключить»** (или «Удалить»).
@@ -213,15 +232,21 @@
   1. Исследовать наличие поддержки Pre-CAC в прошивке QCN6432 (в dmesg фиксируется сообщение `[ath1]: dfs channel(64) is not pre cac channel, break`).
   2. При наличии поддержки — настроить пре-сканирование для ускорения готовности 5G на радарных частотах.
 
-### 6.7. Исследование установки ширины канала 80 МГц в режиме 802.11be (Wi-Fi 7)
-* **Проблема / Гипотеза**: При попытке установить ширину канала 80 МГц (EHT80 / HE80) в режиме 802.11be очень вероятно, что настройка игнорируется проприетарным стеком QSDK/драйвером или `qca-hostapd`, и физическая ширина принудительно выставляется в 160 МГц.
-* **Симптомы и влияние**:
-  * На 36 канале (диапазон UNII-1) полоса непреднамеренно захватывает радарные частоты (каналы 52–64), что приводит к обязательному 60-секундному молчанию точки доступа (DFS Channel Availability Check / CAC) при каждом старте или перезагрузке вместо мгновенного запуска сети.
-  * В dmesg фиксируется CAC на частотах 5260, 5280, 5300, 5320 МГц даже при запросе 80 МГц.
-* **План исследования и исправления**:
-  1. Проанализировать логику генерации параметров `eht_oper_chwidth`, `he_oper_chwidth`, `vht_oper_chwidth` и `center_freq_seg0_idx` в [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh).
-  2. Проверить, как стоковая прошивка Xiaomi конфигурирует 80 МГц в 802.11be (`qcawificfg80211.sh`, вызовы `cfg80211tool`).
-  3. Проверить параметры драйвера через `iw dev ath1 info`, `hostapd_cli -i ath1 status` и вывод `wlan_cfg80211_chan_to_phymode` в dmesg для определения точки принудительного расширения полосы до 160 МГц.
-  4. Обеспечить корректное и стабильное применение ширины 80 МГц в режиме 802.11be без триггера радарных каналов DFS.
+### 6.7. Ширина канала 80 / 160 МГц в режиме 802.11be и отображение в клиентских сканерах
+* **Статус**: ✅ **Полностью решено**.
+* **Решение**: Проблема устранена благодаря перехвату стоковой последовательности команд ([docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)), внедрению `send_probe_response=0` (аппаратный оффлоад ответов на зондирование в прошивку) и двухэтапному созданию VAP в `mac80211.sh`. Клиентские сканеры и Wi-Fi Analyzer стабильно подтверждают отображение полос 80 МГц и 160 МГц.
+
+---
+
+## 7. Архивные материалы и углубленные исследования
+
+Для работы над будущими задачами бэклога (WDS, Mesh, MLO, регулирование) в архив вынесены следующие специализированные исследования:
+* **Комплексный анализ стокового Wi-Fi, Wi-Fi 7 MLO, режим моста (ExtAP) и Mesh**:
+  $\to$ [docs/archive/stock_wifi_bridge_mlo_and_mesh_analysis.md](file:///home/romikb/openwrt/docs/archive/stock_wifi_bridge_mlo_and_mesh_analysis.md)
+* **Регуляторный домен, калибровки мощности BDF 0:ART и каналы 12–13**:
+  $\to$ [docs/archive/channel_12_13_regulatory.md](file:///home/romikb/openwrt/docs/archive/channel_12_13_regulatory.md)
+* **Аудит ядра QSDK 12.4, вермаджик и модули PPE/ECM/SSDK**:
+  $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md) и [docs/archive/qsdk_audit_notes.md](file:///home/romikb/openwrt/docs/archive/qsdk_audit_notes.md)
+
 
 

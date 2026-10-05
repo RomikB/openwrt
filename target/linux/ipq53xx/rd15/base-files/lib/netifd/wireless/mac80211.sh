@@ -5,6 +5,8 @@
 #
 
 . /lib/netifd/netifd-wireless.sh
+. /lib/functions.sh
+. /lib/wifi/qcawifi_modes.sh
 
 init_wireless_driver "$@"
 
@@ -39,11 +41,30 @@ wait_hostapd_sock() {
 	return 1
 }
 
+get_target_hwmode() {
+	local dev="$1"
+	local ifname="$2"
+	local htmode hwmode band channel
+
+	htmode=$(uci -q get wireless."$dev".htmode)
+	hwmode=$(uci -q get wireless."$dev".hwmode)
+	band=$(uci -q get wireless."$dev".band)
+	channel=$(uci -q get wireless."$dev".channel)
+
+	[ -z "$channel" ] || [ "$channel" = "auto" ] || [ "$channel" = "0" ] && {
+		[ "$dev" = "radio1" ] && channel=36 || channel=1
+	}
+
+	qcawifi_get_target_mode "$dev" "$ifname" "$band" "$hwmode" "$htmode" "$channel"
+}
+
 ensure_vap_netdev() {
 	local dev="$1"
 	local ifname="$2"
 	local mode="$3"
 	local macaddr="$4"
+	local target_mode="$5"
+	local channel="$6"
 
 	[ -d "/sys/class/net/${ifname}" ] && return 0
 
@@ -84,16 +105,40 @@ ensure_vap_netdev() {
 	local bssid_opt=""
 	[ -n "$macaddr" ] && bssid_opt="-bssid $macaddr"
 
-	if ! iw phy "$phy" interface add "$ifname" type "$wlanmode" 2>/dev/null; then
-		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt -cfg80211 2>/dev/null || \
-		wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt 2>/dev/null || true
-	fi
+	# Two-step VAP creation matching authentic Qualcomm QSDK stock trace:
+	# 1. Allocate umac.ko vdev structures via wlanconfig with -cfg80211
+	wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt -cfg80211 2>/dev/null || \
+	wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" $bssid_opt 2>/dev/null || true
+
+	# 2. Bind nl80211 netdev
+	iw phy "$phy" interface add "$ifname" type "$wlanmode" 2>/dev/null || true
+
 	[ -n "$macaddr" ] && ip link set "$ifname" address "$macaddr" 2>/dev/null || true
+
+	if [ -x /usr/sbin/cfg80211tool ]; then
+		[ -n "$target_mode" ] && /usr/sbin/cfg80211tool "$ifname" mode "$target_mode" 2>/dev/null || true
+		[ -n "$channel" ] && /usr/sbin/cfg80211tool "$ifname" channel "$channel" 0 0 0 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" hide_ssid 0 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" countryie 0 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" en_6g_sec_comp 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" uapsd 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" stafwd 0 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" vhtmubfer 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" he_mubfer 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" he_ulmumimo 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" set_eht_mu_bfmr 3 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" set_eht_ulmumimo 3 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" hlos_tidoverride 0 2>/dev/null || true
+		[ "$wlandev" = "wifi0" ] && /usr/sbin/cfg80211tool "$ifname" disablecoext 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
+	fi
 }
 
 restart_hostapd_instance() {
 	local ifname="$1"
 	local bridge="$2"
+	local target_mode="$3"
+	local channel="$4"
 	local conf="/var/run/hostapd-${ifname}.conf"
 	local active="/var/run/hostapd-${ifname}.conf.active"
 	local pid_file="/var/run/hostapd-${ifname}.pid"
@@ -103,9 +148,16 @@ restart_hostapd_instance() {
 
 	local pids=$(pgrep -f "hostapd.*${conf}")
 	if [ -n "$pids" ]; then
-		# If socket is ready and active configuration matches, keep running instance
+		# Check if driver VAP mode matches requested target_mode
+		local cur_mode=""
+		[ -n "$target_mode" ] && [ -x /usr/sbin/cfg80211tool ] && \
+			cur_mode=$(cfg80211tool "$ifname" get_mode 2>/dev/null | awk -F: '{print $2}')
+
+		# If socket is ready and active configuration matches AND driver mode matches, keep running instance
 		if [ -S "$sock_file" ] && [ -f "$active" ] && cmp -s "$conf" "$active"; then
-			return 0
+			if [ -z "$target_mode" ] || [ -z "$cur_mode" ] || [ "$cur_mode" = "$target_mode" ] || [ "$cur_mode" = "${target_mode}PLUS" ] || [ "$cur_mode" = "${target_mode}MINUS" ]; then
+				return 0
+			fi
 		fi
 
 		# If socket is still starting up, wait briefly before killing
@@ -121,8 +173,8 @@ restart_hostapd_instance() {
 		# 60-second DFS CAC on 5 GHz (160 MHz).
 		if [ -S "$sock_file" ] && [ -f "$active" ]; then
 			local rf_active rf_conf
-			rf_active=$(grep -E '^(driver|interface|bridge|hw_mode|channel|country_code|ieee80211[acdenx]|ht_capab|.*_oper_|ssid)' "$active" 2>/dev/null)
-			rf_conf=$(grep -E '^(driver|interface|bridge|hw_mode|channel|country_code|ieee80211[acdenx]|ht_capab|.*_oper_|ssid)' "$conf" 2>/dev/null)
+			rf_active=$(grep -E '^(driver|interface|bridge|hw_mode|channel|country_code|ieee80211[a-z0-9]+|ht_capab|.*_oper_|puncture_bitmap|ssid)' "$active" 2>/dev/null)
+			rf_conf=$(grep -E '^(driver|interface|bridge|hw_mode|channel|country_code|ieee80211[a-z0-9]+|ht_capab|.*_oper_|puncture_bitmap|ssid)' "$conf" 2>/dev/null)
 			if [ "$rf_active" = "$rf_conf" ]; then
 				local res
 				res=$(hostapd_cli -i "$ifname" reload_config 2>/dev/null)
@@ -153,6 +205,11 @@ restart_hostapd_instance() {
 	# Ensure interface is down before hostapd initializes driver mode
 	ip link set "$ifname" down 2>/dev/null || true
 
+	# Set physical driver hardware mode (bandwidth/protocol)
+	if [ -n "$target_mode" ] && [ -x /usr/sbin/cfg80211tool ]; then
+		/usr/sbin/cfg80211tool "$ifname" mode "$target_mode" 2>/dev/null || true
+	fi
+
 	# Start fresh hostapd daemon
 	/usr/sbin/hostapd -B -P "$pid_file" -e /var/run/entropy.bin "$conf" 2>/dev/null || true
 	cp -f "$conf" "$active" 2>/dev/null || true
@@ -160,6 +217,15 @@ restart_hostapd_instance() {
 	# Wait for control socket to be created before returning to netifd
 	if ! wait_hostapd_sock "$sock_file" 15; then
 		logger -t mac80211 "WARNING: $sock_file not ready within 15s"
+	fi
+
+	# Post-hostapd bringup tuning matching authentic QSDK stock trace (Phase 6)
+	if [ -x /usr/sbin/cfg80211tool ]; then
+		/usr/sbin/cfg80211tool "$ifname" ap_bridge 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" vhtstscap 3 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" dyn_bw_rts 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" meshie_disab 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" twt_responder 0 2>/dev/null || true
 	fi
 }
 
@@ -321,8 +387,16 @@ mac80211_setup_vif() {
 		return 0
 	fi
 
+	local channel=$(uci -q get wireless."$__netifd_device".channel)
+	[ -z "$channel" ] || [ "$channel" = "auto" ] || [ "$channel" = "0" ] && {
+		[ "$__netifd_device" = "radio1" ] && channel=36 || channel=1
+	}
+
+	local target_mode=""
+	[ "$mode" = "ap" ] || [ "$mode" = "ap-wds" ] && target_mode=$(get_target_hwmode "$__netifd_device" "$ifname")
+
 	# Ensure kernel VAP exists
-	ensure_vap_netdev "$__netifd_device" "$ifname" "$mode" "$macaddr"
+	ensure_vap_netdev "$__netifd_device" "$ifname" "$mode" "$macaddr" "$target_mode" "$channel"
 
 	if [ "$mode" = "sta" ] || [ "$mode" = "sta-wds" ]; then
 		local br=""
@@ -350,7 +424,7 @@ mac80211_setup_vif() {
 				br="${network}"
 			fi
 		fi
-		restart_hostapd_instance "$ifname" "$br"
+		restart_hostapd_instance "$ifname" "$br" "$target_mode" "$channel"
 	fi
 
 	wireless_add_vif "$vif" "$ifname"
@@ -358,6 +432,40 @@ mac80211_setup_vif() {
 
 drv_mac80211_setup() {
 	local dev="$1"
+
+	# Apply country code to radio physical device
+	local wlandev="wifi0"
+	[ "$dev" = "radio1" ] && wlandev="wifi1"
+	local country=$(uci -q get wireless."$dev".country)
+	[ -z "$country" ] && country="CN"
+	if [ -n "$country" ] && [ -x /usr/sbin/cfg80211tool ]; then
+		local i=0
+		while [ $i -lt 10 ]; do
+			[ -d "/sys/class/net/${wlandev}" ] && break
+			sleep 1
+			i=$((i + 1))
+		done
+		local cur_country=$(/usr/sbin/cfg80211tool "$wlandev" getCountry 2>/dev/null | awk -F: '{print $2}' | tr -d ' \t\r\n')
+		if [ "$cur_country" != "$country" ]; then
+			/usr/sbin/cfg80211tool "$wlandev" setCountry "$country" 2>/dev/null || true
+		fi
+		/usr/sbin/cfg80211tool "$wlandev" bsta_fixed_idmask 255 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" rpt_max_phy 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" set_bcnburst 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" ce_debug_stats 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpOvrid 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpTidMap 6 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" enable_ol_stats 1 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" txbf_snd_int 100 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" obss_rssi_th 35 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" obss_rxrssi_th 35 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" discon_time 10 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" reconfig_time 60 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
+		sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core0=256 >/dev/null 2>&1 || true
+		sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core1=256 >/dev/null 2>&1 || true
+		ip link set "$wlandev" up 2>/dev/null || true
+	fi
 
 	# Regenerate hostapd and wpa_supplicant configurations from UCI
 	[ -x /lib/wifi/hostapd_config.sh ] && /lib/wifi/hostapd_config.sh all

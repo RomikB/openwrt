@@ -15,7 +15,7 @@
   * `xiaomi-rd15-qsdk` / `xiaomi-rd15-prebuild` — чистые релизные профили без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
   * `xiaomi-rd15-qsdk-ruantiblock` / `xiaomi-rd15-prebuild-ruantiblock` — профили со стеком RuAntiBlock, Zapret2 и AmneziaWG.
   * `xiaomi-rd15-qsdk-podkop` / `xiaomi-rd15-prebuild-podkop` — профили со стеком Podkop (sing-box), Zapret2 и AmneziaWG.
-  * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`).
+  * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
 
 ---
 
@@ -42,7 +42,7 @@
 * **ЗАПРЕЩЕНО** перелинковывать закрытые бинарники вендора напрямую с системным Musl libc или OpenSSL 3.x.
 
 ### 2.5. Регуляторный домен Wi-Fi (CN BDF)
-* Заводские калибровки в `0:ART` привязаны к Китаю. В `/lib/wifi/hostapd_config.sh` жестко задан `country_code=CN` и `ieee80211d=0`. Изменение параметра может заблокировать запуск проприетарного `hostapd`.
+* Заводские калибровки в `0:ART` привязаны к Китаю. В `/lib/wifi/hostapd_config.sh` и `mac80211.sh` задан `country_code=CN` и `ieee80211d=1` (стоковое поведение). Физический регуляторный домен радиомодулей (`wifi0`, `wifi1`) переключается через `cfg80211tool wifiX setCountry CN`, разблокируя каналы 12–13 и мощность до 33 dBm.
 
 ### 2.6. Языковые стандарты и стиль коммитов (Language & Commit Policy)
 * Комментарии в исходном коде и описания коммитов Git (commit messages) пишутся исключительно на английском языке.
@@ -80,8 +80,8 @@
   $\to$ [docs/architecture.md](file:///home/romikb/openwrt/docs/architecture.md)
 * **Режимы Wi-Fi (AP, Multi-SSID Guest, STA/WISP), LuCI, матрица и статус**:
   $\to$ [docs/wifi_architecture_and_modes.md](file:///home/romikb/openwrt/docs/wifi_architecture_and_modes.md)
-* **Режим моста/Mesh на стоке Xiaomi (QSDK WDS, 4-address mode, topomon, PPE)**:
-  $\to$ [docs/stock_wifi_bridge_and_mesh_analysis.md](file:///home/romikb/openwrt/docs/stock_wifi_bridge_and_mesh_analysis.md)
+* **Трассировка команд вендорного драйвера QSDK (171 вызов cfg80211tool/wlanconfig/hostapd)**:
+  $\to$ [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)
 * **Коммутатор Motorcomm YT9215S, регистры, 4 патча драйвера, 2.5G PHY, DSA**:
   $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
 * **Ядро QSDK 12.4, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:
@@ -93,5 +93,6 @@
 * **Дорожная карта, бюджет флеш-памяти и активный бэклог (AmneziaWG, LuCI)**:
   $\to$ [docs/roadmap.md](file:///home/romikb/openwrt/docs/roadmap.md)
 * **Архив исторических логов и завершенных отчетов**:
-  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
+  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`stock_wifi_bridge_mlo_and_mesh_analysis.md`, `channel_12_13_regulatory.md`, `dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
+
 
