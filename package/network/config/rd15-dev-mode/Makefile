@@ -17,7 +17,8 @@ endef
 
 define Package/rd15-dev-mode/description
   Developer configuration profile for Xiaomi Router BE3600 (RD15).
-  Enables WAN management access (SSH, HTTP, HTTPS, iperf3) and brings essential debugging utilities.
+  Enables WAN management access (SSH, HTTP, HTTPS, iperf3), brings debugging utilities,
+  and includes the QSDK vendor Wi-Fi standalone test runner (wifi-stock-test).
 endef
 
 define Build/Compile
@@ -28,6 +29,10 @@ define Package/rd15-dev-mode/install
 	$(INSTALL_BIN) ./files/etc/uci-defaults/* $(1)/etc/uci-defaults/
 	$(INSTALL_DIR) $(1)/etc/profile.d
 	$(INSTALL_DATA) ./files/etc/profile.d/99-rd15-dev.sh $(1)/etc/profile.d/
+	$(INSTALL_DIR) $(1)/sbin
+	$(INSTALL_BIN) ./files/sbin/wifi-stock-test $(1)/sbin/
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_DATA) ./files/etc/config/wireless.stock $(1)/etc/config/
 endef
 
 define Package/rd15-dev-mode/prerm
