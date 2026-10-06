@@ -60,6 +60,14 @@ define Device/xiaomi-rd15-prebuild-podkop
 endef
 TARGET_DEVICES += xiaomi-rd15-prebuild-podkop
 
+define Device/xiaomi-rd15-prebuild-diag
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, diagnostic auto-rollback)
+	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) rd15-hwdiag ethtool
+endef
+TARGET_DEVICES += xiaomi-rd15-prebuild-diag
+
 define Build/fit-rd15
 	$(call locked,$(TOPDIR)/scripts/mkits.sh \
 		-D $(DEVICE_NAME) -o $@.its -k $@ \

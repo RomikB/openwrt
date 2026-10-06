@@ -1,0 +1,293 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Xiaomi Router BE3600 (RD15) Hardware Diagnostic & Auto-Rollback Utility
+# Collects full system diagnostics to /data then reverts U-Boot rootfs slot.
+
+# Never fail on errors
+set +e
+
+ENABLED=$(uci -q get rd15-hwdiag.settings.enabled 2>/dev/null || echo "1")
+[ "$ENABLED" = "1" ] || exit 0
+
+DELAY=$(uci -q get rd15-hwdiag.settings.delay 2>/dev/null || echo "25")
+case "$DELAY" in
+	''|*[!0-9]*) DELAY=25 ;;
+esac
+
+# Start background userspace LED blinker (works on all kernels without relying on kernel timer triggers)
+touch /tmp/rd15_hwdiag_running
+(
+	while [ -f /tmp/rd15_hwdiag_running ]; do
+		echo 255 > /sys/class/leds/blue:status/brightness 2>/dev/null || true
+		usleep 250000 2>/dev/null || sleep 1
+		[ -f /tmp/rd15_hwdiag_running ] || break
+		echo 0 > /sys/class/leds/blue:status/brightness 2>/dev/null || true
+		usleep 250000 2>/dev/null || sleep 1
+	done
+) &
+BLINK_PID=$!
+
+# 1. Wait for system initialization to settle (netifd, hostapd, drivers)
+sleep "$DELAY"
+
+DIAG_TMP="/tmp/rd15_hwdiag"
+ARCHIVE_NAME="rd15_diag_latest.tar.gz"
+rm -rf "$DIAG_TMP"
+mkdir -p "$DIAG_TMP"
+
+# 3. Kernel and Core System Logs
+dmesg > "$DIAG_TMP/dmesg.log" 2>/dev/null || true
+logread > "$DIAG_TMP/logread.log" 2>/dev/null || true
+uname -a > "$DIAG_TMP/uname.txt" 2>/dev/null || true
+cat /proc/version > "$DIAG_TMP/proc_version.txt" 2>/dev/null || true
+cat /proc/cmdline > "$DIAG_TMP/proc_cmdline.txt" 2>/dev/null || true
+cat /proc/cpuinfo > "$DIAG_TMP/proc_cpuinfo.txt" 2>/dev/null || true
+cat /proc/meminfo > "$DIAG_TMP/proc_meminfo.txt" 2>/dev/null || true
+cat /proc/interrupts > "$DIAG_TMP/proc_interrupts.txt" 2>/dev/null || true
+lsmod > "$DIAG_TMP/lsmod.txt" 2>/dev/null || true
+cat /proc/modules > "$DIAG_TMP/proc_modules.txt" 2>/dev/null || true
+
+# 4. Xiaomi Platform, BDATA, and NVRAM Stubs
+if [ -d /proc/xiaoqiang ]; then
+	mkdir -p "$DIAG_TMP/xiaoqiang"
+	for f in /proc/xiaoqiang/*; do
+		[ -f "$f" ] && cat "$f" > "$DIAG_TMP/xiaoqiang/$(basename "$f")" 2>/dev/null || true
+	done
+fi
+
+if command -v nvram >/dev/null 2>&1; then
+	nvram show > "$DIAG_TMP/nvram_show.txt" 2>/dev/null || true
+fi
+
+if command -v bdata >/dev/null 2>&1; then
+	bdata show > "$DIAG_TMP/bdata_show.txt" 2>/dev/null || true
+fi
+
+
+# 5. Live Device Tree Dump
+if [ -f /sys/firmware/fdt ]; then
+	cp /sys/firmware/fdt "$DIAG_TMP/live_fdt.dtb" 2>/dev/null || true
+fi
+if [ -d /proc/device-tree ]; then
+	[ -f /proc/device-tree/model ] && tr '\0' '\n' < /proc/device-tree/model > "$DIAG_TMP/dt_model.txt" 2>/dev/null || true
+	[ -f /proc/device-tree/compatible ] && tr '\0' '\n' < /proc/device-tree/compatible > "$DIAG_TMP/dt_compatible.txt" 2>/dev/null || true
+fi
+
+# 6. Storage and Partition Information
+cat /proc/mtd > "$DIAG_TMP/proc_mtd.txt" 2>/dev/null || true
+cat /proc/partitions > "$DIAG_TMP/proc_partitions.txt" 2>/dev/null || true
+cat /proc/mounts > "$DIAG_TMP/proc_mounts.txt" 2>/dev/null || true
+df -h > "$DIAG_TMP/df.txt" 2>/dev/null || true
+
+if command -v ubinfo >/dev/null 2>&1; then
+	ubinfo -a > "$DIAG_TMP/ubinfo.txt" 2>/dev/null || true
+fi
+
+# Safe dump of ART calibration data header (128 KB)
+art_dev=""
+if [ -f /lib/functions.sh ]; then
+	. /lib/functions.sh
+	art_dev=$(find_mtd_part "0:ART" 2>/dev/null || true)
+	[ -z "$art_dev" ] && art_dev=$(find_mmc_part "0:ART" 2>/dev/null || true)
+fi
+if [ -n "$art_dev" ] && [ -e "$art_dev" ]; then
+	dd if="$art_dev" of="$DIAG_TMP/art_caldata_header_128k.bin" bs=64k count=2 2>/dev/null || true
+fi
+
+# Safe dump of raw bdata partition (64 KB)
+bdata_dev=""
+if [ -f /lib/functions.sh ]; then
+	bdata_dev=$(find_mtd_part "0:bdata" 2>/dev/null || true)
+	[ -z "$bdata_dev" ] && bdata_dev=$(find_mtd_part "bdata" 2>/dev/null || true)
+	[ -z "$bdata_dev" ] && bdata_dev=$(find_mmc_part "0:bdata" 2>/dev/null || true)
+fi
+if [ -n "$bdata_dev" ] && [ -e "$bdata_dev" ]; then
+	dd if="$bdata_dev" of="$DIAG_TMP/bdata_raw_64k.bin" bs=64k count=1 2>/dev/null || true
+fi
+
+# 7. Ethernet, PHY, MDIO, and Switch Status
+if command -v ip >/dev/null 2>&1; then
+	ip addr show > "$DIAG_TMP/ip_addr.txt" 2>/dev/null || true
+	ip -s link show > "$DIAG_TMP/ip_link.txt" 2>/dev/null || true
+	ip route show > "$DIAG_TMP/ip_route.txt" 2>/dev/null || true
+fi
+ifconfig -a > "$DIAG_TMP/ifconfig_a.txt" 2>/dev/null || true
+cat /proc/net/dev > "$DIAG_TMP/proc_net_dev.txt" 2>/dev/null || true
+cat /proc/net/arp > "$DIAG_TMP/proc_net_arp.txt" 2>/dev/null || true
+
+if command -v brctl >/dev/null 2>&1; then
+	brctl show > "$DIAG_TMP/brctl_show.txt" 2>/dev/null || true
+fi
+
+if command -v ethtool >/dev/null 2>&1; then
+	for eth in eth0 eth1 eth2 eth3; do
+		if [ -d "/sys/class/net/$eth" ]; then
+			ethtool "$eth" > "$DIAG_TMP/ethtool_${eth}.txt" 2>/dev/null || true
+			ethtool -S "$eth" > "$DIAG_TMP/ethtool_stats_${eth}.txt" 2>/dev/null || true
+		fi
+	done
+fi
+
+mkdir -p "$DIAG_TMP/sys_net"
+for ifp in /sys/class/net/*; do
+	if [ -d "$ifp" ]; then
+		ifname=$(basename "$ifp")
+		mkdir -p "$DIAG_TMP/sys_net/$ifname"
+		for a in address carrier duplex speed operstate mtu flags; do
+			[ -f "$ifp/$a" ] && cat "$ifp/$a" > "$DIAG_TMP/sys_net/$ifname/$a" 2>/dev/null || true
+		done
+	fi
+done
+
+[ -f /proc/smi ] && cat /proc/smi > "$DIAG_TMP/proc_smi.txt" 2>/dev/null || true
+[ -f /proc/mib ] && cat /proc/mib > "$DIAG_TMP/proc_mib.txt" 2>/dev/null || true
+[ -f /proc/switch ] && cat /proc/switch > "$DIAG_TMP/proc_switch.txt" 2>/dev/null || true
+
+# MDIO bus probe information
+if [ -d /sys/bus/mdio_bus/devices ]; then
+	ls -la /sys/bus/mdio_bus/devices/ > "$DIAG_TMP/mdio_devices_list.txt" 2>/dev/null || true
+	for mdev in /sys/bus/mdio_bus/devices/*; do
+		if [ -d "$mdev" ]; then
+			mdname=$(basename "$mdev")
+			mkdir -p "$DIAG_TMP/mdio_sysfs/$mdname"
+			[ -f "$mdev/phy_id" ] && cat "$mdev/phy_id" > "$DIAG_TMP/mdio_sysfs/$mdname/phy_id" 2>/dev/null || true
+			[ -f "$mdev/uevent" ] && cat "$mdev/uevent" > "$DIAG_TMP/mdio_sysfs/$mdname/uevent" 2>/dev/null || true
+		fi
+	done
+fi
+
+# 8. Wireless (Wi-Fi) Diagnostics
+if command -v iw >/dev/null 2>&1; then
+	iw dev > "$DIAG_TMP/iw_dev.txt" 2>/dev/null || true
+	iw phy > "$DIAG_TMP/iw_phy.txt" 2>/dev/null || true
+fi
+if command -v iwconfig >/dev/null 2>&1; then
+	iwconfig > "$DIAG_TMP/iwconfig.txt" 2>/dev/null || true
+fi
+if command -v wifi >/dev/null 2>&1; then
+	wifi status > "$DIAG_TMP/wifi_status.txt" 2>/dev/null || true
+fi
+if command -v ubus >/dev/null 2>&1; then
+	ubus call network.wireless status > "$DIAG_TMP/ubus_wireless.json" 2>/dev/null || true
+	ubus call network.interface dump > "$DIAG_TMP/ubus_network.json" 2>/dev/null || true
+fi
+if command -v cfg80211tool >/dev/null 2>&1; then
+	cfg80211tool wifi0 getCountry > "$DIAG_TMP/cfg80211_wifi0_country.txt" 2>/dev/null || true
+	cfg80211tool wifi1 getCountry > "$DIAG_TMP/cfg80211_wifi1_country.txt" 2>/dev/null || true
+fi
+ls -la /lib/firmware/ > "$DIAG_TMP/lib_firmware_ls.txt" 2>/dev/null || true
+[ -d /lib/firmware/IPQ5332 ] && ls -la /lib/firmware/IPQ5332/ > "$DIAG_TMP/firmware_ipq5332_ls.txt" 2>/dev/null || true
+[ -d /lib/firmware/QCN6432 ] && ls -la /lib/firmware/QCN6432/ > "$DIAG_TMP/firmware_qcn6432_ls.txt" 2>/dev/null || true
+
+# 9. PCIe & GPIO
+if command -v lspci >/dev/null 2>&1; then
+	lspci -vvv > "$DIAG_TMP/lspci_vvv.txt" 2>/dev/null || true
+	lspci -tv > "$DIAG_TMP/lspci_tree.txt" 2>/dev/null || true
+fi
+if [ -d /sys/bus/pci/devices ]; then
+	ls -la /sys/bus/pci/devices/ > "$DIAG_TMP/pci_devices_ls.txt" 2>/dev/null || true
+	for pdev in /sys/bus/pci/devices/*; do
+		if [ -d "$pdev" ]; then
+			pname=$(basename "$pdev")
+			mkdir -p "$DIAG_TMP/pci_sysfs/$pname"
+			for attr in vendor device subsystem_vendor subsystem_device class uevent; do
+				[ -f "$pdev/$attr" ] && cat "$pdev/$attr" > "$DIAG_TMP/pci_sysfs/$pname/$attr" 2>/dev/null || true
+			done
+		fi
+	done
+fi
+
+if [ ! -f /sys/kernel/debug/gpio ]; then
+	mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
+fi
+if [ -f /sys/kernel/debug/gpio ]; then
+	cat /sys/kernel/debug/gpio > "$DIAG_TMP/gpio_dump.txt" 2>/dev/null || true
+fi
+
+# 10. Generate Summary & Persist to /data
+cat << EOF > "$DIAG_TMP/SUMMARY.txt"
+=====================================================
+Xiaomi RD15 Hardware Diagnostics Summary
+=====================================================
+Date: $(date 2>/dev/null || echo "N/A")
+Kernel: $(cat /proc/version 2>/dev/null)
+Cmdline: $(cat /proc/cmdline 2>/dev/null)
+XiaoQiang Model: $(cat /proc/xiaoqiang/model 2>/dev/null || echo "N/A")
+XiaoQiang Boot Status: $(cat /proc/xiaoqiang/boot_status 2>/dev/null || echo "N/A")
+
+Network Interfaces:
+$(ls /sys/class/net 2>/dev/null | tr '\n' ' ')
+
+PCI Devices:
+$(ls /sys/bus/pci/devices 2>/dev/null | tr '\n' ' ')
+
+MDIO Devices:
+$(ls /sys/bus/mdio_bus/devices 2>/dev/null | tr '\n' ' ')
+=====================================================
+EOF
+
+# Ensure /data is mounted
+if ! grep -q "/data" /proc/mounts; then
+	mkdir -p /data 2>/dev/null || true
+	mount -t ubifs ubi1:data /data 2>/dev/null || true
+fi
+
+ARCHIVE_TAR="/tmp/$ARCHIVE_NAME"
+tar -czf "$ARCHIVE_TAR" -C "$DIAG_TMP" . 2>/dev/null || true
+
+if grep -q "/data" /proc/mounts || [ -d "/data" ]; then
+	mkdir -p /data/hwdiag 2>/dev/null || true
+	TIMESTAMP=$(date +%Y%m%d_%H%M%S 2>/dev/null || echo "boot")
+
+	cp "$ARCHIVE_TAR" "/data/hwdiag/rd15_diag_${TIMESTAMP}.tar.gz" 2>/dev/null || true
+	cp "$ARCHIVE_TAR" "/data/$ARCHIVE_NAME" 2>/dev/null || true
+	cp "$DIAG_TMP/SUMMARY.txt" "/data/rd15_hwdiag_summary.txt" 2>/dev/null || true
+	cp "$DIAG_TMP/dmesg.log" "/data/hwdiag_dmesg.log" 2>/dev/null || true
+
+	sync
+fi
+
+# 11. Dual-Boot Rollback: Calculate Target Slot & Switch
+target_slot=0
+cmdline=$(cat /proc/cmdline 2>/dev/null || true)
+if echo "$cmdline" | grep -q "rootfs_1"; then
+	target_slot=0
+elif echo "$cmdline" | grep -q "rootfs"; then
+	target_slot=1
+else
+	cur_nvram=$(nvram get flag_boot_rootfs 2>/dev/null || echo "1")
+	if [ "$cur_nvram" = "1" ]; then
+		target_slot=0
+	else
+		target_slot=1
+	fi
+fi
+
+if command -v nvram >/dev/null 2>&1; then
+	nvram set flag_boot_rootfs="$target_slot" 2>/dev/null || true
+	nvram set flag_last_success="$target_slot" 2>/dev/null || true
+	nvram set flag_boot_success="1" 2>/dev/null || true
+	nvram set flag_try_sys1_failed="0" 2>/dev/null || true
+	nvram set flag_try_sys2_failed="0" 2>/dev/null || true
+	nvram commit 2>/dev/null || true
+fi
+
+
+# Stop background blinker
+rm -f /tmp/rd15_hwdiag_running
+[ -n "$BLINK_PID" ] && kill "$BLINK_PID" 2>/dev/null || true
+
+# 12. Final LED status: Solid orange before reboot
+if [ -d /sys/class/leds/blue:status ]; then
+	echo none > /sys/class/leds/blue:status/trigger 2>/dev/null || true
+	echo 0 > /sys/class/leds/blue:status/brightness 2>/dev/null || true
+fi
+if [ -d /sys/class/leds/orange:status ]; then
+	echo none > /sys/class/leds/orange:status/trigger 2>/dev/null || true
+	echo 255 > /sys/class/leds/orange:status/brightness 2>/dev/null || true
+fi
+
+sync
+echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+sleep 3
+reboot -f

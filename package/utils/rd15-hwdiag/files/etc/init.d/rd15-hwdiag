@@ -1,0 +1,16 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2026 OpenWrt
+
+START=99
+USE_PROCD=0
+
+boot() {
+	if [ -x /sbin/rd15-hwdiag-run ]; then
+		/sbin/rd15-hwdiag-run >/dev/null 2>&1 &
+	fi
+	return 0
+}
+
+start() {
+	boot
+}
