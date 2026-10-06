@@ -31,6 +31,8 @@ define Package/rd15-hwdiag/install
 	$(INSTALL_BIN) ./files/sbin/rd15-hwdiag-run $(1)/sbin/
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/rd15-hwdiag $(1)/etc/config/
+	$(INSTALL_DIR) $(1)/lib/preinit
+	$(INSTALL_BIN) ./files/lib/preinit/95_rd15_hwdiag $(1)/lib/preinit/
 endef
 
 $(eval $(call BuildPackage,rd15-hwdiag))
