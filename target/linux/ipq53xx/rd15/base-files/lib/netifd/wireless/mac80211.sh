@@ -11,14 +11,14 @@
 init_wireless_driver "$@"
 
 drv_mac80211_init_device_config() {
-	config_add_string channel band htmode hwmode country disabled
+	config_add_string channel band htmode hwmode country disabled txpower
 }
 
 drv_mac80211_init_iface_config() {
 	config_add_string ssid encryption key ifname mode network isolate hidden disabled bssid wds wmm ieee80211w sae_password sae_pwe macaddr wps_pushbutton \
 		ieee80211r mobility_domain nasid reassociation_deadline ft_over_ds ft_psk_generate_local r0_key_lifetime r1_key_holder pmk_r1_push \
 		ieee80211k rrm_neighbor_report rrm_beacon_report \
-		ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp extap
+		ieee80211v time_advertisement time_zone wnm_sleep_mode wnm_sleep_mode_no_keys bss_transition proxy_arp extap txpower
 }
 
 drv_mac80211_init_vlan_config() {
@@ -317,14 +317,49 @@ restart_supplicant_instance() {
 	fi
 }
 
+mac80211_apply_txpower() {
+	local dev="$1"
+	local ifname="$2"
+	local pwr="$3"
+
+	[ -z "$pwr" ] && pwr=$(uci -q get wireless."$dev".txpower)
+
+	local def_pwr=29
+	[ "$dev" = "radio1" ] && def_pwr=28
+
+	if [ -n "$pwr" ] && [ "$pwr" != "auto" ]; then
+		local dbm="$pwr"
+		# If passed value is accidentally in mBm (> 100), convert to dBm
+		if [ "$pwr" -gt 100 ] 2>/dev/null; then
+			dbm=$(( pwr / 100 ))
+		fi
+		# Qualcomm QSDK takes integer dBm directly.
+		# Cap at hardware limits: 29 dBm for 2.4G (radio0), 28 dBm for 5G (radio1)
+		if [ "$dev" = "radio1" ] && [ "$dbm" -gt 28 ] 2>/dev/null; then
+			dbm=28
+		elif [ "$dbm" -gt 29 ] 2>/dev/null; then
+			dbm=29
+		fi
+		iw dev "$ifname" set txpower fixed "$dbm" 2>/dev/null || true
+		logger -t mac80211 "Applied fixed TX power: $dbm dBm on $ifname"
+	else
+		# LuCI "driver default" / auto:
+		# Explicitly set the hardware default (29 dBm on 2.4G, 28 dBm on 5G)
+		# since Qualcomm driver does not automatically restore registers on "set txpower auto".
+		iw dev "$ifname" set txpower fixed "$def_pwr" 2>/dev/null || true
+		iw dev "$ifname" set txpower auto 2>/dev/null || true
+		logger -t mac80211 "Set TX power to driver default ($def_pwr dBm) on $ifname"
+	fi
+}
+
 mac80211_setup_vif() {
 	local vif="$1"
-	local ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap
+	local ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap txpower
 	local network_bridge
 
 	json_get_var network_bridge bridge
 	json_select config
-	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap
+	json_get_vars ifname mode network disabled ssid encryption key wds isolate hidden bssid wps_pushbutton macaddr extap txpower
 	json_select ..
 
 	[ -z "$mode" ] && mode="ap"
@@ -427,6 +462,8 @@ mac80211_setup_vif() {
 		restart_hostapd_instance "$ifname" "$br" "$target_mode" "$channel"
 	fi
 
+	mac80211_apply_txpower "$__netifd_device" "$ifname" "$txpower"
+
 	wireless_add_vif "$vif" "$ifname"
 }
 
@@ -438,6 +475,7 @@ drv_mac80211_setup() {
 	[ "$dev" = "radio1" ] && wlandev="wifi1"
 	local country=$(uci -q get wireless."$dev".country)
 	[ -z "$country" ] && country="CN"
+	country=$(echo "$country" | tr 'a-z' 'A-Z')
 	if [ -n "$country" ] && [ -x /usr/sbin/cfg80211tool ]; then
 		local i=0
 		while [ $i -lt 10 ]; do
@@ -445,26 +483,32 @@ drv_mac80211_setup() {
 			sleep 1
 			i=$((i + 1))
 		done
-		local cur_country=$(/usr/sbin/cfg80211tool "$wlandev" getCountry 2>/dev/null | awk -F: '{print $2}' | tr -d ' \t\r\n')
-		if [ "$cur_country" != "$country" ]; then
-			/usr/sbin/cfg80211tool "$wlandev" setCountry "$country" 2>/dev/null || true
+		# Strip control/binary chars (e.g. trailing ASCII 0x04) returned by driver
+		local cur_country=$(/usr/sbin/cfg80211tool "$wlandev" getCountry 2>/dev/null | awk -F: '{print $2}' | tr -cd 'A-Za-z0-9' | cut -c1-2 | tr 'a-z' 'A-Z')
+		local init_file="/var/run/mac80211-${wlandev}.init"
+
+		if [ ! -f "$init_file" ] || [ "$cur_country" != "$country" ]; then
+			if [ "$cur_country" != "$country" ]; then
+				/usr/sbin/cfg80211tool "$wlandev" setCountry "$country" 2>/dev/null || true
+			fi
+			/usr/sbin/cfg80211tool "$wlandev" bsta_fixed_idmask 255 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" rpt_max_phy 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" set_bcnburst 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" ce_debug_stats 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpOvrid 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpTidMap 6 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" enable_ol_stats 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" txbf_snd_int 100 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" obss_rssi_th 35 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" obss_rxrssi_th 35 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" discon_time 10 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" reconfig_time 60 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
+			sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core0=256 >/dev/null 2>&1 || true
+			sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core1=256 >/dev/null 2>&1 || true
+			ip link set "$wlandev" up 2>/dev/null || true
+			touch "$init_file"
 		fi
-		/usr/sbin/cfg80211tool "$wlandev" bsta_fixed_idmask 255 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" rpt_max_phy 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" set_bcnburst 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" ce_debug_stats 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpOvrid 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" sIgmpDscpTidMap 6 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" enable_ol_stats 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" txbf_snd_int 100 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" obss_rssi_th 35 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" obss_rxrssi_th 35 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" discon_time 10 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" reconfig_time 60 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
-		sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core0=256 >/dev/null 2>&1 || true
-		sysctl -w dev.nss.n2hcfg.n2h_queue_limit_core1=256 >/dev/null 2>&1 || true
-		ip link set "$wlandev" up 2>/dev/null || true
 	fi
 
 	# Regenerate hostapd and wpa_supplicant configurations from UCI
@@ -595,7 +639,12 @@ drv_mac80211_setup() {
 drv_mac80211_teardown() {
 	local dev="$1"
 	local prefix="ath0"
-	[ "$dev" = "radio1" ] && prefix="ath1"
+	local wlandev="wifi0"
+	if [ "$dev" = "radio1" ]; then
+		prefix="ath1"
+		wlandev="wifi1"
+	fi
+	rm -f "/var/run/mac80211-${wlandev}.init"
 
 	# Stop daemons and clean up VAPs for this radio
 	for ifname in "${prefix}" "${prefix}1" "${prefix}2" "${prefix}3"; do
