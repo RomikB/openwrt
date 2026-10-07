@@ -83,7 +83,7 @@
   $\to$ [docs/wifi_architecture_and_modes.md](file:///home/romikb/openwrt/docs/wifi_architecture_and_modes.md)
 * **Трассировка команд вендорного драйвера QSDK (171 вызов cfg80211tool/wlanconfig/hostapd)**:
   $\to$ [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)
-* **Коммутатор Motorcomm YT9215S, регистры, 4 патча драйвера, 2.5G PHY, DSA**:
+* **Коммутатор Motorcomm YT9215S, сетевой стек, ревизии 2.5G PHY (QCA8081 / YT8821), 4 патча драйвера, DSA**:
   $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
 * **Ядро QSDK 12.4, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:
   $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md)

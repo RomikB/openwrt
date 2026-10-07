@@ -36,7 +36,7 @@ define KernelPackage/qca-nss-dp
   TITLE:=Qualcomm NSS dataplane ethernet driver
   DEPENDS:=$(DP_DEPENDS)
   FILES:=$(PKG_BUILD_DIR)/qca-nss-dp.ko
-  AUTOLOAD:=$(call AutoLoad,31,qca-nss-dp,1)
+  AUTOLOAD:=$(call AutoLoad,60,qca-nss-dp,1)
 endef
 
 define KernelPackage/qca-nss-dp/Description

@@ -1,0 +1,38 @@
+--- a/src/init/ssdk_dts.c
++++ b/src/init/ssdk_dts.c
+@@ -29,6 +29,8 @@
+ #include <linux/clk.h>
+ 
+ #include "ssdk_init.h"
++#include <linux/phy.h>
++#include <linux/mii.h>
+ #include "ssdk_dts.h"
+ #include "ssdk_plat.h"
+ #include "hsl_phy.h"
+@@ -614,7 +616,7 @@ static sw_error_t ssdk_dt_parse_phy_info
+ 		ssdk_init_cfg *cfg)
+ {
+ 	struct device_node *phy_info_node = NULL, *port_node = NULL;
+-	a_uint32_t port_id = 0, phy_addr = 0, forced_speed = 0,
++	a_uint32_t port_id = 0, phy_addr = 0, sec_phy_addr = 0, forced_speed = 0,
+ 		forced_duplex = 0, len = 0, miibus_index = 0;
+ 	const __be32 *paddr = NULL;
+ 	a_bool_t phy_c45 = A_FALSE, phy_combo = A_FALSE;
+@@ -668,6 +670,17 @@ static sw_error_t ssdk_dt_parse_phy_info
+ 		phy_addr = 0xff;
+ 		phy_features = 0;
+ 		of_property_read_u32(port_node, "phy_address", &phy_addr);
++		if (!of_property_read_u32(port_node, "sec_phy_address", &sec_phy_addr)) {
++			struct mii_bus *bus = ssdk_miibus_get(dev_id, miibus_index);
++			if (bus) {
++				int p_id = mdiobus_read(bus, TO_PHY_ADDR(phy_addr), MII_PHYSID1);
++				if (p_id < 0 || (p_id & 0xffff) == 0xffff) {
++					SSDK_INFO("port %d primary phy 0x%x not responding (id=0x%x), fallback to sec_phy 0x%x\n",
++						port_id, phy_addr, p_id, sec_phy_addr);
++					phy_addr = sec_phy_addr;
++				}
++			}
++		}
+ #if defined(IN_PHY_I2C_MODE)
+ 		phy_i2c = of_property_read_bool(port_node, "phy-i2c-mode");
+ 		if (phy_i2c) {

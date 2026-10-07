@@ -199,7 +199,7 @@ static int yt8521_read_page(struct phy_device *phydev)
 {
 	int ret;
 
-	ret = ytphy_read_ext_with_lock(phydev, YT8521_REG_SPACE_SELECT_REG);
+	ret = ytphy_read_ext(phydev, YT8521_REG_SPACE_SELECT_REG);
 	if (ret < 0)
 		return ret;
 
@@ -211,8 +211,8 @@ static int yt8521_write_page(struct phy_device *phydev, int page)
 	int mask = YT8521_RSSR_SPACE_MASK;
 	int set = FIELD_PREP(YT8521_RSSR_SPACE_MASK, page);
 
-	return ytphy_modify_ext_with_lock(phydev, YT8521_REG_SPACE_SELECT_REG,
-					  mask, set);
+	return ytphy_modify_ext(phydev, YT8521_REG_SPACE_SELECT_REG,
+				mask, set);
 }
 
 static int yt8521_modify_bmcr_paged(struct phy_device *phydev, int page,
