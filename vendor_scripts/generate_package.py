@@ -21,7 +21,39 @@ SUBTARGET_SPECIFIC_PATTERNS: Dict[str, List[str]] = {
     "qca-firmware": [
         "*bdwlan.b0060*",
     ],
+    "base-files": [
+        "*lib_arch_*",
+    ],
 }
+
+# Declarative dictionary of packages that require file filtering.
+# Key: original package name without '-vendor' suffix (e.g. 'base-files').
+# Value: list of glob patterns for relative paths that should be included in the package.
+PACKAGE_FILE_WHITELISTS: Dict[str, List[str]] = {
+    "base-files": [
+        "lib/miwifi/*",
+        "sbin/accelctrl",
+        "sbin/phyhelper",
+        "sbin/port_map",
+        "sbin/getmac",
+        "sbin/setmac*",
+        "sbin/hwversion",
+        "lib/upgrade/platform.sh",
+        "lib/preinit/39_mount_*",
+        "etc/hotplug.d/button/51-reset",
+    ],
+}
+
+
+def is_whitelisted(pkg: str, rel_path: str) -> bool:
+    """Return True if pkg has no whitelist, or rel_path matches whitelist."""
+    patterns = PACKAGE_FILE_WHITELISTS.get(pkg)
+    if patterns is None:
+        return True
+    for pat in patterns:
+        if fnmatch.fnmatch(rel_path, pat) or fnmatch.fnmatch(os.path.basename(rel_path), pat):
+            return True
+    return False
 
 
 def is_subtarget_specific(pkg: str, rel_path: str) -> bool:
@@ -78,6 +110,8 @@ def update_package_subtarget_files(
         rel_paths = [l.strip().lstrip("/") for l in lf if l.strip()]
 
     for rel_path in rel_paths:
+        if not is_whitelisted(pkg, rel_path):
+            continue
         if is_subtarget_specific(pkg, rel_path):
             src = os.path.join(extracted_rootfs, rel_path)
             if not os.path.exists(src) and not os.path.islink(src):
@@ -114,6 +148,8 @@ def generate_single_package(
         with open(list_file, "r") as lf:
             rel_paths = [l.strip().lstrip("/") for l in lf if l.strip()]
         for rel_path in rel_paths:
+            if not is_whitelisted(pkg, rel_path):
+                continue
             src = os.path.join(extracted_rootfs, rel_path)
             if not os.path.exists(src) and not os.path.islink(src):
                 continue
@@ -133,14 +169,22 @@ def generate_single_package(
         pkg_version = full_version
         pkg_release = "1"
 
-    # Resolve dependencies
-    raw_deps = [
-        d for d in pkg_meta.get("depends", [])
-        if (d in pkg_meta.get("_all_pkgs", set()) or d in native_pkgs) and d not in ignore_pkgs
-    ]
-    for extra_dep in extra_kmod_deps.get(pkg, []):
-        if extra_dep not in raw_deps and (extra_dep in pkg_meta.get("_all_pkgs", set()) or extra_dep in native_pkgs) and extra_dep not in ignore_pkgs:
-            raw_deps.append(extra_dep)
+    # Base-files contains only shell scripts: isolate version and clear system dependencies
+    if pkg == "base-files":
+        pkg_version = "1.0"
+        pkg_release = "1"
+        raw_deps = []
+        conffiles = []
+    else:
+        # Resolve dependencies
+        raw_deps = [
+            d for d in pkg_meta.get("depends", [])
+            if (d in pkg_meta.get("_all_pkgs", set()) or d in native_pkgs) and d not in ignore_pkgs
+        ]
+        for extra_dep in extra_kmod_deps.get(pkg, []):
+            if extra_dep not in raw_deps and (extra_dep in pkg_meta.get("_all_pkgs", set()) or extra_dep in native_pkgs) and extra_dep not in ignore_pkgs:
+                raw_deps.append(extra_dep)
+        conffiles = pkg_meta.get("conffiles", [])
 
     filtered_deps = []
     for d in raw_deps:
@@ -151,7 +195,6 @@ def generate_single_package(
     depends_str = " ".join(filtered_deps)
     depends_line = f"  DEPENDS:={depends_str}\n" if depends_str else ""
 
-    conffiles = pkg_meta.get("conffiles", [])
     conffiles_block = ""
     if conffiles:
         cf_lines = "\n".join(conffiles)

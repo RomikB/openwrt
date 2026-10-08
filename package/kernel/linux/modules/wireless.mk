@@ -9,7 +9,7 @@ WIRELESS_MENU:=Wireless Drivers
 define KernelPackage/cfg80211-linux
   SUBMENU:=$(WIRELESS_MENU)
   TITLE:=cfg80211 - wireless configuration API
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
   KCONFIG:=CONFIG_CFG80211 \
 	CONFIG_NL80211_TESTMODE=y \
 	CONFIG_CFG80211_DEVELOPER_WARNINGS=n \

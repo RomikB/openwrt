@@ -776,7 +776,7 @@ $(eval $(call KernelPackage,ipt-checksum))
 
 define KernelPackage/ipt-sctp
   TITLE:=Module for sctp protocol netfilter
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
   KCONFIG:=CONFIG_NETFILTER_XT_MATCH_SCTP \
 	   CONFIG_NF_CT_PROTO_SCTP=y
   FILES:= $(LINUX_DIR)/net/netfilter/xt_sctp.ko

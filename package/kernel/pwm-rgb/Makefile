@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/pwm-rgb
   SUBMENU:=LED modules
   TITLE:=Xiaomi PWM RGB LED driver
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
   FILES:=$(PKG_BUILD_DIR)/pwm-rgb.ko
   AUTOLOAD:=$(call AutoLoad,60,pwm-rgb)
 endef

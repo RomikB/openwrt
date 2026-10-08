@@ -6,7 +6,7 @@ FEATURES:=squashfs fpu nand
 CPU_TYPE:=cortex-a7
 KERNEL_PATCHVER:=5.4
 
-DEFAULT_PACKAGES.router += -procd-ujail
+DEFAULT_PACKAGES.router += -procd-ujail base-files-vendor
 
 DEFAULT_PACKAGES += \
 	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \

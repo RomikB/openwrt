@@ -30,7 +30,7 @@ $(eval $(call KernelPackage,6lowpan))
 define KernelPackage/bootconfig
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Bootconfig partition for failsafe
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
   KCONFIG:=CONFIG_BOOTCONFIG_PARTITION
   FILES:=$(LINUX_DIR)/drivers/platform/ipq/bootconfig.ko
   AUTOLOAD:=$(call AutoLoad,56,bootconfig,1)

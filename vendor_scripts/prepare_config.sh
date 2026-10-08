@@ -95,4 +95,9 @@ disable FEED_zapret2
 
 make defconfig
 
+# Clean base-files package and cached rootfs templates for the newly configured subtarget
+make package/base-files/clean
+rm -rf build_dir/target-*/root.orig-* build_dir/target-*/root-*
+rm -f staging_dir/target-*/stamp/.package_*
+
 echo "Configuration successfully prepared."

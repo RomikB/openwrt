@@ -1,6 +1,6 @@
 --- a/yt9215rb_mdio_driver/yt9215rb.c
 +++ b/yt9215rb_mdio_driver/yt9215rb.c
-@@ -1,427 +1,1297 @@
+@@ -1,427 +1,1299 @@
 -#include <linux/proc_fs.h>
 +// SPDX-License-Identifier: GPL-2.0
 +/*

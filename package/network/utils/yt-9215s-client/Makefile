@@ -10,7 +10,7 @@ define Package/yt-9215s-client
   SECTION:=net
   CATEGORY:=Network
   TITLE:=Motorcomm YT9215S Switch Control Utility
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
 endef
 
 define Package/yt-9215s-client/description

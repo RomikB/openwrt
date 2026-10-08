@@ -885,7 +885,7 @@ $(eval $(call KernelPackage,crypto-pcbc))
 
 define KernelPackage/crypto-pcompress
   TITLE:=CryptoAPI Partial (de)compression operations
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
   KCONFIG:= \
 	CONFIG_CRYPTO_PCOMP=y \
 	CONFIG_CRYPTO_PCOMP2
