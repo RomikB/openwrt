@@ -1,0 +1,148 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+handle_mesh_button() {
+	logger -t button "Mesh button event: $ACTION (held for ${SEEN:-0}s)"
+
+	# Read user preference from UCI
+	config_load system
+	local action
+	config_get action "mesh_button" action "wps"
+
+	[ "$action" = "disabled" ] && return 0
+
+	case "$ACTION" in
+	released)
+		if [ "${SEEN:-0}" -ge 5 ]; then
+			# Long press (held >= 5s): Wi-Fi toggle
+			logger -t button "Mesh button long press: toggling Wi-Fi"
+			local radio0_dis=$(uci -q get wireless.radio0.disabled)
+			if [ "${radio0_dis:-0}" -eq 1 ]; then
+				uci -q set wireless.radio0.disabled='0'
+				uci -q set wireless.radio1.disabled='0'
+				uci commit wireless
+				wifi up
+			else
+				uci -q set wireless.radio0.disabled='1'
+				uci -q set wireless.radio1.disabled='1'
+				uci commit wireless
+				wifi down
+			fi
+			return 0
+		fi
+
+		# Short press (held < 5s)
+		if [ "$action" = "wifi_toggle" ]; then
+			logger -t button "Mesh button short press: toggling Wi-Fi"
+			local radio0_dis=$(uci -q get wireless.radio0.disabled)
+			if [ "${radio0_dis:-0}" -eq 1 ]; then
+				uci -q set wireless.radio0.disabled='0'
+				uci -q set wireless.radio1.disabled='0'
+				uci commit wireless
+				wifi up
+			else
+				uci -q set wireless.radio0.disabled='1'
+				uci -q set wireless.radio1.disabled='1'
+				uci commit wireless
+				wifi down
+			fi
+			return 0
+		fi
+
+		# If WPS is already active and user presses button again -> Cancel WPS immediately
+		local wps_is_active=0
+		for sock in /var/run/hostapd/ath*; do
+			[ -S "$sock" ] || continue
+			if hostapd_cli -i "$(basename "$sock")" raw WPS_GET_STATUS 2>/dev/null | grep -q "PBC Status: Active"; then
+				wps_is_active=1
+				break
+			fi
+		done
+
+		if [ "$wps_is_active" -eq 1 ] || [ -f /var/run/wps_active.pid ]; then
+			logger -t button "Mesh button: cancelling active WPS session"
+			if [ -f /var/run/wps_active.pid ]; then
+				local wps_pid=$(cat /var/run/wps_active.pid 2>/dev/null)
+				[ -n "$wps_pid" ] && kill -9 "$wps_pid" 2>/dev/null || true
+				rm -f /var/run/wps_active.pid
+			fi
+			for sock in /var/run/hostapd/ath*; do
+				[ -S "$sock" ] && hostapd_cli -i "$(basename "$sock")" raw WPS_CANCEL >/dev/null 2>&1 || true
+			done
+			echo default-on > /sys/class/leds/blue:status/trigger 2>/dev/null
+			return 0
+		fi
+
+		# Default action: WPS PBC
+		logger -t button "Mesh button: activating WPS Push-Button Configuration"
+		local wps_triggered=0
+
+		for sock in /var/run/hostapd/ath*; do
+			[ -S "$sock" ] || continue
+			local ifname=$(basename "$sock")
+			# Exclude secondary guest interfaces (ath02, ath12)
+			case "$ifname" in
+				*2|*3) continue ;;
+			esac
+			local res=$(hostapd_cli -i "$ifname" raw WPS_PBC 2>/dev/null)
+			if [ "$res" = "OK" ]; then
+				logger -t button "WPS PBC activated on $ifname"
+				wps_triggered=1
+			fi
+		done
+
+		if [ "$wps_triggered" -eq 1 ]; then
+			# Visual LED feedback: blink blue LED until client connects or 120s timeout
+			if [ -d /sys/class/leds/blue:status ]; then
+				local old_pid=$(cat /var/run/wps_active.pid 2>/dev/null)
+				[ -n "$old_pid" ] && kill -9 "$old_pid" 2>/dev/null || true
+
+				(
+					echo timer > /sys/class/leds/blue:status/trigger 2>/dev/null
+					echo 300 > /sys/class/leds/blue:status/delay_on 2>/dev/null
+					echo 300 > /sys/class/leds/blue:status/delay_off 2>/dev/null
+
+					local start_time=$(date +%s)
+					local i=0
+					while [ $i -lt 120 ]; do
+						sleep 1
+						i=$((i + 1))
+
+						# Stop blinking immediately if a client successfully completed WPS/WPA handshake
+						# Filter by timestamp >= start_time to avoid false triggers on stale logs
+						local handshake=$(logread -t -l 30 2>/dev/null | awk -v start="$start_time" '
+							$6 ~ /^\[[0-9]+/ {
+								sec = $6; gsub(/(\[|\]|\..*)/, "", sec);
+								if (sec >= start && ($0 ~ /WPA: pairwise key handshake completed/ || $0 ~ /WPS-SUCCESS/)) {
+									print $0;
+									exit;
+								}
+							}')
+
+						if [ -n "$handshake" ]; then
+							logger -t button "WPS client connected successfully, closing WPS on all radios"
+							break
+						fi
+					done
+
+					# Cancel WPS on ALL radios so the other band does not remain open
+					for sock in /var/run/hostapd/ath*; do
+						[ -S "$sock" ] && hostapd_cli -i "$(basename "$sock")" raw WPS_CANCEL >/dev/null 2>&1 || true
+					done
+
+					# Restore normal solid blue status LED
+					echo default-on > /sys/class/leds/blue:status/trigger 2>/dev/null
+					rm -f /var/run/wps_active.pid
+				) </dev/null >/dev/null 2>&1 &
+				echo "$!" > /var/run/wps_active.pid
+			fi
+		else
+			logger -t button "WPS PBC could not be activated (WPS not enabled or AP down)"
+		fi
+		;;
+	esac
+}
+
+handle_mesh_button
+return 0

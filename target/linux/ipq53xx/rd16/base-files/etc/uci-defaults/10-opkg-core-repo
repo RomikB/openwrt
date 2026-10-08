@@ -1,0 +1,14 @@
+#!/bin/sh
+# ==============================================================================
+# Script: 10-opkg-core-repo
+# Purpose: Point openwrt_core feed to custom GitHub Pages repository.
+# ==============================================================================
+
+DISTFEEDS="/etc/opkg/distfeeds.conf"
+
+[ -f "$DISTFEEDS" ] || return 0 2>/dev/null || exit 0
+
+# 1. Substitute openwrt_core URL with custom GitHub Pages repository
+sed -i 's|https://downloads.openwrt.org/releases/24.10-SNAPSHOT/targets/ipq53xx/rd15/packages|https://romikb.github.io/releases/24.10-SNAPSHOT/targets/ipq53xx/rd15/packages|g' "$DISTFEEDS"
+
+return 0 2>/dev/null || exit 0

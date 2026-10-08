@@ -699,6 +699,7 @@
 +	case 3: return 1;
 +	case 2: return 2;
 +	case 1: return 3;
++	case 0: return 4;
 +	default: return port;
  	}
 -	if (ret >= 0){
@@ -711,7 +712,7 @@
 +{
 +	int port;
 +
-+	for (port = 1; port <= 4; port++) {
++	for (port = 0; port <= 4; port++) {
 +		yt_port_linkStatus_all_t status;
 +		int err;
 +		bool is_up;
@@ -1485,10 +1486,11 @@
 +	if (!ret)
 +		pr_info("[yt_switch] portmap proc init seccess!\n");
 +
-+	/* Default port mapping for Xiaomi RD15 (BE3600) */
++	/* Default port mapping for Xiaomi RD15/RD16 (BE3600) */
 +	strncpy(g_portmap[3].ifname, "eth0.1", sizeof(g_portmap[3].ifname) - 1);
 +	strncpy(g_portmap[2].ifname, "eth0.2", sizeof(g_portmap[2].ifname) - 1);
 +	strncpy(g_portmap[1].ifname, "eth0.3", sizeof(g_portmap[1].ifname) - 1);
++	strncpy(g_portmap[0].ifname, "eth0.4", sizeof(g_portmap[0].ifname) - 1);
 +
 +	/* 9. Link poll workqueue */
 +	g_yt_wq = create_singlethread_workqueue("yt_switch_wq");

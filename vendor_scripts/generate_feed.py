@@ -11,6 +11,7 @@ if len(sys.argv) < 6:
     sys.exit(1)
 
 import json
+from generate_package import generate_single_package
 
 # Parse command line arguments
 status_file = sys.argv[1]
@@ -113,97 +114,33 @@ if os.path.exists(feed_dir):
     shutil.rmtree(feed_dir)
 os.makedirs(feed_dir, exist_ok=True)
 
+# Detect hardware platform model (rd15 vs rd16) from extracted rootfs
+hardware_model = "rd15"
+xq_ver_file = os.path.join(extracted_rootfs, "usr/share/xiaoqiang/xiaoqiang_version")
+if os.path.isfile(xq_ver_file):
+    with open(xq_ver_file, 'r') as xqf:
+        for line in xqf:
+            if "HARDWARE" in line:
+                if "RD16" in line.upper():
+                    hardware_model = "rd16"
+                elif "RD15" in line.upper():
+                    hardware_model = "rd15"
+print(f"Target hardware platform detected as: {hardware_model}")
+
 # Generate package directories, copy prebuilt files, and build Makefiles
+all_pkgs_set = set(pkg_info.keys())
 for pkg in resolved:
-    pkg_vendor = f"{pkg}-vendor"
-    pkg_dir = os.path.join(feed_dir, pkg_vendor)
-    files_dir = os.path.join(pkg_dir, 'files')
-    os.makedirs(files_dir, exist_ok=True)
-
-    list_file = os.path.join(extracted_rootfs, 'usr/lib/opkg/info', f"{pkg}.list")
-    if os.path.isfile(list_file):
-        with open(list_file, 'r') as lf:
-            rel_paths = [l.strip().lstrip('/') for l in lf if l.strip()]
-        for rel_path in rel_paths:
-            src = os.path.join(extracted_rootfs, rel_path)
-            dst = os.path.join(files_dir, rel_path)
-
-            if not os.path.exists(src) and not os.path.islink(src):
-                continue
-
-            if os.path.islink(src):
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                if os.path.lexists(dst):
-                    os.remove(dst)
-                link_target = os.readlink(src)
-                os.symlink(link_target, dst)
-            elif os.path.isdir(src):
-                os.makedirs(dst, exist_ok=True)
-            elif os.path.isfile(src):
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                shutil.copy2(src, dst)
-
-    full_version = pkg_info.get(pkg, {}).get('version', '1.0')
-    if '-' in full_version:
-        pkg_version, pkg_release = full_version.rsplit('-', 1)
-    else:
-        pkg_version = full_version
-        pkg_release = '1'
-
-    raw_deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if (d in pkg_info or d in native_pkgs) and d not in ignore_pkgs]
-    for extra_dep in extra_kmod_deps.get(pkg, []):
-        if extra_dep not in raw_deps and (extra_dep in pkg_info or extra_dep in native_pkgs) and extra_dep not in ignore_pkgs:
-            raw_deps.append(extra_dep)
-
-    filtered_deps = []
-    for d in raw_deps:
-        if d in native_pkgs:
-            filtered_deps.append(f"+{d}")
-        else:
-            filtered_deps.append(f"+{d}-vendor")
-    depends_str = ' '.join(filtered_deps)
-
-    conffiles = pkg_info.get(pkg, {}).get('conffiles', [])
-    conffiles_block = ""
-    if conffiles:
-        cf_lines = '\n'.join(conffiles)
-        conffiles_block = f"define Package/{pkg_vendor}/conffiles\n{cf_lines}\nendef\n\n"
-
-    depends_line = f"  DEPENDS:={depends_str}\n" if depends_str else ""
-
-    makefile_content = f"""include $(TOPDIR)/rules.mk
-
-PKG_NAME:={pkg_vendor}
-PKG_VERSION:={pkg_version}
-PKG_RELEASE:={pkg_release}
-
-include $(INCLUDE_DIR)/package.mk
-
-define Package/{pkg_vendor}
-  SECTION:=vendor
-  CATEGORY:=Vendor Prebuilt
-  TITLE:=Prebuilt {pkg} package
-{depends_line}endef
-
-define Package/{pkg_vendor}/description
-  Prebuilt {pkg} package extracted from vendor firmware.
-endef
-
-{conffiles_block}define Build/Configure
-endef
-
-define Build/Compile
-endef
-
-define Package/{pkg_vendor}/install
-	$(INSTALL_DIR) $(1)
-	$(if $(wildcard ./files/*),$(CP) ./files/* $(1)/)
-endef
-
-$(eval $(call BuildPackage,{pkg_vendor}))
-"""
-
-    with open(os.path.join(pkg_dir, 'Makefile'), 'w') as mf:
-        mf.write(makefile_content)
+    pkg_meta = pkg_info.get(pkg, {})
+    pkg_meta["_all_pkgs"] = all_pkgs_set
+    generate_single_package(
+        pkg=pkg,
+        pkg_meta=pkg_meta,
+        extracted_rootfs=extracted_rootfs,
+        feed_dir=feed_dir,
+        subtarget=hardware_model,
+        native_pkgs=native_pkgs,
+        ignore_pkgs=ignore_pkgs,
+        extra_kmod_deps=extra_kmod_deps,
+    )
 
 print(f"Generated feed for {len(resolved)} packages: {', '.join(resolved)}")

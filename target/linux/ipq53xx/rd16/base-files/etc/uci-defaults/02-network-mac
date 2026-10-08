@@ -1,0 +1,11 @@
+#!/bin/sh
+
+LAN_MAC=$(/sbin/getmac lan)
+WAN_MAC=$(/sbin/getmac wan)
+
+uci set network.br_lan_dev.macaddr="$LAN_MAC"
+uci set network.lan.macaddr="$LAN_MAC"
+uci set network.wan.macaddr="$WAN_MAC"
+uci commit network
+
+exit 0

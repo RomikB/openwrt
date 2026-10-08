@@ -1,0 +1,32 @@
+#!/bin/sh
+# Xiaomi Router BE3600 (RD15) board detection script for OpenWrt
+
+CFG=/etc/board.json
+
+. /lib/functions/uci-defaults.sh
+
+ipq53xx_setup_interfaces()
+{
+	local board="$1"
+
+	case "$board" in
+	qcom,ipq5332-ap-mi04.1-c2 |\
+	qcom,ipq5332-rd16 |\
+	*ap-mi04.1* | *rd16*)
+		# Xiaomi Router BE3600 (RD16) on prebuilt or QSDK kernel
+		# Announce LAN as static bridge and WAN as DHCP for odhcpd and LuCI
+		ucidef_set_interface_lan "br-lan"
+		ucidef_set_interface_wan "eth0.1"
+		;;
+	*)
+		echo "Unsupported hardware: $board"
+		;;
+	esac
+}
+
+board_config_update
+board=$(board_name)
+ipq53xx_setup_interfaces "$board"
+board_config_flush
+
+exit 0

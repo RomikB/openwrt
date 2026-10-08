@@ -1,0 +1,16 @@
+--- a/drivers/mtd/nand/raw/nand_ids.c
++++ b/drivers/mtd/nand/raw/nand_ids.c
+@@ -125,6 +125,14 @@ struct nand_flash_dev nand_flash_ids[] =
+ 		SZ_2K, SZ_128, SZ_128K, 0, 3, 64, NAND_ECC_INFO(4, SZ_512), 0},
+ 
++	{"W25N01KWZEIG SPI NAND 1G 1.8V",
++		{ .id = {0xef, 0xbe, 0x21} },
++		SZ_2K, SZ_128, SZ_128K, 0, 3, 64, NAND_ECC_INFO(4, SZ_512), 0},
++
++	{"W25N01KWZEIG SPI NAND 1G 1.8V",
++		{ .id = {0xef, 0xbe} },
++		SZ_2K, SZ_128, SZ_128K, 0, 2, 64, NAND_ECC_INFO(4, SZ_512), 0},
++
+ 	{"W25N02KWZEIR SPI NAND 2G 1.8V",
+ 		{ .id = {0xef, 0xba, 0x22} },
+ 		SZ_2K, SZ_256, SZ_128K, 0, 3, 128, NAND_ECC_INFO(8, SZ_512), 0},

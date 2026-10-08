@@ -1,12 +1,26 @@
 #!/bin/sh
 set -e
 
-# Parse arguments and determine firmware file path
+# Parse arguments and determine target model & firmware file path
+TARGET_MODEL="rd15"
 FW_FILE=""
+
+if [ "$1" = "rd15" ]; then
+	TARGET_MODEL="rd15"
+	shift
+elif [ "$1" = "rd16" ]; then
+	TARGET_MODEL="rd16"
+	shift
+fi
+
 if [ -n "$1" ]; then
 	FW_FILE="$1"
+	case "$FW_FILE" in
+		*rd16*) TARGET_MODEL="rd16" ;;
+		*rd15*) TARGET_MODEL="rd15" ;;
+	esac
 else
-	for f in miwifi_rd15_firmware_*.bin; do
+	for f in miwifi_${TARGET_MODEL}_firmware_*.bin; do
 		if [ -f "$f" ]; then
 			FW_FILE="$f"
 			break
@@ -16,10 +30,11 @@ fi
 
 # Validate firmware file existence
 if [ -z "$FW_FILE" ] || [ ! -f "$FW_FILE" ]; then
-	echo "Error: Firmware file not found." >&2
-	echo "Usage: $0 [firmware_file.bin]" >&2
+	echo "Error: Firmware file not found for target $TARGET_MODEL." >&2
+	echo "Usage: $0 [rd15|rd16] [firmware_file.bin]" >&2
 	exit 1
 fi
+echo "Target model: $TARGET_MODEL"
 echo "Using firmware image: $FW_FILE"
 
 PACKAGES_LIST="vendor_scripts/packages.list"
@@ -52,15 +67,20 @@ fi
 # Prepare temporary directory
 TMP_DIR="./tmp"
 FEED_DIR="./vendor_feed"
+FW_TMP_DIR="$TMP_DIR/fw_extract"
 mkdir -p "$TMP_DIR"
 
+# Clean previous extraction
+rm -rf "$FW_TMP_DIR" "$TMP_DIR/rootfs"
+mkdir -p "$FW_TMP_DIR"
+
 # Extract UBI images using ubireader_extract_images
-echo "Extracting UBI images from $FW_FILE to $TMP_DIR..."
-ubireader_extract_images -o "$TMP_DIR" "$FW_FILE"
+echo "Extracting UBI images from $FW_FILE to $FW_TMP_DIR..."
+ubireader_extract_images -o "$FW_TMP_DIR" "$FW_FILE"
 
 # Locate extracted rootfs UBIFS volume image
 UBI_ROOTFS=""
-for img in "$TMP_DIR"/*/img-*_vol-ubi_rootfs.ubifs "$TMP_DIR"/img-*_vol-ubi_rootfs.ubifs; do
+for img in "$FW_TMP_DIR"/*/img-*_vol-ubi_rootfs.ubifs "$FW_TMP_DIR"/img-*_vol-ubi_rootfs.ubifs; do
 	if [ -f "$img" ]; then
 		UBI_ROOTFS="$img"
 		break
@@ -68,17 +88,17 @@ for img in "$TMP_DIR"/*/img-*_vol-ubi_rootfs.ubifs "$TMP_DIR"/img-*_vol-ubi_root
 done
 
 if [ -z "$UBI_ROOTFS" ] || [ ! -f "$UBI_ROOTFS" ]; then
-	echo "Error: Could not find img-*_vol-ubi_rootfs.ubifs in $TMP_DIR" >&2
+	echo "Error: Could not find img-*_vol-ubi_rootfs.ubifs in $FW_TMP_DIR" >&2
 	exit 1
 fi
 echo "Found UBI rootfs volume: $UBI_ROOTFS"
 
-# Locate and copy extracted kernel image
-for kimg in "$TMP_DIR"/*/img-*_vol-kernel.ubifs "$TMP_DIR"/img-*_vol-kernel.ubifs; do
+# Locate and copy extracted kernel image to target subtarget directory
+for kimg in "$FW_TMP_DIR"/*/img-*_vol-kernel.ubifs "$FW_TMP_DIR"/img-*_vol-kernel.ubifs; do
 	if [ -f "$kimg" ]; then
-		echo "Found kernel volume: $kimg, copying to target/linux/ipq53xx/rd15/kernel..."
-		mkdir -p target/linux/ipq53xx/rd15
-		cp -f "$kimg" target/linux/ipq53xx/rd15/kernel
+		echo "Found kernel volume: $kimg, copying to target/linux/ipq53xx/$TARGET_MODEL/kernel..."
+		mkdir -p "target/linux/ipq53xx/$TARGET_MODEL"
+		cp -f "$kimg" "target/linux/ipq53xx/$TARGET_MODEL/kernel"
 		break
 	fi
 done
@@ -97,6 +117,22 @@ fi
 
 echo "Successfully extracted firmware rootfs to $EXTRACTED_ROOTFS"
 
+# Verify hardware model from extracted rootfs
+if [ -f "$EXTRACTED_ROOTFS/usr/share/xiaoqiang/xiaoqiang_version" ]; then
+	HW_DETECT=$(awk '/option[ \t]+HARDWARE/ {print $3}' "$EXTRACTED_ROOTFS/usr/share/xiaoqiang/xiaoqiang_version" | tr -d "'\"\r\n" | tr '[:upper:]' '[:lower:]' || true)
+	if [ -n "$HW_DETECT" ] && [ "$HW_DETECT" != "$TARGET_MODEL" ]; then
+		echo "Notice: Detected hardware $HW_DETECT differs from requested $TARGET_MODEL. Updating target model to $HW_DETECT."
+		TARGET_MODEL="$HW_DETECT"
+		for kimg in "$FW_TMP_DIR"/*/img-*_vol-kernel.ubifs "$FW_TMP_DIR"/img-*_vol-kernel.ubifs; do
+			if [ -f "$kimg" ]; then
+				mkdir -p "target/linux/ipq53xx/$TARGET_MODEL"
+				cp -f "$kimg" "target/linux/ipq53xx/$TARGET_MODEL/kernel"
+				break
+			fi
+		done
+	fi
+fi
+
 # Copy vendor_data files over extracted rootfs
 if [ -d "vendor_data" ]; then
 	echo "Copying vendor_data over extracted rootfs..."
@@ -108,24 +144,39 @@ KMOD_DEPS_JSON="$TMP_DIR/kmod_deps.json"
 echo "Extracting kernel module dependencies from binaries to $KMOD_DEPS_JSON..."
 python3 ./vendor_scripts/extract_kmod_deps.py "$EXTRACTED_ROOTFS" "$KMOD_DEPS_JSON"
 
-# Resolve package list, validate required dependencies, and generate vendor feed
+# Feed management:
+# For rd15: clean and recreate vendor_feed from scratch.
+# For rd16: only create if absent, otherwise update files-rd16.
 STATUS_FILE="$EXTRACTED_ROOTFS/usr/lib/opkg/status"
 if [ ! -f "$STATUS_FILE" ]; then
 	echo "Error: opkg status file not found at $STATUS_FILE" >&2
 	exit 1
 fi
 
-echo "Resolving dependencies and generating vendor feed in $FEED_DIR..."
-python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON" "$REQUIRED_LIST" "$NATIVE_VENDOR_PACKAGES"
-echo "Vendor feed generation complete: $FEED_DIR"
+if [ "$TARGET_MODEL" = "rd15" ]; then
+	echo "Target model is rd15: cleaning existing $FEED_DIR to regenerate from scratch..."
+	rm -rf "$FEED_DIR"
+fi
 
-# Run patch script for each generated package
-for pkg_dir in "$FEED_DIR"/*; do
-    if [ -d "$pkg_dir" ]; then
-        echo "Patching package $(basename "$pkg_dir")"
-        python3 ./vendor_scripts/patch_package.py "$pkg_dir"
-    fi
-done
+if [ ! -d "$FEED_DIR" ]; then
+	echo "Generating vendor feed in $FEED_DIR for $TARGET_MODEL..."
+	python3 ./vendor_scripts/generate_feed.py "$STATUS_FILE" "$EXTRACTED_ROOTFS" "$FEED_DIR" "$ADD_VENDOR_PACKAGES" "$IGNORE_VENDOR_PACKAGES" "$KMOD_DEPS_JSON" "$REQUIRED_LIST" "$NATIVE_VENDOR_PACKAGES"
+	echo "Vendor feed generation complete: $FEED_DIR"
+
+	for pkg_dir in "$FEED_DIR"/*; do
+		if [ -d "$pkg_dir" ]; then
+			echo "Patching package $(basename "$pkg_dir")"
+			python3 ./vendor_scripts/patch_package.py "$pkg_dir"
+		fi
+	done
+else
+	echo "Existing vendor feed detected. Updating subtarget-specific files for $TARGET_MODEL..."
+	python3 ./vendor_scripts/generate_package.py --update \
+		--rootfs "$EXTRACTED_ROOTFS" \
+		--feed "$FEED_DIR" \
+		--subtarget "$TARGET_MODEL"
+	echo "Successfully updated subtarget files in $FEED_DIR for $TARGET_MODEL"
+fi
 
 # Configure feeds.conf to include vendor_feed and custom bypass/proxy feeds
 FEEDS_CONF="feeds.conf"

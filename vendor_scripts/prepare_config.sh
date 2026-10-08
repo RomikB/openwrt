@@ -10,21 +10,35 @@ disable() {
     echo "# CONFIG_${1} is not set" >> .config
 }
 
-echo "Preparing target configuration for Xiaomi Router BE3600 (RD15)..."
+TARGET_MODEL="${1:-rd15}"
+case "$TARGET_MODEL" in
+    rd16|RD16) TARGET_MODEL="rd16" ;;
+    *) TARGET_MODEL="rd15" ;;
+esac
+
+echo "Preparing target configuration for Xiaomi Router BE3600 ($TARGET_MODEL)..."
 
 rm -f .config
 
 enable TARGET_ipq53xx
-enable TARGET_ipq53xx_rd15
+enable TARGET_ipq53xx_${TARGET_MODEL}
 enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-ruantiblock
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-ruantiblock
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
-enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
+
+if [ "$TARGET_MODEL" = "rd16" ]; then
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild-podkop
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk-podkop
+else
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-ruantiblock
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-ruantiblock
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
+fi
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP

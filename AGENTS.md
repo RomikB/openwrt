@@ -7,16 +7,23 @@
 ## 1. Системный профиль и таргеты
 
 * **SoC**: Qualcomm IPQ5332 (4x Cortex-A7 @ 1.1 GHz).
-* **Сетевые интерфейсы**: `eth0` (Uplink 1G к свитчу YT9215S), `eth1` (2.5G LAN порт к трансиверу QCA8081 / YT8821).
-* **Свитч**: Motorcomm YT9215S (5-портовый GE свитч: LAN 1–3, WAN).
-* **Wi-Fi**: 2.4 GHz On-SoC IPQ5312 (`ath0`, HE40) + 5 GHz PCIe QCN6432 (`ath1`, HE160/EHT160).
-* **Целевой сабтаргет**: `target/linux/ipq53xx/rd15/`
-* **Профили сборки (`target/linux/ipq53xx/image/rd15.mk`)**:
+* **Сетевые интерфейсы**:
+  * **RD15**: `eth0` (Uplink 1G к свитчу YT9215S: LAN 1–3, WAN), `eth1` (2.5G LAN 4 к трансиверу QCA8081 / YT8821).
+  * **RD16**: `eth0` (Uplink 1G к свитчу YT9215S: все 4 порта LAN 1–3, LAN 4/Port 0 и WAN обслуживаются свитчем YT9215S; порт 2.5G отсутствует).
+* **Свитч**: Motorcomm YT9215S (5-портовый GE свитч: LAN 1–3, WAN; на RD16 дополнительно задействован Port 0 как LAN 4).
+* **Wi-Fi**: 2.4 GHz On-SoC IPQ5312 (`ath0`, HE40) + 5 GHz PCIe QCN6432 (`ath1`, HE160/EHT160). Раздельные калибровочные файлы BDF `bdwlan.b0060` изолированы по подплатформам.
+* **Целевые сабтаргеты**:
+  * `target/linux/ipq53xx/rd15/` (Xiaomi Router BE3600 с портом 2.5G)
+  * `target/linux/ipq53xx/rd16/` (Xiaomi Router BE3600 без порта 2.5G, 4x GE)
+* **Профили сборки RD15 (`target/linux/ipq53xx/image/rd15.mk`)**:
   * `xiaomi-rd15-qsdk` / `xiaomi-rd15-prebuild` — чистые релизные профили без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
   * `xiaomi-rd15-qsdk-ruantiblock` / `xiaomi-rd15-prebuild-ruantiblock` — профили со стеком RuAntiBlock, Zapret2 и AmneziaWG.
   * `xiaomi-rd15-qsdk-podkop` / `xiaomi-rd15-prebuild-podkop` — профили со стеком Podkop (sing-box), Zapret2 и AmneziaWG.
   * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
   * `xiaomi-rd15-prebuild-diag` — диагностический профиль на prebuild-ядре с пакетом `rd15-hwdiag` (автосбор всех логов в `/data` и автоматический rollback в соседний rootfs при аппаратной несовместимости).
+* **Профили сборки RD16 (`target/linux/ipq53xx/image/rd16.mk`)**:
+  * `xiaomi-rd16-qsdk` / `xiaomi-rd16-prebuild` — чистые релизные профили.
+  * `xiaomi-rd16-qsdk-podkop` / `xiaomi-rd16-prebuild-podkop` — профили со стеком Podkop (sing-box), Zapret2 и AmneziaWG.
 
 ---
 
@@ -65,11 +72,11 @@
 | Задача | Команда |
 | :--- | :--- |
 | **Сборка тулчейна ядра GCC 7.5.0** | `./vendor_scripts/build_kmod_toolchain.sh` |
-| **Генерация vendor_feed из стока** | `./vendor_scripts/prepare_feed.sh [miwifi_rd15_firmware_*.bin]` |
+| **Генерация vendor_feed из стока** | `./vendor_scripts/prepare_feed.sh [rd15|rd16] [firmware.bin]` *(по умолчанию RD15)* |
 | **Патчинг внешних фидов OpenWrt** | `./vendor_scripts/patch_feeds.py` |
-| **Применение defconfig сабтаргета** | `./vendor_scripts/prepare_config.sh` |
+| **Применение defconfig сабтаргета** | `./vendor_scripts/prepare_config.sh [rd15|rd16]` *(по умолчанию RD15)* |
 | **Компиляция ядра и образов** | `make target/linux/compile -j$(nproc)` / `make -j$(nproc)` |
-| **Путь к собранным UBI-образам** | `bin/targets/ipq53xx/rd15/` |
+| **Путь к собранным UBI-образам** | `bin/targets/ipq53xx/{rd15,rd16}/` |
 
 ---
 
