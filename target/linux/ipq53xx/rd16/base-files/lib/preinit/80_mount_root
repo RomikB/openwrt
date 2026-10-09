@@ -17,18 +17,25 @@ missing_lines() {
 do_mount_root() {
 	mount_root start
 	boot_run_hook preinit_mount_root
-	[ -f /sysupgrade.tgz -o -f /tmp/sysupgrade.tar ] && {
+	[ -f /sysupgrade.tgz -o -f /tmp/sysupgrade.tar -o -f /data/sysupgrade.tgz ] && {
 		echo "- config restore -"
+		[ -c /dev/kmsg ] && echo "<5>sysupgrade: restoring configuration..." > /dev/kmsg
 		cp /etc/passwd /etc/group /etc/shadow /tmp
 		cd /
 		[ -f /sysupgrade.tgz ] && tar xzf /sysupgrade.tgz
 		[ -f /tmp/sysupgrade.tar ] && tar xf /tmp/sysupgrade.tar
+		[ -f /data/sysupgrade.tgz ] && {
+			tar xzf /data/sysupgrade.tgz
+			rm -f /data/sysupgrade.tgz
+			[ -c /dev/kmsg ] && echo "<5>sysupgrade: configuration restored successfully from /data/sysupgrade.tgz" > /dev/kmsg
+		}
 		missing_lines /tmp/passwd /etc/passwd >> /etc/passwd
 		missing_lines /tmp/group /etc/group >> /etc/group
 		missing_lines /tmp/shadow /etc/shadow >> /etc/shadow
 		rm /tmp/passwd /tmp/group /tmp/shadow
 		# Prevent configuration corruption on a power loss
 		sync
+		[ -c /dev/kmsg ] && echo "<5>sysupgrade: configuration restore complete" > /dev/kmsg
 	}
 }
 

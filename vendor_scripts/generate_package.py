@@ -38,10 +38,14 @@ PACKAGE_FILE_WHITELISTS: Dict[str, List[str]] = {
         "sbin/getmac",
         "sbin/setmac*",
         "sbin/hwversion",
-        "lib/upgrade/platform.sh",
         "lib/preinit/39_mount_*",
         "etc/hotplug.d/button/51-reset",
     ],
+}
+
+# Declarative set of packages whose stock opkg dependencies should not be inherited or traversed.
+NO_DEPS_PACKAGES: Set[str] = {
+    "base-files",
 }
 
 
@@ -169,8 +173,8 @@ def generate_single_package(
         pkg_version = full_version
         pkg_release = "1"
 
-    # Base-files contains only shell scripts: isolate version and clear system dependencies
-    if pkg == "base-files":
+    # Packages without dependencies (e.g. base-files contains only shell scripts)
+    if pkg in NO_DEPS_PACKAGES:
         pkg_version = "1.0"
         pkg_release = "1"
         raw_deps = []

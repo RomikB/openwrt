@@ -11,7 +11,7 @@ if len(sys.argv) < 6:
     sys.exit(1)
 
 import json
-from generate_package import generate_single_package
+from generate_package import generate_single_package, NO_DEPS_PACKAGES
 
 # Parse command line arguments
 status_file = sys.argv[1]
@@ -71,6 +71,11 @@ with open(status_file, 'r') as f:
                 raw_deps = re.sub(r'\([^)]*\)', '', raw_deps)
                 deps = [d.strip() for d in raw_deps.split(',') if d.strip()]
                 pkg_info[current_pkg]['depends'] = deps
+
+# Clear dependencies for packages that should not have stock dependencies traversed into vendor feed
+for nd_pkg in NO_DEPS_PACKAGES:
+    if nd_pkg in pkg_info:
+        pkg_info[nd_pkg]['depends'] = []
 
 # Load configuration file lists from opkg info
 for pkg in pkg_info:

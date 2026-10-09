@@ -28,6 +28,7 @@ endef
 define Device/Default
 	DEVICE_VENDOR := Xiaomi
 	DEVICE_MODEL := Router BE3600 (RD16)
+	SUPPORTED_DEVICES := qcom,ipq5332-ap-mi04.1-c2 xiaomi,be3600-rd16 xiaomi,rd16
 	BLOCKSIZE := 128k
 	PAGESIZE := 2048
 	VID_HDR_OFFSET := 2048

@@ -28,6 +28,7 @@ endef
 define Device/Default
 	DEVICE_VENDOR := Xiaomi
 	DEVICE_MODEL := Router BE3600 (RD15)
+	SUPPORTED_DEVICES := qcom,ipq5332-ap-mi04.1-c2 xiaomi,be3600 xiaomi,rd15
 	BLOCKSIZE := 128k
 	PAGESIZE := 2048
 	VID_HDR_OFFSET := 2048
@@ -138,5 +139,7 @@ define Device/xiaomi-rd15-qsdk-dev
 	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(DEV_PACKAGES)
+	IMAGES += sysupgrade.bin
+	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk-dev
