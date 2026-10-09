@@ -50,25 +50,17 @@ platform_do_upgrade() {
 
 	echo "Flashing firmware into active Slot $boot_flag ($target_part, /dev/mtd${target_mtd})..."
 
-	# Unmount any remaining mounts on UBI volumes before detaching
-	sync
-	for vol in /dev/ubi[0-9]*; do
-		[ -e "$vol" ] && umount "$vol" 2>/dev/null || true
-	done
-
-	# Detach UBI from target MTD if attached
-	ubidetach -m "$target_mtd" 2>/dev/null || true
+	# Detach UBI from target MTD (with force detach for active slot)
+	ubidetach -f -m "$target_mtd" 2>/dev/null || ubidetach -m "$target_mtd"
 
 	# Calculate pure UBI size aligned to eraseblock size (trims fwtool metadata if present)
 	local file_size="$(wc -c < "$1")"
 	local eb_size="$(cat "/sys/class/mtd/mtd${target_mtd}/erasesize" 2>/dev/null || echo 131072)"
 	local ubi_size="$(( file_size - (file_size % eb_size) ))"
 
-	# Format and flash UBI image via stdin using aligned size
-	ubiformat "/dev/mtd${target_mtd}" -f - -S "$ubi_size" -s 2048 -O 2048 -y < "$1" || {
-		echo "Error: ubiformat failed!"
-		return 1
-	}
+	ubiformat "/dev/mtd${target_mtd}" -f - -S "$ubi_size" -s 2048 -O 2048 -y < "$1"
+	local ret=$?
 
-	return 0
+	sync
+	return $ret
 }
