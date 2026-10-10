@@ -35,18 +35,7 @@ QCASSDK_CONFIG_OPTS+= \
 	CPU=arm
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
-		PRJ_PATH=$(PKG_BUILD_DIR) \
-		TOOL_PATH=$(TOOLCHAIN_DIR)/bin \
-		SYS_PATH=$(LINUX_DIR) \
-		TOOLPREFIX=$(TARGET_CROSS) \
-		KVER=$(LINUX_VERSION) \
-		CFLAGS="$(TARGET_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)" \
-		ARCH=$(LINUX_KARCH) \
-		CPU=arm \
-		OS=linux
-
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS))
 endef
 
 define Package/qca-ssdk-shell/install
