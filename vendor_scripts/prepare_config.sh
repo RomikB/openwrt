@@ -89,6 +89,7 @@ disable SINGBOX_WITH_WIREGUARD
 # Exclude non-standard feeds from target distfeeds.conf (keep standard base, luci, packages, routing, telephony)
 disable FEED_vendor_feed
 disable FEED_amneziawg
+disable FEED_forkop
 disable FEED_podkop
 disable FEED_ruantiblock
 disable FEED_zapret2

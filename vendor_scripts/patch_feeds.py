@@ -226,7 +226,41 @@ def main():
     argon_makefile = os.path.join(repo_root, "package/addons/luci-theme-argon/Makefile")
     patch_argon_makefile(argon_makefile)
 
+    # Patch feeds/forkop apply.uc (remove unsupported interval flags on concatenated sets for Linux 5.4)
+    forkop_apply_uc = os.path.join(repo_root, "feeds/forkop/forkop/files/usr/lib/nft/apply.uc")
+    patch_forkop_apply_uc(forkop_apply_uc)
+
     print("[patch_feeds] Feed patching complete.")
+
+def patch_forkop_apply_uc(apply_uc_path):
+    if not os.path.isfile(apply_uc_path):
+        print(f"[patch_feeds] Note: {apply_uc_path} not found, skipping.")
+        return False
+
+    with open(apply_uc_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    changed = False
+    old_v4 = 'return nft_create_set(table, name, "{ type ipv4_addr . inet_service; flags interval; auto-merge; }");'
+    new_v4 = 'return nft_create_set(table, name, "{ type ipv4_addr . inet_service; }");'
+    if old_v4 in content:
+        content = content.replace(old_v4, new_v4, 1)
+        changed = True
+
+    old_v6 = 'return nft_create_set(table, name, "{ type ipv6_addr . inet_service; flags interval; auto-merge; }");'
+    new_v6 = 'return nft_create_set(table, name, "{ type ipv6_addr . inet_service; }");'
+    if old_v6 in content:
+        content = content.replace(old_v6, new_v6, 1)
+        changed = True
+
+    if changed:
+        with open(apply_uc_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"[patch_feeds] Successfully patched: {apply_uc_path} (Linux 5.4 concatenated sets compatibility)")
+        return True
+    else:
+        print(f"[patch_feeds] Already patched or target blocks not found: {apply_uc_path}")
+        return True
 
 def patch_argon_makefile(makefile_path):
     if not os.path.isfile(makefile_path):
