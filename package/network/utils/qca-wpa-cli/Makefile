@@ -1,14 +1,17 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=qca-wpa-cli
-PKG_VERSION:=2022-09-19
 PKG_RELEASE:=1
 
-PKG_SOURCE:=hostapd-$(PKG_VERSION).tar.bz2
-PKG_SOURCE_URL:=http://w1.fi/hostap.git
-PKG_HASH:=0fdb06de719e7a6bdb25dfb9c30973ba79ea77268cd50f4e1819c84ac28c61de
+PKG_SOURCE_URL:=https://w1.fi/hostap.git
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_DATE:=2022-09-16
+PKG_SOURCE_VERSION:=01944c0957ba20ee1790eb2473cc5970f8b1f17e
+PKG_MIRROR_HASH:=53b80142fd6aaaaf385707c9bc8ba447b4f6634a9d64e9e5b8529c79e6dece1c
+PKG_SOURCE_SUBDIR:=hostapd-2022.09.16~01944c09
+PKG_SOURCE:=hostapd-2022.09.16~01944c09.tar.zst
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/hostapd-wpa-cli-$(PKG_VERSION)
+PKG_BUILD_DIR:=$(BUILD_DIR)/hostapd-wpa-cli-2022.09.16~01944c09
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -27,7 +30,7 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	tar -xf $(DL_DIR)/$(PKG_SOURCE) --strip-components=1 -C $(PKG_BUILD_DIR)
+	tar -C $(PKG_BUILD_DIR) --strip-components=1 -xf $(DL_DIR)/$(PKG_SOURCE)
 	$(Build/Patch)
 endef
 
