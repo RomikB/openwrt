@@ -20,6 +20,7 @@ DEV_PACKAGES := \
 define Image/Prepare
 	@echo "-=RB=-Image/Prepare: Cleaning up modules.builtin* for rd15"
 	rm -f $(TARGET_DIR)/lib/modules/*/modules.builtin*
+	rm -f $(TARGET_DIR_ORIG)/lib/modules/*/modules.builtin*
 	rm -f $(KDIR)/target-dir-*/lib/modules/*/modules.builtin*
 	rm -f $(KDIR)/root.*/lib/modules/*/modules.builtin*
 	$(CP) $(LINUX_DIR)/vmlinux $(KDIR)/$(IMG_PREFIX)-vmlinux.elf
