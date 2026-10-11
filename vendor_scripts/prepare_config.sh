@@ -27,16 +27,14 @@ enable TARGET_PER_DEVICE_ROOTFS
 
 if [ "$TARGET_MODEL" = "rd16" ]; then
     enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild-podkop
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild-singbox
     enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk-podkop
+    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk-singbox
 else
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-ruantiblock
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-podkop
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-singbox
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-ruantiblock
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-podkop
+    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-singbox
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
 fi
 disable USE_SECCOMP
@@ -73,8 +71,14 @@ disable KERNEL_KEYS
 enable LUCI_LANG_ru
 
 # Modular packages to build as standalone .ipk without embedding into ROM (=m)
-enable PACKAGE_kmod-netlink-diag m
+enable PACKAGE_forkop m
 enable PACKAGE_librt m
+enable PACKAGE_luci-app-forkop m
+enable PACKAGE_luci-app-podkop m
+enable PACKAGE_luci-app-ruantiblock m
+enable PACKAGE_podkop m
+enable PACKAGE_ruantiblock m
+enable PACKAGE_ruantiblock-mod-lua m
 
 # Minimal profile for sing-box (exclude heavy Go subsystems: WireGuard, Tailscale, Tor, gRPC, ACME, V2Ray API, DHCP, gVisor)
 disable SINGBOX_WITH_ACME

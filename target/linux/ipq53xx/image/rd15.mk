@@ -4,14 +4,12 @@ QSDK_PACKAGES := uboot-envtools nvram-env
 SECURITY_PACKAGES := \
 	amneziawg-tools luci-proto-amneziawg \
 	zapret2 luci-app-zapret2
-RUANTIBLOCK_PACKAGES := \
-	-dnsmasq dnsmasq-full \
-	ruantiblock luci-app-ruantiblock \
-	https-dns-proxy luci-app-https-dns-proxy \
-	$(SECURITY_PACKAGES)
-PODKOP_PACKAGES := \
-	sing-box podkop luci-app-podkop \
+SINGBOX_PACKAGES := \
+	sing-box \
+	coreutils-base64 bind-dig \
 	kmod-tcp-bbr \
+	kmod-nft-tproxy kmod-nft-socket kmod-nft-nat \
+	kmod-inet-diag kmod-netlink-diag kmod-tun \
 	$(SECURITY_PACKAGES)
 DEV_PACKAGES := \
 	$(SECURITY_PACKAGES) \
@@ -34,8 +32,9 @@ define Device/Default
 	PAGESIZE := 2048
 	VID_HDR_OFFSET := 2048
 	ROOTFS_NAME := ubi_rootfs
-	IMAGES := factory.ubi
+	IMAGES := factory.ubi sysupgrade.bin
 	IMAGE/factory.ubi := append-ubi
+	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
 
 define Device/xiaomi-rd15-prebuild
@@ -46,21 +45,14 @@ define Device/xiaomi-rd15-prebuild
 endef
 TARGET_DEVICES += xiaomi-rd15-prebuild
 
-define Device/xiaomi-rd15-prebuild-ruantiblock
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, ruantiblock)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(RUANTIBLOCK_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd15-prebuild-ruantiblock
 
-define Device/xiaomi-rd15-prebuild-podkop
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, podkop)
+define Device/xiaomi-rd15-prebuild-singbox
+	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, singbox)
 	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(PODKOP_PACKAGES)
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(SINGBOX_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd15-prebuild-podkop
+TARGET_DEVICES += xiaomi-rd15-prebuild-singbox
 
 define Device/xiaomi-rd15-prebuild-diag
 	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, diagnostic auto-rollback)
@@ -101,22 +93,9 @@ define Device/xiaomi-rd15-qsdk
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk
 
-define Device/xiaomi-rd15-qsdk-ruantiblock
-	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, ruantiblock)
-	DEVICE_DTS := ipq5332-rd15
-	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
-	DEVICE_DTS_DELIMITER := @
-	DEVICE_DTS_CONFIG := config@1
-	KERNEL_LOADADDR := 0x40008000
-	KERNEL_ENTRY := 0x40008000
-	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
-	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(RUANTIBLOCK_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd15-qsdk-ruantiblock
 
-define Device/xiaomi-rd15-qsdk-podkop
-	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, podkop)
+define Device/xiaomi-rd15-qsdk-singbox
+	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, singbox)
 	DEVICE_DTS := ipq5332-rd15
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd15
 	DEVICE_DTS_DELIMITER := @
@@ -125,9 +104,9 @@ define Device/xiaomi-rd15-qsdk-podkop
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(PODKOP_PACKAGES)
+	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(SINGBOX_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd15-qsdk-podkop
+TARGET_DEVICES += xiaomi-rd15-qsdk-singbox
 
 define Device/xiaomi-rd15-qsdk-dev
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, dev profile)
@@ -140,7 +119,5 @@ define Device/xiaomi-rd15-qsdk-dev
 	KERNEL := kernel-bin | lzma | fit-rd15 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
 	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(DEV_PACKAGES)
-	IMAGES += sysupgrade.bin
-	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk-dev

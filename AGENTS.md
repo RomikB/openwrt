@@ -17,13 +17,12 @@
   * `target/linux/ipq53xx/rd16/` (Xiaomi Router BE3600 без порта 2.5G, 4x GE)
 * **Профили сборки RD15 (`target/linux/ipq53xx/image/rd15.mk`)**:
   * `xiaomi-rd15-qsdk` / `xiaomi-rd15-prebuild` — чистые релизные профили без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
-  * `xiaomi-rd15-qsdk-ruantiblock` / `xiaomi-rd15-prebuild-ruantiblock` — профили со стеком RuAntiBlock, Zapret2 и AmneziaWG.
-  * `xiaomi-rd15-qsdk-podkop` / `xiaomi-rd15-prebuild-podkop` — профили со стеком Podkop (sing-box), Zapret2 и AmneziaWG.
+  * `xiaomi-rd15-qsdk-singbox` / `xiaomi-rd15-prebuild-singbox` — профили со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
   * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
   * `xiaomi-rd15-prebuild-diag` — диагностический профиль на prebuild-ядре с пакетом `rd15-hwdiag` (автосбор всех логов в `/data` и автоматический rollback в соседний rootfs при аппаратной несовместимости).
 * **Профили сборки RD16 (`target/linux/ipq53xx/image/rd16.mk`)**:
   * `xiaomi-rd16-qsdk` / `xiaomi-rd16-prebuild` — чистые релизные профили.
-  * `xiaomi-rd16-qsdk-podkop` / `xiaomi-rd16-prebuild-podkop` — профили со стеком Podkop (sing-box), Zapret2 и AmneziaWG.
+  * `xiaomi-rd16-qsdk-singbox` / `xiaomi-rd16-prebuild-singbox` — профили со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
 
 ---
 

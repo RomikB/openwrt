@@ -9,14 +9,15 @@ set -euo pipefail
 
 # 1. Parameter check
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <path_to_github_pages_repo>"
-    echo "Example: $0 /home/romikb/romikb.github.io"
+    echo "Usage: $0 <path_to_github_pages_repo> [subtarget]"
+    echo "Example: $0 /home/romikb/romikb.github.io rd15"
     exit 1
 fi
 
 GHPAGES_ROOT="$1"
+SUBTARGET="${2:-rd15}"
 TOPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REL_PATH="releases/24.10-SNAPSHOT/targets/ipq53xx/rd15/packages"
+REL_PATH="releases/24.10-SNAPSHOT/targets/ipq53xx/${SUBTARGET}/packages"
 DEST_DIR="${GHPAGES_ROOT}/${REL_PATH}"
 
 KEY_BUILD="${TOPDIR}/key-build"
@@ -26,6 +27,21 @@ MKHASH_BIN="${TOPDIR}/staging_dir/host/bin/mkhash"
 INDEX_SCRIPT="${TOPDIR}/scripts/ipkg-make-index.sh"
 
 ARCH_NAME="arm_cortex-a7_neon-vfpv4"
+
+# Helper function to identify proprietary vendor packages
+is_vendor_package() {
+    local ipk_path="$1"
+    local filename
+    filename="$(basename "${ipk_path}")"
+    local pkg_name="${filename%%_*}"
+
+    # Match packages present in vendor_feed directory
+    if [ -d "${TOPDIR}/vendor_feed/${pkg_name}" ] || [ -d "${TOPDIR}/package/feeds/vendor_feed/${pkg_name}" ]; then
+        return 0
+    fi
+
+    return 1
+}
 
 # 2. Prerequisites validation
 if [ ! -f "${KEY_BUILD}" ]; then
@@ -62,6 +78,7 @@ if [ ! -f "${INDEX_SCRIPT}" ]; then
 fi
 
 echo "=== Preparing GitHub Pages package repository ==="
+echo "Subtarget:   ${SUBTARGET}"
 echo "Source:      ${TOPDIR}"
 echo "Destination: ${DEST_DIR}"
 
@@ -71,13 +88,17 @@ rm -rf "${DEST_DIR}"
 mkdir -p "${DEST_DIR}"
 
 # 4. Copy target-specific packages (kmod-*, rd15-dev-mode, etc.)
-TARGET_PKG_DIR="${TOPDIR}/bin/targets/ipq53xx/rd15/packages"
+TARGET_PKG_DIR="${TOPDIR}/bin/targets/ipq53xx/${SUBTARGET}/packages"
 copied_count=0
 
 if [ -d "${TARGET_PKG_DIR}" ]; then
     echo "Copying target packages from: ${TARGET_PKG_DIR}"
     for ipk in "${TARGET_PKG_DIR}"/*.ipk; do
         [ -e "${ipk}" ] || continue
+        if is_vendor_package "${ipk}"; then
+            echo "Skipping nonshared vendor package: $(basename "${ipk}")"
+            continue
+        fi
         cp "${ipk}" "${DEST_DIR}/"
         copied_count=$((copied_count + 1))
     done

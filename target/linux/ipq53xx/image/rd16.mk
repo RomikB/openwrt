@@ -4,14 +4,12 @@ QSDK_PACKAGES := uboot-envtools nvram-env
 SECURITY_PACKAGES := \
 	amneziawg-tools luci-proto-amneziawg \
 	zapret2 luci-app-zapret2
-RUANTIBLOCK_PACKAGES := \
-	-dnsmasq dnsmasq-full \
-	ruantiblock luci-app-ruantiblock \
-	https-dns-proxy luci-app-https-dns-proxy \
-	$(SECURITY_PACKAGES)
-PODKOP_PACKAGES := \
-	sing-box podkop luci-app-podkop \
+SINGBOX_PACKAGES := \
+	sing-box \
+	coreutils-base64 bind-dig \
 	kmod-tcp-bbr \
+	kmod-nft-tproxy kmod-nft-socket kmod-nft-nat \
+	kmod-inet-diag kmod-netlink-diag kmod-tun \
 	$(SECURITY_PACKAGES)
 DEV_PACKAGES := \
 	$(SECURITY_PACKAGES) \
@@ -34,8 +32,9 @@ define Device/Default
 	PAGESIZE := 2048
 	VID_HDR_OFFSET := 2048
 	ROOTFS_NAME := ubi_rootfs
-	IMAGES := factory.ubi
+	IMAGES := factory.ubi sysupgrade.bin
 	IMAGE/factory.ubi := append-ubi
+	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
 
 define Device/xiaomi-rd16-prebuild
@@ -46,13 +45,13 @@ define Device/xiaomi-rd16-prebuild
 endef
 TARGET_DEVICES += xiaomi-rd16-prebuild
 
-define Device/xiaomi-rd16-prebuild-podkop
-	DEVICE_TITLE := Xiaomi BE3600 RD16 (prebuild kernel, podkop)
+define Device/xiaomi-rd16-prebuild-singbox
+	DEVICE_TITLE := Xiaomi BE3600 RD16 (prebuild kernel, singbox)
 	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd16/kernel
 	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd16/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(PODKOP_PACKAGES)
+	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(SINGBOX_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd16-prebuild-podkop
+TARGET_DEVICES += xiaomi-rd16-prebuild-singbox
 
 define Build/fit-rd16
 	$(call locked,$(TOPDIR)/scripts/mkits.sh \
@@ -85,8 +84,8 @@ define Device/xiaomi-rd16-qsdk
 endef
 TARGET_DEVICES += xiaomi-rd16-qsdk
 
-define Device/xiaomi-rd16-qsdk-podkop
-	DEVICE_TITLE := Xiaomi BE3600 RD16 (native QSDK kernel, podkop)
+define Device/xiaomi-rd16-qsdk-singbox
+	DEVICE_TITLE := Xiaomi BE3600 RD16 (native QSDK kernel, singbox)
 	DEVICE_DTS := ipq5332-rd16
 	DEVICE_DTS_DIR := $(TOPDIR)/target/linux/ipq53xx/rd16
 	DEVICE_DTS_DELIMITER := @
@@ -95,6 +94,6 @@ define Device/xiaomi-rd16-qsdk-podkop
 	KERNEL_ENTRY := 0x40008000
 	KERNEL := kernel-bin | lzma | fit-rd16 lzma $$(KDIR)/image-$$(DEVICE_DTS).dtb
 	UBINIZE_PARTS := kernel=:$(KDIR)/$$(DEVICE_NAME)-kernel.bin
-	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(PODKOP_PACKAGES)
+	DEVICE_PACKAGES := $(QSDK_PACKAGES) $(SINGBOX_PACKAGES)
 endef
-TARGET_DEVICES += xiaomi-rd16-qsdk-podkop
+TARGET_DEVICES += xiaomi-rd16-qsdk-singbox
