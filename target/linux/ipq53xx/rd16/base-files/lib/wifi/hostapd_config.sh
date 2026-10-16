@@ -41,9 +41,21 @@ generate_hostapd_conf() {
 	config_get ifname "$iface" ifname ""
 	[ -z "$ifname" ] && {
 		if [ "$dev" = "radio0" ]; then
-			ifname="ath0"
+			if [ "${primary_ap_used_r0:-0}" -ne 1 ]; then
+				ifname="ath0"
+				primary_ap_used_r0=1
+			else
+				vap_count_r0=$(( ${vap_count_r0:-1} + 1 ))
+				ifname="ath0${vap_count_r0}"
+			fi
 		else
-			ifname="ath1"
+			if [ "${primary_ap_used_r1:-0}" -ne 1 ]; then
+				ifname="ath1"
+				primary_ap_used_r1=1
+			else
+				vap_count_r1=$(( ${vap_count_r1:-1} + 1 ))
+				ifname="ath1${vap_count_r1}"
+			fi
 		fi
 	}
 	config_get_bool if_disabled "$iface" disabled 0
@@ -140,64 +152,72 @@ generate_hostapd_conf() {
 					local seg0=$(qcawifi_get_160mhz_center "$channel")
 					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
 					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
-					if [ "$is_be" -eq 1 ]; then
+					[ "$is_ac" -eq 1 ] && {
+						echo "vht_oper_chwidth=2"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_ax" -eq 1 ] && {
+						echo "he_oper_chwidth=2"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_be" -eq 1 ] && {
 						echo "eht_oper_chwidth=2"
 						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
 						echo "puncture_bitmap= 0xffff"
-					elif [ "$is_ax" -eq 1 ]; then
-						echo "he_oper_chwidth=2"
-						echo "he_oper_centr_freq_seg0_idx=${seg0}"
-					elif [ "$is_ac" -eq 1 ]; then
-						echo "vht_oper_chwidth=2"
-						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
-					fi
+					}
 					;;
 				*80*)
 					local seg0=$(qcawifi_get_80mhz_center "$channel")
 					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
 					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
-					if [ "$is_be" -eq 1 ]; then
+					[ "$is_ac" -eq 1 ] && {
+						echo "vht_oper_chwidth=1"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_ax" -eq 1 ] && {
+						echo "he_oper_chwidth=1"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_be" -eq 1 ] && {
 						echo "eht_oper_chwidth=1"
 						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
 						echo "puncture_bitmap= 0xffff"
-					elif [ "$is_ax" -eq 1 ]; then
-						echo "he_oper_chwidth=1"
-						echo "he_oper_centr_freq_seg0_idx=${seg0}"
-					elif [ "$is_ac" -eq 1 ]; then
-						echo "vht_oper_chwidth=1"
-						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
-					fi
+					}
 					;;
 				*40*)
 					local seg0=$(qcawifi_get_40mhz_center "$band" "$channel")
 					local ht_cap="${base_ht_caps} $(qcawifi_get_ht40_capab "$band" "$channel")"
 					[ -n "$ht_cap" ] && [ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
-					if [ "$is_be" -eq 1 ]; then
+					[ "$is_ac" -eq 1 ] && {
+						echo "vht_oper_chwidth=0"
+						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_ax" -eq 1 ] && {
+						echo "he_oper_chwidth=0"
+						echo "he_oper_centr_freq_seg0_idx=${seg0}"
+					}
+					[ "$is_be" -eq 1 ] && {
 						echo "eht_oper_chwidth=0"
 						echo "eht_oper_centr_freq_seg0_idx=${seg0}"
 						echo "puncture_bitmap= 0xffff"
-					elif [ "$is_ax" -eq 1 ]; then
-						echo "he_oper_chwidth=0"
-						echo "he_oper_centr_freq_seg0_idx=${seg0}"
-					elif [ "$is_ac" -eq 1 ]; then
-						echo "vht_oper_chwidth=0"
-						echo "vht_oper_centr_freq_seg0_idx=${seg0}"
-					fi
+					}
 					;;
 				*)
 					local ht_cap="${base_ht_caps} [HT20] [SHORT-GI-20]"
 					[ "$is_n" -eq 1 ] && echo "ht_capab=${ht_cap}"
-					if [ "$is_be" -eq 1 ]; then
+					[ "$is_ac" -eq 1 ] && {
+						echo "vht_oper_chwidth=0"
+						echo "vht_oper_centr_freq_seg0_idx=${channel}"
+					}
+					[ "$is_ax" -eq 1 ] && {
+						echo "he_oper_chwidth=0"
+						echo "he_oper_centr_freq_seg0_idx=${channel}"
+					}
+					[ "$is_be" -eq 1 ] && {
 						echo "eht_oper_chwidth=0"
 						echo "eht_oper_centr_freq_seg0_idx=${channel}"
 						echo "puncture_bitmap= 0xffff"
-					elif [ "$is_ax" -eq 1 ]; then
-						echo "he_oper_chwidth=0"
-						echo "he_oper_centr_freq_seg0_idx=${channel}"
-					elif [ "$is_ac" -eq 1 ]; then
-						echo "vht_oper_chwidth=0"
-						echo "vht_oper_centr_freq_seg0_idx=${channel}"
-					fi
+					}
 					;;
 			esac
 		else
@@ -276,6 +296,8 @@ generate_hostapd_conf() {
 			echo "wpa_pairwise=CCMP"
 			echo "rsn_pairwise=CCMP"
 			echo "ieee80211w=2"
+			echo "sae_pwe=2"
+			echo "sae_require_mfp=1"
 			echo "sae_password=${key}"
 			;;
 		sae-mixed|*sae*|*wpa3*)
@@ -288,6 +310,8 @@ generate_hostapd_conf() {
 			echo "wpa_pairwise=CCMP"
 			echo "rsn_pairwise=CCMP"
 			echo "ieee80211w=1"
+			echo "sae_pwe=2"
+			echo "sae_require_mfp=1"
 			echo "wpa_passphrase=${key}"
 			echo "sae_password=${key}"
 			;;
@@ -401,6 +425,11 @@ generate_hostapd_conf() {
 }
 
 generate_all() {
+	rm -f "${CONF_DIR}"/hostapd-ath*.conf "${CONF_DIR}"/hostapd-phy*.conf
+	primary_ap_used_r0=0
+	primary_ap_used_r1=0
+	vap_count_r0=1
+	vap_count_r1=1
 	config_load wireless
 	config_foreach_iface() {
 		local iface="$1"

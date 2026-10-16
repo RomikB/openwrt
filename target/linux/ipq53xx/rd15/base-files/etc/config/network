@@ -11,9 +11,6 @@ config device 'eth1_dev'
 	option name 'eth1'
 	option ipv6 '1'
 
-config switch 'switch0'
-	option name 'switch0'
-
 config switch 'switch1'
 	option name 'switch1'
 	option enable_vlan '1'

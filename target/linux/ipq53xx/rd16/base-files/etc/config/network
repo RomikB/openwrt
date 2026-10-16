@@ -7,9 +7,6 @@ config interface 'loopback'
 config device 'eth0_dev'
 	option name 'eth0'
 
-config switch 'switch0'
-	option name 'switch0'
-
 config switch 'switch1'
 	option name 'switch1'
 	option enable_vlan '1'

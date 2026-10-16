@@ -119,7 +119,7 @@ ensure_vap_netdev() {
 		[ -n "$target_mode" ] && /usr/sbin/cfg80211tool "$ifname" mode "$target_mode" 2>/dev/null || true
 		[ -n "$channel" ] && /usr/sbin/cfg80211tool "$ifname" channel "$channel" 0 0 0 2>/dev/null || true
 		/usr/sbin/cfg80211tool "$ifname" hide_ssid 0 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" countryie 0 2>/dev/null || true
+		/usr/sbin/cfg80211tool "$ifname" countryie 1 2>/dev/null || true
 		/usr/sbin/cfg80211tool "$ifname" en_6g_sec_comp 1 2>/dev/null || true
 		/usr/sbin/cfg80211tool "$ifname" uapsd 1 2>/dev/null || true
 		/usr/sbin/cfg80211tool "$ifname" stafwd 0 2>/dev/null || true
@@ -412,11 +412,13 @@ mac80211_setup_vif() {
 			pkill -9 -f "hostapd.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
 			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
-			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+			if [ -d "/sys/class/net/${ifname}" ]; then
 				ip link set "$ifname" nomaster 2>/dev/null || true
 				ip link set "$ifname" down 2>/dev/null || true
-				iw dev "$ifname" del 2>/dev/null || true
-				wlanconfig "$ifname" destroy 2>/dev/null || true
+				if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
+					iw dev "$ifname" del 2>/dev/null || true
+					wlanconfig "$ifname" destroy 2>/dev/null || true
+				fi
 			fi
 		fi
 		return 0
@@ -530,10 +532,10 @@ drv_mac80211_setup() {
 			[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
 			pkill -9 -f "hostapd.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
-			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
-				if [ -d "/sys/class/net/${ifname}" ]; then
-					ip link set "$ifname" nomaster 2>/dev/null || true
-					ip link set "$ifname" down 2>/dev/null || true
+			if [ -d "/sys/class/net/${ifname}" ]; then
+				ip link set "$ifname" nomaster 2>/dev/null || true
+				ip link set "$ifname" down 2>/dev/null || true
+				if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
 					iw dev "$ifname" del 2>/dev/null || true
 					wlanconfig "$ifname" destroy 2>/dev/null || true
 				fi
@@ -544,10 +546,10 @@ drv_mac80211_setup() {
 			[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
 			pkill -9 -f "wpa_supplicant.*${ifname}" 2>/dev/null || true
 			rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
-			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
-				if [ -d "/sys/class/net/${ifname}" ]; then
-					ip link set "$ifname" nomaster 2>/dev/null || true
-					ip link set "$ifname" down 2>/dev/null || true
+			if [ -d "/sys/class/net/${ifname}" ]; then
+				ip link set "$ifname" nomaster 2>/dev/null || true
+				ip link set "$ifname" down 2>/dev/null || true
+				if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
 					iw dev "$ifname" del 2>/dev/null || true
 					wlanconfig "$ifname" destroy 2>/dev/null || true
 				fi
@@ -652,19 +654,23 @@ drv_mac80211_teardown() {
 		[ -n "$hpid" ] && kill -9 $hpid 2>/dev/null || true
 		local spid=$(cat "/var/run/wpa_supplicant-${ifname}.pid" 2>/dev/null)
 		[ -n "$spid" ] && kill -9 $spid 2>/dev/null || true
+		pkill -9 -f "hostapd.*${ifname}" 2>/dev/null || true
+		pkill -9 -f "wpa_supplicant.*${ifname}" 2>/dev/null || true
 
-		rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
-		rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
+		rm -f "/var/run/hostapd-${ifname}.pid" "/var/run/hostapd-${ifname}.conf" "/var/run/hostapd-${ifname}.conf.active" "/var/run/hostapd/${ifname}"
+		rm -f "/var/run/wpa_supplicant-${ifname}.pid" "/var/run/wpa_supplicant-${ifname}.conf" "/var/run/wpa_supplicant-${ifname}.conf.active" "/var/run/wpa_supplicant/${ifname}"
 
-		# Secondary VAPs (ath01, ath11, etc.) can be cleaned up cleanly
-		if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
-			if [ -d "/sys/class/net/${ifname}" ]; then
-				ip link set "$ifname" down 2>/dev/null || true
+		if [ -d "/sys/class/net/${ifname}" ]; then
+			ip link set "$ifname" nomaster 2>/dev/null || true
+			ip link set "$ifname" down 2>/dev/null || true
+			if [ "$ifname" != "ath0" ] && [ "$ifname" != "ath1" ]; then
 				iw dev "$ifname" del 2>/dev/null || true
 				wlanconfig "$ifname" destroy 2>/dev/null || true
 			fi
 		fi
 	done
+	[ "$prefix" = "ath0" ] && rm -f "/var/run/hostapd-phy1.conf"
+	[ "$prefix" = "ath1" ] && rm -f "/var/run/hostapd-phy2.conf"
 }
 
 add_driver mac80211

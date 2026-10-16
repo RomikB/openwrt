@@ -72,6 +72,8 @@ enable LUCI_LANG_ru
 
 # Modular packages to build as standalone .ipk without embedding into ROM (=m)
 enable PACKAGE_forkop m
+enable PACKAGE_kmod-ifb m
+enable PACKAGE_kmod-sched-cake m
 enable PACKAGE_librt m
 enable PACKAGE_luci-app-forkop m
 enable PACKAGE_luci-app-podkop m

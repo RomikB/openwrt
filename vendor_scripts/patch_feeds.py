@@ -230,6 +230,10 @@ def main():
     forkop_apply_uc = os.path.join(repo_root, "feeds/forkop/forkop/files/usr/lib/nft/apply.uc")
     patch_forkop_apply_uc(forkop_apply_uc)
 
+    # Patch feeds/luci 60_wifi.js (support EHT / Wi-Fi 7 rate display in Status Overview)
+    wifi_status_js = os.path.join(repo_root, "feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/60_wifi.js")
+    patch_luci_wifi_status(wifi_status_js)
+
     print("[patch_feeds] Feed patching complete.")
 
 def patch_forkop_apply_uc(apply_uc_path):
@@ -284,6 +288,56 @@ def patch_argon_makefile(makefile_path):
         return True
     else:
         print(f"[patch_feeds] Warning: Target block not found in {makefile_path}")
+        return False
+
+def patch_luci_wifi_status(wifi_js_path):
+    if not os.path.isfile(wifi_js_path):
+        print(f"[patch_feeds] Note: {wifi_js_path} not found, skipping.")
+        return False
+
+    with open(wifi_js_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    if "if (eht)" in content:
+        print(f"[patch_feeds] Already patched: {wifi_js_path}")
+        return True
+
+    old_block = """\t\tif (he) {
+\t\t\ts += ', HE-MCS\\xa0%d'.format(mcs);
+\t\t\tif (nss) s += ', HE-NSS\\xa0%d'.format(nss);
+\t\t\tif (he_gi) s += ', HE-GI\\xa0%d'.format(he_gi);
+\t\t\tif (he_dcm) s += ', HE-DCM\\xa0%d'.format(he_dcm);
+\t\t}"""
+
+    new_block = """\t\tif (he) {
+\t\t\ts += ', HE-MCS\\xa0%d'.format(mcs);
+\t\t\tif (nss) s += ', HE-NSS\\xa0%d'.format(nss);
+\t\t\tif (he_gi) s += ', HE-GI\\xa0%d'.format(he_gi);
+\t\t\tif (he_dcm) s += ', HE-DCM\\xa0%d'.format(he_dcm);
+\t\t}
+
+\t\tif (eht) {
+\t\t\ts += ', EHT-MCS\\xa0%d'.format(mcs);
+\t\t\tif (nss) s += ', EHT-NSS\\xa0%d'.format(nss);
+\t\t\tif (eht_gi) s += ', EHT-GI\\xa0%d'.format(eht_gi);
+\t\t}"""
+
+    old_vars = """\t\t\the = rt.he, he_gi = rt.he_gi,
+\t\t\the_dcm = rt.he_dcm;"""
+
+    new_vars = """\t\t\the = rt.he, he_gi = rt.he_gi,
+\t\t\the_dcm = rt.he_dcm,
+\t\t\teht = rt.eht, eht_gi = rt.eht_gi;"""
+
+    if old_block in content and old_vars in content:
+        content = content.replace(old_vars, new_vars, 1)
+        content = content.replace(old_block, new_block, 1)
+        with open(wifi_js_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"[patch_feeds] Successfully patched: {wifi_js_path} (added EHT/Wi-Fi 7 rate display)")
+        return True
+    else:
+        print(f"[patch_feeds] Warning: Target blocks not found in {wifi_js_path}")
         return False
 
 if __name__ == "__main__":

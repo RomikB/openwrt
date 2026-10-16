@@ -1,0 +1,9 @@
+#!/bin/sh
+# Disable boot_check service in dev profile so multiple reboots trigger U-Boot rollback to stock slot
+
+if [ -f /etc/init.d/boot_check ]; then
+	/etc/init.d/boot_check disable 2>/dev/null || true
+	rm -f /etc/rc.d/S99boot_check 2>/dev/null || true
+fi
+
+return 0 2>/dev/null || exit 0

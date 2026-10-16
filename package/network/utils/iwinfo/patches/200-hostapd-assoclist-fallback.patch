@@ -136,7 +136,7 @@
  
  	return -1;
  }
-@@ -2440,9 +2529,113 @@
+@@ -2440,9 +2529,139 @@
  
  		closedir(d);
  
@@ -210,32 +210,58 @@
 +									cur.tx_bytes = (uint64_t)strtoull(line + 9, NULL, 10);
 +								} else if (!strncmp(line, "flags=", 6)) {
 +									if (strstr(line, "[EHT]") || strstr(line, "[BE]")) {
-+										cur.rx_rate.is_he = cur.tx_rate.is_he = 1;
++										cur.rx_rate.is_eht = cur.tx_rate.is_eht = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2882000 : 688000);
 +										cur.rx_rate.mcs = cur.tx_rate.mcs = 13;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
 +									} else if (strstr(line, "[HE]")) {
 +										cur.rx_rate.is_he = cur.tx_rate.is_he = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2402000 : 574000);
 +										cur.rx_rate.mcs = cur.tx_rate.mcs = 11;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
 +									} else if (strstr(line, "[VHT]")) {
 +										cur.rx_rate.is_vht = cur.tx_rate.is_vht = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 80 : 20);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 866700 : 173300);
 +										cur.rx_rate.mcs = cur.tx_rate.mcs = 9;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
 +								} else if (strstr(line, "[HT]")) {
 +										cur.rx_rate.is_ht = cur.tx_rate.is_ht = 1;
 +										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 40 : 20);
 +										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 300000 : 144400);
 +										cur.rx_rate.mcs = cur.tx_rate.mcs = 7;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
 +									}
 +								} else if (!strncmp(line, "rx_rate_info=", 13)) {
 +									uint32_t rinfo = strtoul(line + 13, NULL, 10);
-+									if (rinfo > 0) cur.rx_rate.rate = rinfo * 1000;
++									if (rinfo > 0) cur.rx_rate.rate = rinfo * 100;
++									char *p;
++									if ((p = strstr(line, "vhtmcs ")) != NULL) {
++										cur.rx_rate.mcs = atoi(p + 7);
++										cur.rx_rate.is_vht = 1;
++									} else if ((p = strstr(line, "mcs ")) != NULL) {
++										cur.rx_rate.mcs = atoi(p + 4);
++									}
++									if ((p = strstr(line, "vhtnss ")) != NULL)
++										cur.rx_rate.nss = atoi(p + 7);
++									if (strstr(line, "shortGI"))
++										cur.rx_rate.is_short_gi = 1;
 +								} else if (!strncmp(line, "tx_rate_info=", 13)) {
 +									uint32_t rinfo = strtoul(line + 13, NULL, 10);
-+									if (rinfo > 0) cur.tx_rate.rate = rinfo * 1000;
++									if (rinfo > 0) cur.tx_rate.rate = rinfo * 100;
++									char *p;
++									if ((p = strstr(line, "vhtmcs ")) != NULL) {
++										cur.tx_rate.mcs = atoi(p + 7);
++										cur.tx_rate.is_vht = 1;
++									} else if ((p = strstr(line, "mcs ")) != NULL) {
++										cur.tx_rate.mcs = atoi(p + 4);
++									}
++									if ((p = strstr(line, "vhtnss ")) != NULL)
++										cur.tx_rate.nss = atoi(p + 7);
++									if (strstr(line, "shortGI"))
++										cur.tx_rate.is_short_gi = 1;
 +								}
 +							}
 +
