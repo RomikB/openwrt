@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import re
 
 def patch_lucihttp_makefile(makefile_path):
     if not os.path.isfile(makefile_path):
@@ -274,14 +275,13 @@ def patch_argon_makefile(makefile_path):
     with open(makefile_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    if "LUCI_DEPENDS:=+uclient-fetch +jsonfilter" in content:
+    if "+uclient-fetch" in content and "+!USE_APK:wget" not in content:
         print(f"[patch_feeds] Already patched: {makefile_path}")
         return True
 
-    old = "LUCI_DEPENDS:=+USE_APK:wget-any +!USE_APK:wget +jsonfilter"
-    new = "LUCI_DEPENDS:=+uclient-fetch +jsonfilter"
-    if old in content:
-        content = content.replace(old, new, 1)
+    pattern = r'\+USE_APK:wget-any\s+\+!USE_APK:wget'
+    if re.search(pattern, content):
+        content = re.sub(pattern, '+uclient-fetch', content, count=1)
         with open(makefile_path, 'w', encoding='utf-8') as f:
             f.write(content)
         print(f"[patch_feeds] Successfully patched: {makefile_path} (use uclient-fetch instead of GNU wget)")
