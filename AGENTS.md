@@ -95,6 +95,8 @@
   $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md)
 * **Firewall4 (nftables), аппаратный оффлоад PPE/ECM, стенд и методика iperf3**:
   $\to$ [docs/networking_and_firewall.md](file:///home/romikb/openwrt/docs/networking_and_firewall.md)
+* **Методика и результаты бенчмарков аппаратного ускорения (Qualcomm PPE/ECM, RAM baseline)**:
+  $\to$ [docs/traffic_acceleration_benchmarks.md](file:///home/romikb/openwrt/docs/traffic_acceleration_benchmarks.md)
 * **Безопасность, обход блокировок (Zapret2, RuAntiBlock), VPN (AmneziaWG) и DNS**:
   $\to$ [docs/security_and_bypasses.md](file:///home/romikb/openwrt/docs/security_and_bypasses.md)
 * **Дорожная карта, бюджет флеш-памяти и активный бэклог (AmneziaWG, LuCI)**:
