@@ -11,7 +11,7 @@
  
  	if (!fp)
  		return 0;
-@@ -1632,6 +1636,22 @@
+@@ -1632,6 +1636,49 @@
  	return NL_SKIP;
  }
  
@@ -29,12 +29,39 @@
 +	return ifname;
 +}
 +
++
++static uint8_t calc_mcs(uint32_t rate_kbps, int mhz, int nss, int is_eht, int is_he)
++{
++	if (nss < 1) nss = 1;
++	if (mhz < 20) mhz = 20;
++
++	uint32_t r1 = rate_kbps / nss;
++	uint32_t r0 = (r1 * 160) / mhz;
++
++	if (is_eht) {
++		if (r0 >= 1350000) return 13;
++		if (r0 >= 1250000) return 12;
++	}
++	if (r0 >= 1140000) return 11;
++	if (r0 >= 1020000) return 10;
++	if (r0 >= 910000)  return 9;
++	if (r0 >= 790000)  return 8;
++	if (r0 >= 680000)  return 7;
++	if (r0 >= 560000)  return 6;
++	if (r0 >= 420000)  return 5;
++	if (r0 >= 300000)  return 4;
++	if (r0 >= 210000)  return 3;
++	if (r0 >= 150000)  return 2;
++	if (r0 >= 90000)   return 1;
++	return 0;
++}
++
 +static int nl80211_get_assoclist(const char *ifname, char *buf, int *len);
 +
  static void nl80211_fill_signal(const char *ifname, struct nl80211_rssi_rate *r)
  {
  	DIR *d;
-@@ -1654,6 +1669,32 @@
+@@ -1654,6 +1701,32 @@
  
  		closedir(d);
  	}
@@ -67,7 +94,7 @@
  }
  
  static int nl80211_get_bitrate(const char *ifname, int *buf)
-@@ -1664,11 +1705,12 @@
+@@ -1664,11 +1737,12 @@
  
  	if (rr.rate_samples)
  	{
@@ -82,7 +109,7 @@
  }
  
  static int nl80211_get_signal(const char *ifname, int *buf)
-@@ -2037,6 +2079,53 @@
+@@ -2037,6 +2111,53 @@
  		return 0;
  	}
  
@@ -136,7 +163,7 @@
  
  	return -1;
  }
-@@ -2440,9 +2529,139 @@
+@@ -2440,9 +2561,219 @@
  
  		closedir(d);
  
@@ -235,8 +262,6 @@
 +										cur.rx_rate.nss = cur.tx_rate.nss = 2;
 +									}
 +								} else if (!strncmp(line, "rx_rate_info=", 13)) {
-+									uint32_t rinfo = strtoul(line + 13, NULL, 10);
-+									if (rinfo > 0) cur.rx_rate.rate = rinfo * 100;
 +									char *p;
 +									if ((p = strstr(line, "vhtmcs ")) != NULL) {
 +										cur.rx_rate.mcs = atoi(p + 7);
@@ -249,8 +274,6 @@
 +									if (strstr(line, "shortGI"))
 +										cur.rx_rate.is_short_gi = 1;
 +								} else if (!strncmp(line, "tx_rate_info=", 13)) {
-+									uint32_t rinfo = strtoul(line + 13, NULL, 10);
-+									if (rinfo > 0) cur.tx_rate.rate = rinfo * 100;
 +									char *p;
 +									if ((p = strstr(line, "vhtmcs ")) != NULL) {
 +										cur.tx_rate.mcs = atoi(p + 7);
@@ -274,6 +297,90 @@
 +				}
 +				close(sock);
 +				unlink(local.sun_path);
++			}
++			/* Enrich station rates and modes using wlanconfig */
++			char wcmd[128];
++			snprintf(wcmd, sizeof(wcmd), "/usr/sbin/wlanconfig %s list 2>/dev/null", ifname);
++			FILE *wfp = popen(wcmd, "r");
++			if (wfp) {
++				char wline[512];
++				while (fgets(wline, sizeof(wline), wfp)) {
++					char wmac_str[18] = { 0 };
++					char aid_s[16], chan_s[16], txrate_s[16], rxrate_s[16];
++					if (sscanf(wline, "%17s %15s %15s %15s %15s", wmac_str, aid_s, chan_s, txrate_s, rxrate_s) != 5)
++						continue;
++
++					unsigned int wmac[6];
++					if (sscanf(wmac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
++					           &wmac[0], &wmac[1], &wmac[2], &wmac[3], &wmac[4], &wmac[5]) != 6)
++						continue;
++
++					int s_idx = -1;
++					for (int s = 0; s < arr.count; s++) {
++						if (res_e[s].mac[0] == (uint8_t)wmac[0] &&
++						    res_e[s].mac[1] == (uint8_t)wmac[1] &&
++						    res_e[s].mac[2] == (uint8_t)wmac[2] &&
++						    res_e[s].mac[3] == (uint8_t)wmac[3] &&
++						    res_e[s].mac[4] == (uint8_t)wmac[4] &&
++						    res_e[s].mac[5] == (uint8_t)wmac[5]) {
++							s_idx = s;
++							break;
++						}
++					}
++
++					if (s_idx < 0 && arr.count < 128) {
++						s_idx = arr.count++;
++						memset(&res_e[s_idx], 0, sizeof(res_e[s_idx]));
++						for (int k = 0; k < 6; k++)
++							res_e[s_idx].mac[k] = (uint8_t)wmac[k];
++						res_e[s_idx].is_authorized = 1;
++						res_e[s_idx].is_authenticated = 1;
++						res_e[s_idx].noise = noise;
++					}
++
++					if (s_idx >= 0) {
++						float tx_f = atof(txrate_s);
++						float rx_f = atof(rxrate_s);
++						uint32_t tx_kbps = (strchr(txrate_s, 'M') || strchr(txrate_s, 'm')) ? (uint32_t)(tx_f * 1000.0) : (uint32_t)tx_f;
++						uint32_t rx_kbps = (strchr(rxrate_s, 'M') || strchr(rxrate_s, 'm')) ? (uint32_t)(rx_f * 1000.0) : (uint32_t)rx_f;
++
++						if (tx_kbps > 0) res_e[s_idx].tx_rate.rate = tx_kbps;
++						if (rx_kbps > 0) res_e[s_idx].rx_rate.rate = rx_kbps;
++
++						char *mode_p = strstr(wline, "IEEE80211_MODE_");
++						if (mode_p) {
++							int is_eht = (strstr(mode_p, "11BE") != NULL);
++							int is_he  = (strstr(mode_p, "11AX") != NULL);
++							int is_vht = (strstr(mode_p, "11AC") != NULL);
++							int is_ht  = (strstr(mode_p, "11N") != NULL);
++
++							int mhz = 20;
++							if (strstr(mode_p, "160")) mhz = 160;
++							else if (strstr(mode_p, "80")) mhz = 80;
++							else if (strstr(mode_p, "40")) mhz = 40;
++
++							int rxnss = 1, txnss = 1;
++							sscanf(mode_p, "%*s %d %d", &rxnss, &txnss);
++							if (rxnss < 1) rxnss = 1;
++							if (txnss < 1) txnss = 1;
++
++							res_e[s_idx].tx_rate.is_eht = res_e[s_idx].rx_rate.is_eht = is_eht;
++							res_e[s_idx].tx_rate.is_he  = res_e[s_idx].rx_rate.is_he  = is_he;
++							res_e[s_idx].tx_rate.is_vht = res_e[s_idx].rx_rate.is_vht = is_vht;
++							res_e[s_idx].tx_rate.is_ht  = res_e[s_idx].rx_rate.is_ht  = is_ht;
++
++							res_e[s_idx].tx_rate.mhz = res_e[s_idx].rx_rate.mhz = mhz;
++							res_e[s_idx].tx_rate.nss = txnss;
++							res_e[s_idx].rx_rate.nss = rxnss;
++
++							if (is_eht || is_he || is_vht || is_ht) {
++								if (tx_kbps > 0) res_e[s_idx].tx_rate.mcs = calc_mcs(tx_kbps, mhz, txnss, is_eht, is_he);
++								if (rx_kbps > 0) res_e[s_idx].rx_rate.mcs = calc_mcs(rx_kbps, mhz, rxnss, is_eht, is_he);
++							}
++						}
++					}
++				}
++				pclose(wfp);
 +			}
 +		}
  
