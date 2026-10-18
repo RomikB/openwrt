@@ -711,7 +711,7 @@ endef
 $(eval $(call KernelPackage,mppe))
 
 
-SCHED_MODULES_CORE = sch_ingress sch_hfsc@ge6.6 sch_htb sch_tbf@ge6.6 cls_basic@ge6.6 cls_fw cls_route@ge6.6 cls_flow@ge6.6 cls_u32 em_u32 act_gact@ge6.6 act_mirred@ge6.6 act_skbedit@ge6.6 cls_matchall@ge6.6
+SCHED_MODULES_CORE = sch_ingress sch_hfsc@ge6.6 sch_htb sch_tbf@ge6.6 cls_basic@ge6.6 cls_fw cls_route@ge6.6 cls_flow@ge6.6 cls_u32 em_u32 act_gact@ge6.6 act_mirred act_skbedit@ge6.6 cls_matchall@ge6.6
 SCHED_FILES_CORE = $(foreach mod,$(SCHED_MODULES_CORE),$(LINUX_DIR)/net/sched/$(mod).ko)
 
 define KernelPackage/sched-core
@@ -731,7 +731,7 @@ define KernelPackage/sched-core
 	CONFIG_NET_CLS_ROUTE4@ge6.6 \
 	CONFIG_NET_CLS_U32 \
 	CONFIG_NET_ACT_GACT@ge6.6 \
-	CONFIG_NET_ACT_MIRRED@ge6.6 \
+	CONFIG_NET_ACT_MIRRED \
 	CONFIG_NET_ACT_SKBEDIT@ge6.6 \
 	CONFIG_NET_CLS_MATCHALL@ge6.6 \
 	CONFIG_NET_EMATCH=y \
