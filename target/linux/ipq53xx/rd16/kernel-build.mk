@@ -1,6 +1,6 @@
-LINUX_SOURCE:=linux-ipq-5.4-668bf957bfdcc05253bc3767c149c258ae49f323.tar.gz
-LINUX_SITE:=https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4/-/archive/668bf957bfdcc05253bc3767c149c258ae49f323/
-LINUX_KERNEL_HASH:=6da74559d45fd7c9a80d4015b4c8bc721ab97e0de35c4b0011f583bf43f2bef8
+LINUX_SOURCE:=linux-ipq-5.4-c2ca06284375ae9af06de73ea309065cc1be6e7b.tar.gz
+LINUX_SITE:=https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4/-/archive/c2ca06284375ae9af06de73ea309065cc1be6e7b/
+LINUX_KERNEL_HASH:=0b72e6926b630015e348a95bcbbaf9c5dc3c275d71b1dc34b0c74bd1cf54bd56
 LINUX_CAT:=$(STAGING_DIR_HOST)/bin/libdeflate-gzip -dc
 
 TAR_OPTIONS:=--transform 's,^linux-ipq-5.4-[^/]*,linux-$(LINUX_VERSION),' $(TAR_OPTIONS)
