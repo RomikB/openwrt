@@ -74,7 +74,7 @@ define Build/fit-rd15
 		$(if $(DEVICE_DTS_DELIMITER),-l $(DEVICE_DTS_DELIMITER)) \
 		-c $(if $(DEVICE_DTS_CONFIG),$(DEVICE_DTS_CONFIG),"config-1") \
 		-A $(LINUX_KARCH) -v $(LINUX_VERSION))
-	sed -i '/kernel@1 {/a \\t\t\tmiwifirom = "1.0.81";' $@.its
+	sed -i '/kernel@1 {/a \\t\t\tmiwifirom = "1.0.87";' $@.its
 	PATH=$(LINUX_DIR)/scripts/dtc:$(PATH) mkimage -f $@.its $@.new
 	@mv $@.new $@
 endef

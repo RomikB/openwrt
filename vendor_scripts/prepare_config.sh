@@ -75,6 +75,7 @@ enable PACKAGE_forkop m
 enable PACKAGE_iptables-mod-ipopt
 enable PACKAGE_iptables-nft m
 enable PACKAGE_kmod-ifb m
+enable PACKAGE_kmod-sched-act-mirred m
 enable PACKAGE_kmod-sched-cake m
 enable PACKAGE_librt m
 enable PACKAGE_luci-app-forkop m

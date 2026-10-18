@@ -71,7 +71,7 @@
 1. **Чистые релизные профили без суффикса (`xiaomi-rd15-qsdk` / `xiaomi-rd15-prebuild`):**
    * Максимально легковесные и чистые образы: содержат аппаратный стек, драйверы, LuCI и системные утилиты без предустановленных средств обхода блокировок.
    * `xiaomi-rd15-qsdk` — основная открытая сборка с ядром QSDK 12.4.
-   * `xiaomi-rd15-prebuild` — со стоковым ядром вендора 1.0.81.
+   * `xiaomi-rd15-prebuild` — со стоковым ядром вендора 1.0.87.
 
 2. **Профили проксирования и VPN (`*-singbox`):**
    * `xiaomi-rd15-*-singbox`: включает облегченный `sing-box`, BBR, полный стек модулей ядра Netfilter/маршрутизации для работы Podkop и Forkop (`kmod-nft-tproxy`, `kmod-nft-socket`, `kmod-nft-nat`, `kmod-inet-diag`, `kmod-netlink-diag`, `kmod-tun`), а также Zapret2 и AmneziaWG. Сами пользовательские пакеты `podkop`, `forkop` и `ruantiblock` собираются модульно (`.ipk`) через `prepare_config.sh` для установки через opkg.
