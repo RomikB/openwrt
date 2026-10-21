@@ -1,6 +1,6 @@
 # Инструкции и архитектурные правила для AI-агентов (AGENTS.md)
 
-Проект: Кастомная прошивка **OpenWrt 24 (24.10 / master)** для маршрутизатора **Xiaomi Router BE3600 (RD15)** на ядре **Linux 5.4.213 (Qualcomm QSDK 12.4)**.
+Проект: Кастомная прошивка **OpenWrt 24 (24.10 / master)** для маршрутизатора **Xiaomi Router BE3600 (RD15)** на ядре **Linux 5.4.213 (Qualcomm QSDK 12.5)**.
 
 ---
 
@@ -16,13 +16,12 @@
   * `target/linux/ipq53xx/rd15/` (Xiaomi Router BE3600 с портом 2.5G)
   * `target/linux/ipq53xx/rd16/` (Xiaomi Router BE3600 без порта 2.5G, 4x GE)
 * **Профили сборки RD15 (`target/linux/ipq53xx/image/rd15.mk`)**:
-  * `xiaomi-rd15-qsdk` / `xiaomi-rd15-prebuild` — чистые релизные профили без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
-  * `xiaomi-rd15-qsdk-singbox` / `xiaomi-rd15-prebuild-singbox` — профили со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
+  * `xiaomi-rd15-qsdk` — чистый релизный профиль без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
+  * `xiaomi-rd15-qsdk-singbox` — профиль со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
   * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
-  * `xiaomi-rd15-prebuild-diag` — диагностический профиль на prebuild-ядре с пакетом `rd15-hwdiag` (автосбор всех логов в `/data` и автоматический rollback в соседний rootfs при аппаратной несовместимости).
 * **Профили сборки RD16 (`target/linux/ipq53xx/image/rd16.mk`)**:
-  * `xiaomi-rd16-qsdk` / `xiaomi-rd16-prebuild` — чистые релизные профили.
-  * `xiaomi-rd16-qsdk-singbox` / `xiaomi-rd16-prebuild-singbox` — профили со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
+  * `xiaomi-rd16-qsdk` — чистый релизный профиль.
+  * `xiaomi-rd16-qsdk-singbox` — профиль со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
 
 ---
 
@@ -91,7 +90,9 @@
   $\to$ [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)
 * **Коммутатор Motorcomm YT9215S, сетевой стек, ревизии 2.5G PHY (QCA8081 / YT8821), 4 патча драйвера, DSA**:
   $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
-* **Ядро QSDK 12.4, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:
+* **Архитектура QinQ (802.1ad) для пользовательских VLAN поверх открытого DSA (перспективная доработка)**:
+  $\to$ [docs/dsa_qinq_architecture.md](file:///home/romikb/openwrt/docs/dsa_qinq_architecture.md)
+* **Ядро QSDK 12.5, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:
   $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md)
 * **Firewall4 (nftables), аппаратный оффлоад PPE/ECM, стенд и методика iperf3**:
   $\to$ [docs/networking_and_firewall.md](file:///home/romikb/openwrt/docs/networking_and_firewall.md)
@@ -102,6 +103,6 @@
 * **Дорожная карта, бюджет флеш-памяти и активный бэклог (AmneziaWG, LuCI)**:
   $\to$ [docs/roadmap.md](file:///home/romikb/openwrt/docs/roadmap.md)
 * **Архив исторических логов и завершенных отчетов**:
-  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`stock_wifi_bridge_mlo_and_mesh_analysis.md`, `channel_12_13_regulatory.md`, `dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
+  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`dsa_implementation.md`, `stock_wifi_bridge_mlo_and_mesh_analysis.md`, `channel_12_13_regulatory.md`, `dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
 
 
