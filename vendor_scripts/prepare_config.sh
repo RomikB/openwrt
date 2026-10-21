@@ -26,13 +26,9 @@ enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
 
 if [ "$TARGET_MODEL" = "rd16" ]; then
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-prebuild-singbox
     enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk
     enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk-singbox
 else
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-prebuild-singbox
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-singbox
     enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev

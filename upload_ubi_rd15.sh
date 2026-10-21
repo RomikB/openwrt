@@ -4,11 +4,8 @@
 # Usage: ./upload_ubi_rd15.sh [HOST] [FILE|FLAVOR]
 # Examples:
 #   ./upload_ubi_rd15.sh                              # Interactive selection
-#   ./upload_ubi_rd15.sh prebuild                     # Prebuild vendor Base
 #   ./upload_ubi_rd15.sh qsdk                         # QSDK native Base [Main]
-#   ./upload_ubi_rd15.sh prebuild-singbox             # Prebuild vendor + Sing-box stack
 #   ./upload_ubi_rd15.sh qsdk-singbox                 # QSDK native + Sing-box stack
-#   ./upload_ubi_rd15.sh prebuild-dev                 # Prebuild vendor Dev
 #   ./upload_ubi_rd15.sh qsdk-dev                     # QSDK native Dev
 #   ./upload_ubi_rd15.sh 192.168.1.1 qsdk             # Specify IP and image flavor
 #   ./upload_ubi_rd15.sh bin/.../image.ubi            # Specify explicit image path
@@ -21,34 +18,22 @@ HOST="$DEFAULT_HOST"
 FILE=""
 
 # Standard image definitions
-PREBUILD_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi"
 QSDK_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi"
-PREBUILD_SINGBOX_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-singbox-squashfs-factory.ubi"
 QSDK_SINGBOX_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-singbox-squashfs-factory.ubi"
-PREBUILD_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-dev-squashfs-factory.ubi"
 QSDK_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-dev-squashfs-factory.ubi"
 
 resolve_flavor() {
     case "$1" in
         # Base flavors
-        prebuild|prebuild-base|base-prebuild)
-            echo "$PREBUILD_BASE_IMG"
-            ;;
-        qsdk|qsdk-base|base-qsdk|base)
+        qsdk|qsdk-base|base-qsdk|base|prebuild|prebuild-base|base-prebuild)
             echo "$QSDK_BASE_IMG"
             ;;
         # Singbox flavors
-        prebuild-singbox|singbox-prebuild|prebuild-podkop|podkop-prebuild)
-            echo "$PREBUILD_SINGBOX_IMG"
-            ;;
-        qsdk-singbox|singbox-qsdk|singbox|sing-box|qsdk-podkop|podkop-qsdk|podkop)
+        qsdk-singbox|singbox-qsdk|singbox|sing-box|qsdk-podkop|podkop-qsdk|podkop|prebuild-singbox|singbox-prebuild|prebuild-podkop|podkop-prebuild)
             echo "$QSDK_SINGBOX_IMG"
             ;;
         # Dev flavors
-        prebuild-dev|dev-prebuild)
-            echo "$PREBUILD_DEV_IMG"
-            ;;
-        qsdk-dev|dev-qsdk|dev)
+        qsdk-dev|dev-qsdk|dev|prebuild-dev|dev-prebuild)
             echo "$QSDK_DEV_IMG"
             ;;
         *)

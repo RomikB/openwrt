@@ -1,5 +1,4 @@
 DTC_FLAGS :=
-PREBUILD_PACKAGES := nvram-vendor
 QSDK_PACKAGES := uboot-envtools nvram-env
 SECURITY_PACKAGES := \
 	amneziawg-tools luci-proto-amneziawg \
@@ -37,31 +36,6 @@ define Device/Default
 	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
 
-define Device/xiaomi-rd15-prebuild
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd15-prebuild
-
-
-define Device/xiaomi-rd15-prebuild-singbox
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, singbox)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(SINGBOX_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd15-prebuild-singbox
-
-define Device/xiaomi-rd15-prebuild-diag
-	DEVICE_TITLE := Xiaomi BE3600 (prebuild kernel, diagnostic auto-rollback)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd15/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) rd15-hwdiag ethtool
-endef
-TARGET_DEVICES += xiaomi-rd15-prebuild-diag
-
 define Build/fit-rd15
 	$(call locked,$(TOPDIR)/scripts/mkits.sh \
 		-D $(DEVICE_NAME) -o $@.its -k $@ \
@@ -92,7 +66,6 @@ define Device/xiaomi-rd15-qsdk
 	DEVICE_PACKAGES := $(QSDK_PACKAGES)
 endef
 TARGET_DEVICES += xiaomi-rd15-qsdk
-
 
 define Device/xiaomi-rd15-qsdk-singbox
 	DEVICE_TITLE := Xiaomi BE3600 (native QSDK kernel, singbox)

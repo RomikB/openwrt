@@ -1,5 +1,4 @@
 DTC_FLAGS :=
-PREBUILD_PACKAGES := nvram-vendor
 QSDK_PACKAGES := uboot-envtools nvram-env
 SECURITY_PACKAGES := \
 	amneziawg-tools luci-proto-amneziawg \
@@ -36,22 +35,6 @@ define Device/Default
 	IMAGE/factory.ubi := append-ubi
 	IMAGE/sysupgrade.bin := append-ubi | append-metadata
 endef
-
-define Device/xiaomi-rd16-prebuild
-	DEVICE_TITLE := Xiaomi BE3600 RD16 (prebuild kernel)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd16/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd16/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd16-prebuild
-
-define Device/xiaomi-rd16-prebuild-singbox
-	DEVICE_TITLE := Xiaomi BE3600 RD16 (prebuild kernel, singbox)
-	KERNEL := copy-file $(TOPDIR)/target/linux/ipq53xx/rd16/kernel
-	UBINIZE_PARTS := kernel=:$(TOPDIR)/target/linux/ipq53xx/rd16/kernel
-	DEVICE_PACKAGES := $(PREBUILD_PACKAGES) $(SINGBOX_PACKAGES)
-endef
-TARGET_DEVICES += xiaomi-rd16-prebuild-singbox
 
 define Build/fit-rd16
 	$(call locked,$(TOPDIR)/scripts/mkits.sh \
