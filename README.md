@@ -37,15 +37,13 @@ case sensitive file system.
 
 ### Requirements
 
-You need the following tools to compile OpenWrt, the package names vary between
-distributions. A complete list with distribution specific packages is found in
-the [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem)
-documentation.
+Building this firmware requires the standard OpenWrt compilation tools, as well as additional utilities for unpacking and patching vendor components:
 
-```
-binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev
-make4.1+ perl python3.7+ rsync subversion unzip which
-```
+1. **OpenWrt Build System Prerequisites**: Follow the official [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem) guide to install distribution-specific packages.
+2. **Squashfs Tools**: Install `squashfs-tools` (provides `unsquashfs`) via your system package manager.
+3. **Python Modules**:
+   * `pyelftools` — install via system package (`python3-pyelftools`) or `pip install pyelftools`.
+   * `ubi_reader` — install from [onekey-sec/ubi_reader](https://github.com/onekey-sec/ubi_reader) (e.g. `pipx install ubi_reader` or `pip install --user ubi_reader`). Ensure the `ubireader_extract_images` binary is accessible in your `$PATH`.
 
 ### Quickstart
 
