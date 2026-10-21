@@ -1,0 +1,11 @@
+#!/bin/sh
+
+do_rename_eth1() {
+	[ -e /sys/class/net/eth1 ] && {
+		ip link set dev eth1 down 2>/dev/null
+		ip link set dev eth1 name port4 2>/dev/null
+	}
+	return 0 2>/dev/null || exit 0
+}
+
+boot_hook_add preinit_main do_rename_eth1

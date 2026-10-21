@@ -387,7 +387,7 @@
 
 		mdio@90000 {
 			#address-cells = <0x01>;
-			#size-cells = <0x01>;
+			#size-cells = <0x00>;
 			compatible = "qcom,qca-mdio\0qcom,ipq40xx-mdio";
 			reg = <0x90000 0x64 0x9b780 0x08>;
 			clocks = <0x06 0x27 0x06 0x90 0x06 0x91 0x06 0x92 0x06 0x93>;
@@ -404,6 +404,74 @@
 
 			ethernet-phy@1 {
 				reg = <0x07>;
+			};
+
+			switch0: switch@1d {
+				compatible = "motorcomm,yt9215";
+				reg = <0x1d>;
+				reset-gpios = <0x0a 51 1>;
+
+				mdio {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					sw_phy0: phy@0 {
+						reg = <0>;
+					};
+
+					sw_phy1: phy@1 {
+						reg = <1>;
+					};
+
+					sw_phy2: phy@2 {
+						reg = <2>;
+					};
+
+					sw_phy3: phy@3 {
+						reg = <3>;
+					};
+
+					sw_phy4: phy@4 {
+						reg = <4>;
+					};
+				};
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@1 {
+						reg = <1>;
+						label = "port3";
+						phy-mode = "internal";
+						phy-handle = <&sw_phy1>;
+					};
+
+					port@2 {
+						reg = <2>;
+						label = "port2";
+						phy-mode = "internal";
+						phy-handle = <&sw_phy2>;
+					};
+
+					port@3 {
+						reg = <3>;
+						label = "port1";
+						phy-mode = "internal";
+						phy-handle = <&sw_phy3>;
+					};
+
+					port@8 {
+						reg = <8>;
+						phy-mode = "2500base-x";
+						ethernet = <&dp1>;
+
+						fixed-link {
+							speed = <2500>;
+							full-duplex;
+						};
+					};
+				};
 			};
 		};
 
@@ -2217,7 +2285,7 @@
 			status = "ok";
 		};
 
-		dp1 {
+		dp1: dp1 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <0x02>;

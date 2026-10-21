@@ -11,7 +11,8 @@ DEFAULT_PACKAGES.router += -procd-ujail base-files-vendor
 DEFAULT_PACKAGES += \
 	kmod-bootconfig kmod-gpio-button-hotplug kmod-pwm-rgb \
 	kmod-nft-bridge \
-	kmod-yt-9215s-driver kmod-yt-phy-driver swconfig yt-9215s-client \
+	kmod-yt-phy-driver \
+	kmod-yt-921x-dsa \
 	kmod-qca-nss-ppe-lag-mgr kmod-qca-nss-ppe-pppoe-mgr qca-ssdk-shell \
 	block-mount ethtool ip-full nand-utils \
 	luci \

@@ -13,10 +13,8 @@ ipq53xx_setup_interfaces()
 	qcom,ipq5332-ap-mi04.1-c2 |\
 	qcom,ipq5332-rd15 |\
 	*ap-mi04.1* | *rd15*)
-		# Xiaomi Router BE3600 (RD15) on prebuilt or QSDK kernel
-		# Announce LAN as static bridge and WAN as DHCP for odhcpd and LuCI
-		ucidef_set_interface_lan "br-lan"
-		ucidef_set_interface_wan "eth0.1"
+		# Xiaomi Router BE3600 (RD15) DSA network interfaces (port1-port4)
+		ucidef_set_interfaces_lan_wan "port2 port3 port4" "port1"
 		;;
 	*)
 		echo "Unsupported hardware: $board"

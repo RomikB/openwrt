@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ "$ACTION" = "add" -a "$INTERFACE" = "eth1" ]; then
+	ip link set dev eth1 down 2>/dev/null
+	ip link set dev eth1 name port4 2>/dev/null
+fi
