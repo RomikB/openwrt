@@ -1,0 +1,205 @@
+--- a/ecm_interface.h
++++ b/ecm_interface.h
+@@ -16,6 +16,23 @@
+  **************************************************************************
+  */
+ 
++#include <linux/if_vlan.h>
++
++/*
++ * Safe wrapper for vlan_dev_get_egress_qos_mask to support DSA slave devices
++ * treated as VLAN interfaces in ECM without accessing unmapped struct vlan_dev_priv.
++ */
++static inline u16 ecm_vlan_dev_get_egress_qos_mask(struct net_device *dev, u32 qos_tag)
++{
++#ifdef CONFIG_VLAN_8021Q
++	if (is_vlan_dev(dev)) {
++		return vlan_dev_get_egress_qos_mask(dev, qos_tag);
++	}
++#endif
++	return 0;
++}
++#define vlan_dev_get_egress_qos_mask(dev, qos) ecm_vlan_dev_get_egress_qos_mask(dev, qos)
++
+ extern int ecm_interface_src_check;	/* Source interface check flag */
+ #if defined(CONFIG_NET_CLS_ACT) && defined(ECM_CLASSIFIER_DSCP_IGS)
+ extern int ecm_interface_igs_enabled;	/* IGS enabled check flag */
+--- a/ecm_interface.c
++++ b/ecm_interface.c
+@@ -77,6 +77,9 @@
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ #include <linux/../../net/8021q/vlan.h>
+ #include <linux/if_vlan.h>
++#if defined(CONFIG_NET_DSA)
++#include <net/dsa.h>
++#endif
+ #endif
+ #ifdef ECM_INTERFACE_PPP_ENABLE
+ #include <linux/if_pppox.h>
+@@ -310,6 +313,11 @@
+  */
+ static inline struct net_device *ecm_interface_vlan_real_dev(struct net_device *vlan_dev)
+ {
++#if defined(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(vlan_dev)) {
++		return dsa_slave_to_master(vlan_dev);
++	}
++#endif
+ 	return vlan_dev_next_dev(vlan_dev);
+ }
+ 
+@@ -3130,6 +3138,24 @@
+ 			ii = ecm_interface_vlan_interface_establish(&type_info.vlan, dev_name, dev_interface_num, ae_interface_num, dev_mtu);
+ 			goto identifier_update;
+ 		}
++#if defined(CONFIG_NET_DSA)
++		/*
++		 * DSA slave port treated as VLAN interface for PPE/SFE offload
++		 */
++		if (dsa_slave_dev_check(dev)) {
++			ether_addr_copy(type_info.vlan.address, dev->dev_addr);
++			type_info.vlan.vlan_tag = dsa_slave_to_vid(dev);
++			type_info.vlan.vlan_tpid = ETH_P_8021Q;
++			DEBUG_TRACE("%px: Net device: %px is DSA slave, mac: %pM, vlan_id: %x vlan_tpid: %x\n",
++					feci, dev, type_info.vlan.address, type_info.vlan.vlan_tag, type_info.vlan.vlan_tpid);
++
++			/*
++			 * Establish this type of interface
++			 */
++			ii = ecm_interface_vlan_interface_establish(&type_info.vlan, dev_name, dev_interface_num, ae_interface_num, dev_mtu);
++			goto identifier_update;
++		}
++#endif
+ #endif
+ 
+ #ifdef ECM_INTERFACE_MACVLAN_ENABLE
+@@ -3957,7 +3983,11 @@
+ 				/*
+ 				 * VLAN?
+ 				 */
+-				if (is_vlan_dev(dest_dev)) {
++				if (is_vlan_dev(dest_dev)
++#if defined(CONFIG_NET_DSA)
++				    || dsa_slave_dev_check(dest_dev)
++#endif
++				) {
+ 					/*
+ 					 * VLAN master
+ 					 * No locking needed here, ASSUMPTION is that real_dev is held for as long as we have dev.
+@@ -5181,7 +5211,11 @@
+ 				/*
+ 				 * VLAN?
+ 				 */
+-				if (is_vlan_dev(dest_dev)) {
++				if (is_vlan_dev(dest_dev)
++#if defined(CONFIG_NET_DSA)
++				    || dsa_slave_dev_check(dest_dev)
++#endif
++				) {
+ 					/*
+ 					 * VLAN master
+ 					 * No locking needed here, ASSUMPTION is that real_dev is held for as long as we have dev.
+@@ -5282,7 +5316,11 @@
+ 
+ 						lookup_dev = dest_dev;
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+-						if ((top_dev) && (is_routed) && (is_vlan_dev(top_dev))) {
++						if ((top_dev) && (is_routed) && (is_vlan_dev(top_dev)
++#if defined(CONFIG_NET_DSA)
++							|| dsa_slave_dev_check(top_dev)
++#endif
++						)) {
+ 							/*
+ 							 * VLAN over bridge case
+ 							 */
+@@ -6125,7 +6163,11 @@
+ 				/*
+ 				 * VLAN?
+ 				 */
+-				if (is_vlan_dev(dest_dev)) {
++				if (is_vlan_dev(dest_dev)
++#if defined(CONFIG_NET_DSA)
++				    || dsa_slave_dev_check(dest_dev)
++#endif
++				) {
+ 					/*
+ 					 * VLAN master
+ 					 * No locking needed here, ASSUMPTION is that real_dev is held for as long as we have dev.
+--- a/ecm_db/ecm_db_connection.c
++++ b/ecm_db/ecm_db_connection.c
+@@ -51,6 +51,9 @@
+ #ifdef ECM_BRIDGE_VLAN_FILTERING_ENABLE
+ #include <linux/if_vlan.h>
+ #include <linux/if_bridge.h>
++#if defined(CONFIG_NET_DSA)
++#include <net/dsa.h>
++#endif
+ #endif
+ 
+ /*
+@@ -2769,6 +2772,11 @@
+ 							if (is_vlan_dev(prev_dev)) {
+ 								*vid = vlan_dev_vlan_id(prev_dev);
+ 								DEBUG_TRACE("%px: Got VID from bridge VLAN iface(%s) vid: %d \n", ci, prev_dev->name, *vid);
++#if defined(CONFIG_NET_DSA)
++							} else if (dsa_slave_dev_check(prev_dev)) {
++								*vid = dsa_slave_to_vid(prev_dev);
++								DEBUG_TRACE("%px: Got VID from DSA slave iface(%s) vid: %d \n", ci, prev_dev->name, *vid);
++#endif
+ 							}
+ 
+ 							dev_put(prev_dev);
+@@ -2950,6 +2958,11 @@
+ 							if (is_vlan_dev(prev_dev)) {
+ 								*vid = vlan_dev_vlan_id(prev_dev);
+ 								DEBUG_TRACE("%px: Got VID from bridge VLAN iface(%s) vid: %d \n", ci, prev_dev->name, *vid);
++#if defined(CONFIG_NET_DSA)
++							} else if (dsa_slave_dev_check(prev_dev)) {
++								*vid = dsa_slave_to_vid(prev_dev);
++								DEBUG_TRACE("%px: Got VID from DSA slave iface(%s) vid: %d \n", ci, prev_dev->name, *vid);
++#endif
+ 							}
+ 
+ 							dev_put(prev_dev);
+--- a/ecm_classifier_emesh.c
++++ b/ecm_classifier_emesh.c
+@@ -50,6 +50,9 @@
+ #include "ecm_front_end_types.h"
+ #include "ecm_db.h"
+ #include "ecm_interface.h"
++#if defined(CONFIG_NET_DSA)
++#include <net/dsa.h>
++#endif
+ #include "ecm_classifier_emesh_public.h"
+ #include "ecm_front_end_ipv4.h"
+ #include "ecm_front_end_ipv6.h"
+@@ -603,6 +606,14 @@
+ 			dev_put(dev);
+ 			goto get_source_vlan_dev;
+ 		}
++#if defined(CONFIG_NET_DSA)
++		if (dsa_slave_dev_check(dev)) {
++			flow_input_params->vlan_tci = dsa_slave_to_vid(dev);
++			ecm_db_connection_interfaces_deref(interfaces, first_index);
++			dev_put(dev);
++			goto get_source_vlan_dev;
++		}
++#endif
+ 
+ 		dev_put(dev);
+ 	}
+@@ -641,6 +652,14 @@
+ 			dev_put(dev);
+ 			return;
+ 		}
++#if defined(CONFIG_NET_DSA)
++		if (dsa_slave_dev_check(dev)) {
++			return_input_params->vlan_tci = dsa_slave_to_vid(dev);
++			ecm_db_connection_interfaces_deref(interfaces, first_index);
++			dev_put(dev);
++			return;
++		}
++#endif
+ 
+ 		dev_put(dev);
+ 	}
