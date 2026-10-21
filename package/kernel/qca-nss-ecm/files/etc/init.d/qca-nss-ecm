@@ -220,6 +220,20 @@ start() {
 	[ -e "/sys/kernel/debug/ecm/ecm_ppe_ipv6/vlan_passthrough_set" ] && {
 		echo 1 > /sys/kernel/debug/ecm/ecm_ppe_ipv6/vlan_passthrough_set
 	}
+
+	# Configure PPE RFS feature in SFE for multi-core flow steering
+	local ppe_rfs
+	config_load "ecm"
+	config_get_bool ppe_rfs global ppe_rfs 1
+	if [ "$ppe_rfs" = "1" ] && [ -e "/sys/sfe/ppe_rfs_feature" ]; then
+		case "$(cat /sys/sfe/ppe_rfs_feature 2>/dev/null)" in
+			*disabled*) echo 1 > /sys/sfe/ppe_rfs_feature 2>/dev/null || true ;;
+		esac
+	elif [ "$ppe_rfs" = "0" ] && [ -e "/sys/sfe/ppe_rfs_feature" ]; then
+		case "$(cat /sys/sfe/ppe_rfs_feature 2>/dev/null)" in
+			*enabled*) echo 0 > /sys/sfe/ppe_rfs_feature 2>/dev/null || true ;;
+		esac
+	fi
 }
 
 stop() {
