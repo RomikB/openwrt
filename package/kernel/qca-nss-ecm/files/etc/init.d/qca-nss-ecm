@@ -104,8 +104,9 @@ load_ecm() {
 	fi
 
 	support_bridge && {
-		sysctl -w net.bridge.bridge-nf-call-ip6tables=1
-		sysctl -w net.bridge.bridge-nf-call-iptables=1
+		# sysctl -w net.bridge.bridge-nf-call-ip6tables=1
+		# sysctl -w net.bridge.bridge-nf-call-iptables=1
+		:
 	}
 
 	if [ -d /sys/module/mipctl ] && [ -e "/lib/modules/$(uname -r)/ecm_pcc_mipctl.ko" ]; then
@@ -114,8 +115,8 @@ load_ecm() {
 }
 
 unload_ecm() {
-	sysctl -w net.bridge.bridge-nf-call-ip6tables=0
-	sysctl -w net.bridge.bridge-nf-call-iptables=0
+	# sysctl -w net.bridge.bridge-nf-call-ip6tables=0
+	# sysctl -w net.bridge.bridge-nf-call-iptables=0
 
 	# Change it back to 6.1 linux's default setting
 	local kernel_major=`uname -r |cut -d. -f1`
@@ -192,8 +193,9 @@ start() {
 	[ -d /sys/kernel/debug/ecm/ecm_nss_ipv4 ] && sysctl -w dev.nss.general.redirect=1
 
 	support_bridge && {
-		echo 'net.bridge.bridge-nf-call-ip6tables=1' >> /etc/sysctl.d/qca-nss-ecm.conf
-		echo 'net.bridge.bridge-nf-call-iptables=1' >> /etc/sysctl.d/qca-nss-ecm.conf
+		# echo 'net.bridge.bridge-nf-call-ip6tables=1' >> /etc/sysctl.d/qca-nss-ecm.conf
+		# echo 'net.bridge.bridge-nf-call-iptables=1' >> /etc/sysctl.d/qca-nss-ecm.conf
+		:
 	}
 
 	if [ -d /sys/module/qca_ovsmgr ]; then
@@ -245,8 +247,8 @@ stop() {
 	# If the acceleration engine is NSS, disable wifi redirect.
 	[ -d /sys/kernel/debug/ecm/ecm_nss_ipv4 ] && sysctl -w dev.nss.general.redirect=0
 
-	sed '/net.bridge.bridge-nf-call-ip6tables=1/d' -i /etc/sysctl.d/qca-nss-ecm.conf
-	sed '/net.bridge.bridge-nf-call-iptables=1/d' -i /etc/sysctl.d/qca-nss-ecm.conf
+	# sed '/net.bridge.bridge-nf-call-ip6tables=1/d' -i /etc/sysctl.d/qca-nss-ecm.conf
+	# sed '/net.bridge.bridge-nf-call-iptables=1/d' -i /etc/sysctl.d/qca-nss-ecm.conf
 
 	if [ -d /sys/module/ecm_ovs ]; then
 		rmmod ecm_ovs
