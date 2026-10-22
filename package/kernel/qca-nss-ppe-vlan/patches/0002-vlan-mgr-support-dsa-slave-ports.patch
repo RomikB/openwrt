@@ -1,5 +1,5 @@
---- a/clients/vlan/nss_ppe_vlan_mgr.c	2026-10-19 22:35:47.481073983 +0000
-+++ b/clients/vlan/nss_ppe_vlan_mgr.c	2026-10-19 22:35:47.481215873 +0000
+--- a/clients/vlan/nss_ppe_vlan_mgr.c
++++ b/clients/vlan/nss_ppe_vlan_mgr.c
 @@ -28,6 +28,7 @@
  #include <linux/module.h>
  #include <linux/version.h>
@@ -91,7 +91,19 @@
  	if (!is_vlan_dev(dev)) {
  		return NULL;
  	}
-@@ -1387,12 +1440,25 @@
+@@ -1381,18 +1434,37 @@
+ 		return NOTIFY_DONE;
+ 	}
+ 
++	v = nss_ppe_vlan_mgr_instance_find_and_ref(dev);
++	if (v) {
++		nss_ppe_vlan_mgr_instance_deref(v);
++		return NOTIFY_DONE;
++	}
++
+ 	v = nss_ppe_vlan_mgr_create_instance(dev);
+ 	if (!v) {
+ 		nss_ppe_vlan_mgr_warn("Vlan instance creation failed for dev:%s\n", dev->name);
  		return NOTIFY_DONE;
  	}
  
@@ -117,7 +129,7 @@
  
  	/*
  	 * Check if VLAN as VP is enabled on selected VLAN interface real_dev.
-@@ -1402,6 +1468,12 @@
+@@ -1402,6 +1474,12 @@
  		is_vlan_as_vp = (base_if_num == vlan_as_vp_port_num);
  	}
  
@@ -130,7 +142,7 @@
  	is_bond_master = netif_is_bond_master(real_dev);
  
  	if (netif_is_bridge_master(real_dev)) {
-@@ -2200,6 +2272,16 @@
+@@ -2200,6 +2278,16 @@
  		return NULL;
  	}
  
@@ -146,26 +158,4 @@
 +
  	vlan = vlan_dev_priv(dev);
  	return vlan->real_dev;
- }
-@@ -2278,6 +2360,21 @@
- 
- 	register_netdevice_notifier(&nss_ppe_vlan_mgr_netdevice_nb);
- 
-+#if IS_ENABLED(CONFIG_NET_DSA)
-+	{
-+		struct net_device *netdev;
-+		rtnl_lock();
-+		for_each_netdev(&init_net, netdev) {
-+			if (dsa_slave_dev_check(netdev)) {
-+				struct netdev_notifier_info nb_info;
-+				netdev_notifier_info_init(&nb_info, netdev);
-+				nss_ppe_vlan_mgr_register_event(&nb_info);
-+			}
-+		}
-+		rtnl_unlock();
-+	}
-+#endif
-+
- 	nss_ppe_vlan_mgr_info("Module (Build %s) loaded\n", NSS_PPE_BUILD_ID);
- 	return 0;
  }
