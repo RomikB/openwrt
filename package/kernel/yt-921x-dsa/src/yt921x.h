@@ -527,7 +527,12 @@ static inline u16 yt921x_port_to_vid(int port)
 
 static inline int yt921x_vid_to_port(u16 vid)
 {
-	int port = (int)vid - DSA_YT921X_VID_BASE;
+	int port;
+
+	if (vid < DSA_YT921X_VID_BASE + 1 || vid > DSA_YT921X_VID_BASE + 4)
+		return -EINVAL;
+
+	port = (int)vid - DSA_YT921X_VID_BASE;
 	return (port == 4) ? 0 : port;
 }
 

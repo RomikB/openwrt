@@ -32,58 +32,67 @@ static struct sk_buff *
 yt921x_tag_rcv(struct sk_buff *skb, struct net_device *netdev,
 	       struct packet_type *pt)
 {
-	u16 *tag;
 	u16 vlan_tci, vid;
 	int port;
 
-	if (unlikely(!pskb_may_pull(skb, VLAN_HLEN)))
-		return NULL;
+	if (skb_vlan_tag_present(skb)) {
+		vlan_tci = skb_vlan_tag_get(skb);
+		__vlan_hwaccel_clear_tag(skb);
+	} else {
+		u16 *tag;
 
-	/*
-	 * 'skb->data' points into the middle of the 802.1Q tag information:
-	 *
-	 * ~ MAC src   | 0x81 | 0x00 | 0xyy | 0xzz | ether type
-	 *                           ^
-	 *                        ->data
-	 *
-	 * tag[0] (skb->data - 2) is the TPID (0x8100).
-	 * tag[1] (skb->data) is the TCI (PCP + DEI + VID).
-	 */
-	tag = (u16 *)(skb->data - 2);
-
-	if (unlikely(tag[0] != htons(ETH_P_8021Q))) {
-		if (is_link_local_ether_addr(eth_hdr(skb)->h_dest))
+		if (unlikely(!pskb_may_pull(skb, VLAN_HLEN)))
 			return NULL;
 
-		dev_warn_ratelimited(&netdev->dev,
-				     "Unexpected packet without 802.1Q tag (proto 0x%04x)\n",
-				     ntohs(tag[0]));
-		return NULL;
+		/*
+		 * 'skb->data' points into the middle of the 802.1Q tag information:
+		 *
+		 * ~ MAC src   | 0x81 | 0x00 | 0xyy | 0xzz | ether type
+		 *                           ^
+		 *                        ->data
+		 *
+		 * tag[0] (skb->data - 2) is the TPID (0x8100).
+		 * tag[1] (skb->data) is the TCI (PCP + DEI + VID).
+		 */
+		tag = (u16 *)(skb->data - 2);
+
+		if (unlikely(tag[0] != htons(ETH_P_8021Q))) {
+			if (is_link_local_ether_addr(eth_hdr(skb)->h_dest))
+				return NULL;
+
+			dev_dbg_ratelimited(&netdev->dev,
+					    "Unexpected packet without 802.1Q tag (proto 0x%04x)\n",
+					    ntohs(tag[0]));
+			return NULL;
+		}
+
+		vlan_tci = ntohs(tag[1]);
+
+		/*
+		 * Canonical DSA 802.1Q strip pattern (as in net/dsa/tag_lan9303.c):
+		 * Remove the 4-byte 802.1Q tag between the MAC addresses and
+		 * the real EtherType by pulling VLAN_HLEN and shifting the
+		 * 12-byte MAC header forward over the tag.
+		 */
+		skb_pull_rcsum(skb, VLAN_HLEN);
+		memmove(skb->data - ETH_HLEN, skb->data - (ETH_HLEN + VLAN_HLEN),
+			2 * ETH_ALEN);
 	}
 
-	vlan_tci = ntohs(tag[1]);
 	vid = vlan_tci & VLAN_VID_MASK;
 	port = yt921x_vid_to_port(vid);
+	if (unlikely(port < 0))
+		return NULL;
 
 	skb->dev = dsa_master_find_slave(netdev, 0, port);
 	if (unlikely(!skb->dev)) {
-		dev_warn_ratelimited(&netdev->dev,
-				     "Couldn't decode slave for VID %u (port %d)\n",
-				     vid, port);
+		dev_dbg_ratelimited(&netdev->dev,
+				    "Couldn't decode slave for VID %u (port %d)\n",
+				    vid, port);
 		return NULL;
 	}
 
 	skb->priority = (vlan_tci & VLAN_PRIO_MASK) >> VLAN_PRIO_SHIFT;
-
-	/*
-	 * Canonical DSA 802.1Q strip pattern (as in net/dsa/tag_lan9303.c):
-	 * Remove the 4-byte 802.1Q tag between the MAC addresses and
-	 * the real EtherType by pulling VLAN_HLEN and shifting the
-	 * 12-byte MAC header forward over the tag.
-	 */
-	skb_pull_rcsum(skb, VLAN_HLEN);
-	memmove(skb->data - ETH_HLEN, skb->data - (ETH_HLEN + VLAN_HLEN),
-		2 * ETH_ALEN);
 
 	return skb;
 }

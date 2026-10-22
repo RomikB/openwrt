@@ -1851,6 +1851,15 @@ yt921x_dsa_port_vlan_filtering(struct dsa_switch *ds, int port,
 	if (dsa_is_cpu_port(ds, port))
 		return 0;
 
+	/*
+	 * In 802.1Q port-tagging mode, internal VIDs 4001..4004 serve as
+	 * switch port identifiers on the master CPU interface.
+	 * Bridge VLAN filtering cannot be enabled without QinQ (802.1ad)
+	 * support, as changing port PVID would corrupt the DSA tagging protocol.
+	 */
+	if (vlan_filtering)
+		return -EOPNOTSUPP;
+
 	mutex_lock(&priv->reg_lock);
 	res = yt921x_vlan_filtering(priv, port, vlan_filtering);
 	mutex_unlock(&priv->reg_lock);
