@@ -258,10 +258,23 @@ def patch_forkop_apply_uc(apply_uc_path):
         content = content.replace(old_v6, new_v6, 1)
         changed = True
 
+    old_bridge_lsmod = """function ensure_bridge_netfilter_disabled() {
+    if (index(command_output_from_args([ "lsmod" ]), "br_netfilter") < 0)
+        return true;
+
+    if (trim(command_output_from_args([ "sysctl", "-n", "net.bridge.bridge-nf-call-iptables" ])) != "1")"""
+
+    new_bridge_lsmod = """function ensure_bridge_netfilter_disabled() {
+    if (trim(command_output_from_args([ "sysctl", "-n", "net.bridge.bridge-nf-call-iptables" ])) != "1")"""
+
+    if old_bridge_lsmod in content:
+        content = content.replace(old_bridge_lsmod, new_bridge_lsmod, 1)
+        changed = True
+
     if changed:
         with open(apply_uc_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"[patch_feeds] Successfully patched: {apply_uc_path} (Linux 5.4 concatenated sets compatibility)")
+        print(f"[patch_feeds] Successfully patched: {apply_uc_path} (Linux 5.4 concatenated sets and bridge-nf compatibility)")
         return True
     else:
         print(f"[patch_feeds] Already patched or target blocks not found: {apply_uc_path}")
