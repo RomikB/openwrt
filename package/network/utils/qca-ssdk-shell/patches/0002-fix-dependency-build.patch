@@ -1,0 +1,11 @@
+--- a/make/target.mk
++++ b/make/target.mk
+@@ -9,7 +9,7 @@ obj: $(OBJ_LIST)
+ dep: build_dir $(DEP_LIST)
+ 	$(DEP_LOOP)
+ 
+-$(OBJ_LIST): %.o : %.c %.d
++$(OBJ_LIST): %.o : %.c
+ 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $(DST_DIR)/$@
+ 
+ $(DEP_LIST) : %.d : %.c

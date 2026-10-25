@@ -1,0 +1,3 @@
+config ecm 'global'
+	option acceleration_engine 'auto'
+	option ppe_rfs '1'

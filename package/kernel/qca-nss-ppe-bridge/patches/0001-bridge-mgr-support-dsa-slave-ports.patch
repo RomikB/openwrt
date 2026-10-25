@@ -1,0 +1,58 @@
+--- a/clients/bridge/nss_ppe_bridge_mgr.c
++++ b/clients/bridge/nss_ppe_bridge_mgr.c
+@@ -29,6 +29,7 @@
+ #include <linux/if_bridge.h>
+ #include <linux/netdevice.h>
+ #include <net/bonding.h>
++#include <net/dsa.h>
+ #include <fal/fal_fdb.h>
+ #include <ppe_drv_public.h>
+ #include <nss_ppe_vlan_mgr.h>
+@@ -787,6 +788,11 @@
+ 		return false;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev))
++		return false;
++#endif
++
+ 	iface = ppe_drv_iface_get_by_dev(dev);
+ 	if (!iface) {
+ 		nss_ppe_bridge_mgr_warn("%px: failed to find PPE interface\n", dev);
+@@ -812,7 +818,11 @@
+ 	 * Check if it is VLAN first because VLAN can be over bond interface.
+ 	 * However, the bond over VLAN is not supported in our driver.
+ 	 */
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (is_vlan_dev(dev) || dsa_slave_dev_check(dev)) {
++#else
+ 	if (is_vlan_dev(dev)) {
++#endif
+ 		real_dev = nss_ppe_vlan_mgr_get_real_dev(dev);
+ 		if (!real_dev) {
+ 			goto error;
+@@ -1131,7 +1141,11 @@
+ 		return -ENOENT;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (!is_vlan_dev(dev) && !dsa_slave_dev_check(dev)) {
++#else
+ 	if (!is_vlan_dev(dev)) {
++#endif
+ 
+ 		iface = ppe_drv_iface_get_by_dev(dev);
+ 		if (!iface) {
+@@ -1278,7 +1292,11 @@
+ 	 * If device is VLAN, we need get real_dev.
+ 	 * TODO: Same might apply when we work with virtual interfaces.
+ 	 */
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (!is_vlan_dev(dev) && !dsa_slave_dev_check(dev)) {
++#else
+ 	if (!is_vlan_dev(dev)) {
++#endif
+ 
+ 		iface = ppe_drv_iface_get_by_dev(dev);
+ 		if (!iface) {

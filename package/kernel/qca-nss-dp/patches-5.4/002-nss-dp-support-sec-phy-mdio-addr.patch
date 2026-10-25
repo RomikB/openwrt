@@ -1,0 +1,26 @@
+--- a/nss_dp_main.c
++++ b/nss_dp_main.c
+@@ -1239,8 +1239,22 @@
+ 				&nss_dp_adjust_link,
+ 				dp_priv->phy_mii_type);
+ 		if (IS_ERR(dp_priv->phydev)) {
++			uint32_t sec_phy_addr;
++
+ 			netdev_dbg(netdev, "failed to connect to phy device\n");
+-			goto phy_setup_fail;
++			if (!of_property_read_u32(np, "qcom,sec-phy-mdio-addr", &sec_phy_addr)) {
++				snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
++						dp_priv->miibus->id, sec_phy_addr);
++				dp_priv->phydev = phy_connect(netdev, phy_id,
++						&nss_dp_adjust_link,
++						dp_priv->phy_mii_type);
++				if (!IS_ERR(dp_priv->phydev)) {
++					netdev_info(netdev, "connected to secondary phy device %s\n", phy_id);
++					dp_priv->phy_mdio_addr = sec_phy_addr;
++				}
++			}
++			if (IS_ERR(dp_priv->phydev))
++				goto phy_setup_fail;
+ 		}
+ 	}
+ 

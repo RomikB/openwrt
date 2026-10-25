@@ -1,0 +1,316 @@
+--- a/frontends/sfe/ecm_sfe_common.h
++++ b/frontends/sfe/ecm_sfe_common.h
+@@ -136,6 +136,49 @@
+ 
+ }
+ 
++#if defined(CONFIG_NET_DSA)
++#include <net/dsa.h>
++
++/*
++ * ecm_sfe_common_adjust_dsa_ifaces_first()
++ *	Adjust interfaces_first to skip master net_device (e.g. eth0) when a DSA slave port
++ *	(e.g. port1..port3) is present as the next interface in the hierarchy.
++ *	In SFE, packets arrive from / are sent to the DSA slave port netdev directly.
++ */
++static inline int32_t ecm_sfe_common_adjust_dsa_ifaces_first(struct ecm_db_iface_instance *ifaces[], int32_t first)
++{
++	if (first + 1 < ECM_DB_IFACE_HEIRARCHY_MAX) {
++		int32_t slave_id = ecm_db_iface_interface_identifier_get(ifaces[first + 1]);
++		struct net_device *slave_dev = dev_get_by_index(&init_net, slave_id);
++		if (slave_dev) {
++			if (dsa_slave_dev_check(slave_dev)) {
++				dev_put(slave_dev);
++				ecm_db_iface_deref(ifaces[first]);
++				return first + 1;
++			}
++			dev_put(slave_dev);
++		}
++	}
++	return first;
++}
++
++/*
++ * ecm_sfe_common_is_dsa_slave_iface()
++ *	Check if the given interface instance corresponds to a DSA slave net_device.
++ */
++static inline bool ecm_sfe_common_is_dsa_slave_iface(struct ecm_db_iface_instance *ii)
++{
++	int32_t if_id = ecm_db_iface_interface_identifier_get(ii);
++	struct net_device *dev = dev_get_by_index(&init_net, if_id);
++	if (dev) {
++		bool is_dsa = dsa_slave_dev_check(dev);
++		dev_put(dev);
++		return is_dsa;
++	}
++	return false;
++}
++#endif
++
+ bool ecm_sfe_ipv4_is_conn_limit_reached(void);
+ bool ecm_sfe_ipv6_is_conn_limit_reached(void);
+ bool ecm_sfe_common_is_l2_iface_supported(ecm_db_iface_type_t ii_type, int cur_heirarchy_index, int first_heirarchy_index);
+--- a/frontends/sfe/ecm_sfe_ported_ipv4.c
++++ b/frontends/sfe/ecm_sfe_ported_ipv4.c
+@@ -445,6 +445,11 @@
+ 		goto ported_accel_bad_rule;
+ 	}
+ 
++#if defined(CONFIG_NET_DSA)
++	from_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(from_ifaces, from_ifaces_first);
++	to_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(to_ifaces, to_ifaces_first);
++#endif
++
+ 	/*
+ 	 * First interface in each must be a known sfe interface
+ 	 */
+@@ -659,6 +664,23 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_FLOW_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.flow_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_FLOW_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++					interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+@@ -964,6 +986,23 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_RETURN_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.return_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_RETURN_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++					interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+--- a/frontends/sfe/ecm_sfe_non_ported_ipv4.c
++++ b/frontends/sfe/ecm_sfe_non_ported_ipv4.c
+@@ -472,6 +472,11 @@
+ 		goto non_ported_accel_bad_rule;
+ 	}
+ 
++#if defined(CONFIG_NET_DSA)
++	from_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(from_ifaces, from_ifaces_first);
++	to_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(to_ifaces, to_ifaces_first);
++#endif
++
+ 	/*
+ 	 * First interface in each must be a known sfe interface
+ 	 */
+@@ -693,6 +698,27 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_FLOW_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.flow_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_FLOW_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				memcpy(from_sfe_iface_address, vlan_info.address, ETH_ALEN);
++				if (is_valid_ether_addr(from_sfe_iface_address)) {
++					memcpy(nircm->conn_rule.flow_mac, from_sfe_iface_address, ETH_ALEN);
++					if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++						interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++					}
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+@@ -972,6 +998,27 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_RETURN_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.return_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_RETURN_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				memcpy(to_sfe_iface_address, vlan_info.address, ETH_ALEN);
++				if (is_valid_ether_addr(to_sfe_iface_address)) {
++					memcpy(nircm->conn_rule.return_mac, to_sfe_iface_address, ETH_ALEN);
++					if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++						interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++					}
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+--- a/frontends/sfe/ecm_sfe_ported_ipv6.c
++++ b/frontends/sfe/ecm_sfe_ported_ipv6.c
+@@ -453,6 +453,11 @@
+ 		goto ported_accel_bad_rule;
+ 	}
+ 
++#if defined(CONFIG_NET_DSA)
++	from_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(from_ifaces, from_ifaces_first);
++	to_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(to_ifaces, to_ifaces_first);
++#endif
++
+ 	/*
+ 	 * First interface in each must be a known sfe interface
+ 	 */
+@@ -667,6 +672,23 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_FLOW_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.flow_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_FLOW_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++					interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+@@ -974,6 +996,23 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_RETURN_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.return_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_RETURN_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++					interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+--- a/frontends/sfe/ecm_sfe_non_ported_ipv6.c
++++ b/frontends/sfe/ecm_sfe_non_ported_ipv6.c
+@@ -405,6 +405,11 @@
+ 		goto non_ported_accel_bad_rule;
+ 	}
+ 
++#if defined(CONFIG_NET_DSA)
++	from_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(from_ifaces, from_ifaces_first);
++	to_ifaces_first = ecm_sfe_common_adjust_dsa_ifaces_first(to_ifaces, to_ifaces_first);
++#endif
++
+ 	/*
+ 	 * First interface in each must be a known sfe interface
+ 	 */
+@@ -614,6 +619,27 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_FLOW_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.flow_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_FLOW_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				memcpy(from_sfe_iface_address, vlan_info.address, ETH_ALEN);
++				if (is_valid_ether_addr(from_sfe_iface_address)) {
++					memcpy(nircm->conn_rule.flow_mac, from_sfe_iface_address, ETH_ALEN);
++					if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++						interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++					}
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans
+@@ -863,6 +889,27 @@
+ 		case ECM_DB_IFACE_TYPE_VLAN:
+ #ifdef ECM_INTERFACE_VLAN_ENABLE
+ 			DEBUG_TRACE("%px: VLAN\n", feci);
++#if defined(CONFIG_NET_DSA)
++			if (ecm_sfe_common_is_dsa_slave_iface(ii)) {
++				ecm_db_iface_vlan_info_get(ii, &vlan_info);
++				nircm->rule_flags |= SFE_RULE_CREATE_FLAG_USE_RETURN_BOTTOM_INTERFACE;
++				if (is_valid_ether_addr(vlan_info.address)) {
++					ether_addr_copy((uint8_t *)nircm->src_mac_rule.return_src_mac, vlan_info.address);
++					nircm->src_mac_rule.mac_valid_flags |= SFE_SRC_MAC_RETURN_VALID;
++					nircm->valid_flags |= SFE_RULE_CREATE_SRC_MAC_VALID;
++				}
++				memcpy(to_sfe_iface_address, vlan_info.address, ETH_ALEN);
++				if (is_valid_ether_addr(to_sfe_iface_address)) {
++					memcpy(nircm->conn_rule.return_mac, to_sfe_iface_address, ETH_ALEN);
++					if (interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET] == 0) {
++						interface_type_counts[ECM_DB_IFACE_TYPE_ETHERNET]++;
++					}
++				}
++				DEBUG_TRACE("%px: DSA slave %s treated as native ethernet in SFE, mac: %pM\n",
++					    feci, ii->name, vlan_info.address);
++				continue;
++			}
++#endif
+ 			if (interface_type_counts[ii_type] > 1) {
+ 				/*
+ 				 * Can only support two vlans

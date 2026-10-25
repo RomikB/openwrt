@@ -1,0 +1,161 @@
+--- a/clients/vlan/nss_ppe_vlan_mgr.c
++++ b/clients/vlan/nss_ppe_vlan_mgr.c
+@@ -28,6 +28,7 @@
+ #include <linux/module.h>
+ #include <linux/version.h>
+ #include <net/bonding.h>
++#include <net/dsa.h>
+ #include <ppe_drv_public.h>
+ #include <ppe_vp_public.h>
+ #include <nss_ppe_vlan_mgr.h>
+@@ -965,6 +966,14 @@
+ 	struct list_head *iter;
+ 	int vid;
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev)) {
++		real_dev = dsa_slave_to_master(dev);
++		vid = dsa_slave_to_vid(dev);
++		goto check_real_dev;
++	}
++#endif
++
+ 	if (!is_vlan_dev(dev)) {
+ 		nss_ppe_vlan_mgr_trace("%s is not VLAN interface\n", dev->name);
+ 		return false;
+@@ -974,6 +983,10 @@
+ 	real_dev = nss_ppe_vlan_mgr_get_real_dev(dev);
+ 	vid = vlan->vlan_id;
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++check_real_dev:
++#endif
++
+ 	/*
+ 	 * br-wan1.100 is already present and br-wan1 contains eth4.
+ 	 * With above config, creating eth4.100 is not allowed.
+@@ -1098,9 +1111,15 @@
+ {
+ 	struct nss_vlan_pvt *v;
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (!is_vlan_dev(dev) && !dsa_slave_dev_check(dev)) {
++		return NULL;
++	}
++#else
+ 	if (!is_vlan_dev(dev)) {
+ 		return NULL;
+ 	}
++#endif
+ 
+ 	spin_lock(&vlan_mgr_ctx.lock);
+ 	list_for_each_entry(v, &vlan_mgr_ctx.list, list) {
+@@ -1127,6 +1146,40 @@
+ 	struct net_device *slave_dev;
+ 	int32_t port_id, bond_id = -1;
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev)) {
++		real_dev = dsa_slave_to_master(dev);
++		if (!real_dev) {
++			nss_ppe_vlan_mgr_warn("%px: DSA master dev not found for %s\n", dev, dev->name);
++			return NULL;
++		}
++
++		v = kzalloc(sizeof(*v), GFP_KERNEL);
++		if (!v) {
++			nss_ppe_vlan_mgr_warn("%px: Allocation to private structure failed: %s\n",
++						dev, dev->name);
++			return NULL;
++		}
++
++		INIT_LIST_HEAD(&v->list);
++		v->vid = dsa_slave_to_vid(dev);
++		v->tpid = ETH_P_8021Q;
++		v->bond_id = -1;
++		v->port[0] = nss_ppe_vlan_mgr_get_port_id(real_dev);
++		if (v->port[0] == NSS_PPE_VLAN_MGR_INVALID_PORT) {
++			nss_ppe_vlan_mgr_warn("%px: %s:%d is not valid PPE port\n", real_dev, real_dev->name, v->port[0]);
++			kfree(v);
++			return NULL;
++		}
++
++		v->mtu = dev->mtu;
++		ether_addr_copy(v->dev_addr, dev->dev_addr);
++		v->ifindex = dev->ifindex;
++		kref_init(&v->ref);
++		return v;
++	}
++#endif
++
+ 	if (!is_vlan_dev(dev)) {
+ 		return NULL;
+ 	}
+@@ -1381,18 +1434,37 @@
+ 		return NOTIFY_DONE;
+ 	}
+ 
++	v = nss_ppe_vlan_mgr_instance_find_and_ref(dev);
++	if (v) {
++		nss_ppe_vlan_mgr_instance_deref(v);
++		return NOTIFY_DONE;
++	}
++
+ 	v = nss_ppe_vlan_mgr_create_instance(dev);
+ 	if (!v) {
+ 		nss_ppe_vlan_mgr_warn("Vlan instance creation failed for dev:%s\n", dev->name);
+ 		return NOTIFY_DONE;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev)) {
++		real_dev = dsa_slave_to_master(dev);
++	} else {
++		vlan = vlan_dev_priv(dev);
++		real_dev = vlan->real_dev;
++		if (is_vlan_dev(real_dev)) {
++			vlan = vlan_dev_priv(real_dev);
++			real_dev = vlan->real_dev;
++		}
++	}
++#else
+ 	vlan = vlan_dev_priv(dev);
+ 	real_dev = vlan->real_dev;
+ 	if (is_vlan_dev(real_dev)) {
+ 		vlan = vlan_dev_priv(real_dev);
+ 		real_dev = vlan->real_dev;
+ 	}
++#endif
+ 
+ 	/*
+ 	 * Check if VLAN as VP is enabled on selected VLAN interface real_dev.
+@@ -1402,6 +1474,12 @@
+ 		is_vlan_as_vp = (base_if_num == vlan_as_vp_port_num);
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev)) {
++		is_vlan_as_vp = false;
++	}
++#endif
++
+ 	is_bond_master = netif_is_bond_master(real_dev);
+ 
+ 	if (netif_is_bridge_master(real_dev)) {
+@@ -2200,6 +2278,16 @@
+ 		return NULL;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NET_DSA)
++	if (dsa_slave_dev_check(dev)) {
++		return dsa_slave_to_master(dev);
++	}
++#endif
++
++	if (!is_vlan_dev(dev)) {
++		return NULL;
++	}
++
+ 	vlan = vlan_dev_priv(dev);
+ 	return vlan->real_dev;
+ }
