@@ -37,30 +37,40 @@ case sensitive file system.
 
 ### Requirements
 
-You need the following tools to compile OpenWrt, the package names vary between
-distributions. A complete list with distribution specific packages is found in
-the [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem)
-documentation.
+Building this firmware requires the standard OpenWrt compilation tools, as well as additional utilities for unpacking and patching vendor components:
 
-```
-binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev
-make4.1+ perl python3.7+ rsync subversion unzip which
-```
+1. **OpenWrt Build System Prerequisites**: Follow the official [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem) guide to install distribution-specific packages.
+2. **Squashfs Tools**: Install `squashfs-tools` (provides `unsquashfs`) via your system package manager.
+3. **Python Modules**:
+   * `pyelftools` — install via system package (`python3-pyelftools`) or `pip install pyelftools`.
+   * `ubi_reader` — install from [onekey-sec/ubi_reader](https://github.com/onekey-sec/ubi_reader) (e.g. `pipx install ubi_reader` or `pip install --user ubi_reader`). Ensure the `ubireader_extract_images` binary is accessible in your `$PATH`.
 
 ### Quickstart
 
-1. Run `./scripts/feeds update -a` to obtain all the latest package definitions
+1. Place the stock firmware image `miwifi_rd15_firmware_*.bin` in the root directory.
+
+2. Run `./vendor_scripts/prepare_feed.sh` to extract vendor kernel drivers, prebuilt kernel image, patch library dependencies, and generate `vendor_feed`.
+
+3. Run `./scripts/feeds update -a` to obtain all the latest package definitions
    defined in feeds.conf / feeds.conf.default
 
-2. Run `./scripts/feeds install -a` to install symlinks for all obtained
+4. Run `./vendor_scripts/patch_feeds.py` to apply compatibility patches to system feeds.
+
+5. Run `./scripts/feeds install -a` to install symlinks for all obtained
    packages into package/feeds/
 
-3. Run `make menuconfig` to select your preferred configuration for the
+6. Run `./vendor_scripts/prepare_config.sh` to prepare the target configuration and apply `defconfig`.
+
+7. Run `make menuconfig` to select your preferred configuration for the
    toolchain, target system & firmware packages.
 
-4. Run `make` to build your firmware. This will download all sources, build the
-   cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
-   applications for your target system.
+8. Run `./vendor_scripts/build_kmod_toolchain.sh` to build the dedicated kernel module toolchain (GCC 7.5.0) required for binary compatibility with the stock Linux 5.4.213 kernel and prebuilt vendor proprietary drivers. *(This script will automatically compile required host tools if not already present).*
+
+9. Run `make` to compile the toolchain, packages, and firmware images.
+
+   The resulting UBI images will be generated at `bin/targets/ipq53xx/rd15/`:
+   * `openwrt-ipq53xx-rd15-xiaomi-rd15-prebuild-squashfs-factory.ubi` (prebuilt vendor kernel)
+   * `openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi` (native QSDK kernel)
 
 ### Related Repositories
 

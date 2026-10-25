@@ -18,6 +18,7 @@
 /overlay
 /package/feeds
 /package/openwrt-packages
+/package/addons
 /*.patch
 /llvm-bpf*
 key-build*
@@ -35,3 +36,8 @@ git-src
 .cproject
 .ccache
 .vscode*
+/vendor_feed*
+miwifi_r*_firmware_*.bin
+/reports
+__pycache__/
+*.pyc
