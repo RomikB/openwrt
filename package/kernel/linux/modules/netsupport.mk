@@ -1033,7 +1033,7 @@ SCHED_FILES_EXTRA = $(foreach mod,$(SCHED_MODULES_EXTRA),$(LINUX_DIR)/net/sched/
 define KernelPackage/sched
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Extra traffic schedulers
-  DEPENDS:=+kmod-sched-core +!TARGET_ipq53xx_rd15:kmod-lib-crc32c +!TARGET_ipq53xx_rd15:kmod-lib-textsearch +TARGET_ipq53xx_rd15:kmod-ipt-core +TARGET_ipq53xx_rd15:kmod-sched-prio
+  DEPENDS:=+kmod-sched-core +!TARGET_ipq53xx_ipq53xx_32:kmod-lib-crc32c +!TARGET_ipq53xx_ipq53xx_32:kmod-lib-textsearch +TARGET_ipq53xx_ipq53xx_32:kmod-ipt-core +TARGET_ipq53xx_ipq53xx_32:kmod-sched-prio
   KCONFIG:= \
 	CONFIG_NET_SCH_CODEL@ge6.6 \
 	CONFIG_NET_SCH_GRED@ge6.6 \

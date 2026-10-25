@@ -14,7 +14,7 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/yt-phy-driver
   SUBMENU:=Network Devices
   TITLE:=Motorcomm YT8821 2.5G Ethernet PHY Driver
-  DEPENDS:=@TARGET_ipq53xx_rd15
+  DEPENDS:=@TARGET_ipq53xx_ipq53xx_32
   FILES:=$(PKG_BUILD_DIR)/yt_phy_module.ko
   AUTOLOAD:=$(call AutoLoad,57,yt_phy_module,1)
   KCONFIG:=

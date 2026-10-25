@@ -1,0 +1,87 @@
+#!/bin/sh
+# Xiaomi Router BE3600 (RD15/RD16) Network & System Defaults
+
+. /lib/functions.sh
+
+LAN_MAC=$(/sbin/getmac lan 2>/dev/null)
+[ -z "$LAN_MAC" ] && [ -f /proc/xiaoqiang/model ] && LAN_MAC=$(cat /sys/class/net/br-lan/address 2>/dev/null)
+WAN_MAC=$(/sbin/getmac wan 2>/dev/null)
+
+# 1. Configure br-lan bridge device (force_link and explicit MAC address) and interface MACs
+configure_br_lan() {
+	local cfg="$1"
+	local name type
+	config_get name "$cfg" name
+	config_get type "$cfg" type
+
+	if [ "$name" = "br-lan" ] && [ "$type" = "bridge" ]; then
+		uci -q set network."$cfg".force_link='1'
+		[ -n "$LAN_MAC" ] && uci -q set network."$cfg".macaddr="$LAN_MAC"
+		br_lan_found=1
+	fi
+}
+
+br_lan_found=0
+config_load network
+config_foreach configure_br_lan device
+
+if [ "$br_lan_found" = "0" ]; then
+	uci -q batch <<-EOF
+		set network.br_lan=device
+		set network.br_lan.name='br-lan'
+		set network.br_lan.type='bridge'
+		set network.br_lan.force_link='1'
+	EOF
+	[ -n "$LAN_MAC" ] && uci -q set network.br_lan.macaddr="$LAN_MAC"
+fi
+
+[ -n "$LAN_MAC" ] && uci -q set network.lan.macaddr="$LAN_MAC"
+[ -n "$WAN_MAC" ] && uci -q set network.wan.macaddr="$WAN_MAC"
+
+# 2. Configure port4 (disable GRO on RD15 2.5G port for Qualcomm PPE/ECM stability)
+configure_port4() {
+	local cfg="$1"
+	local name
+	config_get name "$cfg" name
+
+	if [ "$name" = "port4" ]; then
+		uci -q set network."$cfg".gro='0'
+		port4_found=1
+	fi
+}
+
+board=$(cat /tmp/sysinfo/board_name 2>/dev/null)
+model=$(cat /proc/xiaoqiang/model 2>/dev/null)
+case "$model" in
+RD16|rd16) ;;
+*)
+	case "$board" in
+	*rd16*) ;;
+	*)
+		port4_found=0
+		config_foreach configure_port4 device
+		if [ "$port4_found" = "0" ]; then
+			uci -q batch <<-EOF
+				add network device
+				set network.@device[-1].name='port4'
+				set network.@device[-1].gro='0'
+			EOF
+		fi
+		;;
+	esac
+	;;
+esac
+
+uci -q commit network
+
+# 3. Configure Mesh button in system config
+uci -q get system.mesh_button >/dev/null || {
+	uci -q batch <<-EOF
+		set system.mesh_button=button
+		set system.mesh_button.button='mesh'
+		set system.mesh_button.action='wps'
+		commit system
+	EOF
+}
+
+exit 0

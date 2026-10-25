@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/yt-921x-dsa
   SUBMENU:=Network Devices
   TITLE:=Motorcomm YT921x DSA Switch Driver
-  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
+  DEPENDS:=@TARGET_ipq53xx_ipq53xx_32
   FILES:= \
 	$(PKG_BUILD_DIR)/yt921x.ko \
 	$(PKG_BUILD_DIR)/tag_yt921x.ko

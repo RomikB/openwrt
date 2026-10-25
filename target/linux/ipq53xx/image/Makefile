@@ -66,14 +66,6 @@ define Image/BuildKernel/template
 	$(if $(CONFIG_IB_STANDALONE), $(if $(call DebugFileCheck), $(CP) $(call DebugImageName) $(BIN_DIR)/$(IMG_PREFIX)-vmlinux.elf), $(CP) $(call DebugImageName) $(BIN_DIR)/$(IMG_PREFIX)-vmlinux.elf)
 endef
 
-define Image/BuildKernel/ipq53xx_32
-	$(foreach device, $(call FindDeviceTrees, ipq5332-), \
-		$(call Image/BuildKernel/$(1),$(device),$(IPQ53XX_32_KERNEL_LOADADDR));)
-
-	$(call Image/BuildKernel/MultiDTBFIT,ipq5332-mixx, \
-		$(call FindDeviceTrees, ipq5332-), $(IPQ53XX_32_KERNEL_LOADADDR))
-endef
-
 define Image/BuildKernel/generic
 	$(foreach device, $(call FindDeviceTrees, ipq5332-), \
 		$(call Image/BuildKernel/$(1),$(device),$(IPQ53XX_KERNEL_LOADADDR));)

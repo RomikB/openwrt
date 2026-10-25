@@ -215,7 +215,7 @@ $(eval $(call KernelPackage,dax))
 define KernelPackage/dm
   SUBMENU:=$(BLOCK_MENU)
   TITLE:=Device Mapper
-  DEPENDS:=+kmod-crypto-manager +!TARGET_ipq53xx_rd15:kmod-dax +KERNEL_KEYS:kmod-keys-encrypted
+  DEPENDS:=+kmod-crypto-manager +!TARGET_ipq53xx_ipq53xx_32:kmod-dax +KERNEL_KEYS:kmod-keys-encrypted
   # All the "=n" are unnecessary, they're only there
   # to stop the config from asking the question.
   # MIRROR is M because I've needed it for pvmove.

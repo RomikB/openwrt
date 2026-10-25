@@ -50,7 +50,7 @@ $(eval $(call KernelPackage,crypto-aead))
 
 define KernelPackage/crypto-arc4
   TITLE:=ARC4 cipher CryptoAPI module
-  DEPENDS:=+!TARGET_ipq53xx_rd15:kmod-crypto-user
+  DEPENDS:=+!TARGET_ipq53xx_ipq53xx_32:kmod-crypto-user
   KCONFIG:= \
 	  CONFIG_CRYPTO_ARC4 \
 	  CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y@ge6.6
@@ -240,7 +240,7 @@ $(eval $(call KernelPackage,crypto-ecdh))
 
 define KernelPackage/crypto-echainiv
   TITLE:=Encrypted Chain IV Generator
-  DEPENDS:=+kmod-crypto-aead +!TARGET_ipq53xx_rd15:kmod-crypto-geniv
+  DEPENDS:=+kmod-crypto-aead +!TARGET_ipq53xx_ipq53xx_32:kmod-crypto-geniv
   KCONFIG:=CONFIG_CRYPTO_ECHAINIV
   FILES:=$(LINUX_DIR)/crypto/echainiv.ko
   AUTOLOAD:=$(call AutoLoad,09,echainiv)
@@ -701,7 +701,7 @@ $(eval $(call KernelPackage,crypto-lib-poly1305))
 
 define KernelPackage/crypto-manager
   TITLE:=CryptoAPI algorithm manager
-  DEPENDS:=+kmod-crypto-aead +kmod-crypto-hash +TARGET_ipq53xx_rd15:kmod-crypto-pcompress
+  DEPENDS:=+kmod-crypto-aead +kmod-crypto-hash +TARGET_ipq53xx_ipq53xx_32:kmod-crypto-pcompress
   KCONFIG:= \
 	CONFIG_CRYPTO_MANAGER \
 	CONFIG_CRYPTO_MANAGER2
@@ -885,7 +885,7 @@ $(eval $(call KernelPackage,crypto-pcbc))
 
 define KernelPackage/crypto-pcompress
   TITLE:=CryptoAPI Partial (de)compression operations
-  DEPENDS:=@(TARGET_ipq53xx_rd15||TARGET_ipq53xx_rd16)
+  DEPENDS:=@TARGET_ipq53xx_ipq53xx_32
   KCONFIG:= \
 	CONFIG_CRYPTO_PCOMP=y \
 	CONFIG_CRYPTO_PCOMP2
@@ -928,7 +928,7 @@ $(eval $(call KernelPackage,crypto-rmd160))
 
 define KernelPackage/crypto-rng
   TITLE:=CryptoAPI random number generation
-  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +TARGET_ipq53xx_rd15:kmod-crypto-sha256 +!TARGET_ipq53xx_rd15:kmod-crypto-sha512 +!TARGET_ipq53xx_rd15:kmod-crypto-sha3
+  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +TARGET_ipq53xx_ipq53xx_32:kmod-crypto-sha256 +!TARGET_ipq53xx_ipq53xx_32:kmod-crypto-sha512 +!TARGET_ipq53xx_ipq53xx_32:kmod-crypto-sha3
   KCONFIG:= \
 	CONFIG_CRYPTO_DRBG \
 	CONFIG_CRYPTO_DRBG_HMAC=y \

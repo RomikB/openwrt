@@ -1,0 +1,19 @@
+#!/bin/sh
+# Copyright (C) 2026 OpenWrt.org
+# Move sysupgrade configuration archive from persistent /data to rootfs
+
+move_config() {
+	local backup_file="sysupgrade.tgz"
+	[ -f /lib/upgrade/common.sh ] && {
+		. /lib/upgrade/common.sh
+		backup_file="${BACKUP_FILE:-sysupgrade.tgz}"
+	}
+
+	if [ -f "/data/$backup_file" ]; then
+		[ -c /dev/kmsg ] && echo "<5>sysupgrade: staging backup from /data/$backup_file to /$backup_file" > /dev/kmsg
+		mv -f "/data/$backup_file" "/$backup_file"
+		sync
+	fi
+}
+
+boot_hook_add preinit_mount_root move_config
