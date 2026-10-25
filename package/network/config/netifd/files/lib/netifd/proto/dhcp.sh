@@ -65,7 +65,10 @@ proto_dhcp_setup() {
 
 	json_for_each_item proto_dhcp_add_sendopts sendopts dhcpopts
 
-	[ -z "$hostname" ] && hostname="$(cat /proc/sys/kernel/hostname)"
+	local model=$(uci -q get misc.hardware.model)
+	[ -z "$model" ] && [ -f /proc/xiaoqiang/model ] && model=$(cat /proc/xiaoqiang/model 2>/dev/null)
+	[ -z "$hostname" -a -n "$model" ] && hostname="MiWiFi-$model"
+	[ -z "$hostname" ] && hostname="$(cat /proc/sys/kernel/hostname 2>/dev/null)"
 	[ "$hostname" = "*" ] && hostname=
 
 	[ "$defaultreqopts" = 0 ] && defaultreqopts="-o" || defaultreqopts=
@@ -95,14 +98,14 @@ proto_dhcp_setup() {
 	[ -n "${clientid##-C}" ] && clientid="-x 0x3d:$clientid"
 	[ -n "$vendorid" ] && append dhcpopts "-x 0x3c:$(echo -n "$vendorid" | hexdump -ve '1/1 "%02x"')"
 	[ -n "$iface6rd" ] && proto_export "IFACE6RD=$iface6rd"
-	[ "$iface6rd" != 0 -a -f /lib/netifd/proto/6rd.sh ] && append dhcpopts "-O 212"
+	[ -n "$iface6rd" -a "$iface6rd" != 0 -a -f /lib/netifd/proto/6rd.sh ] && append dhcpopts "-O 212"
 	[ -n "$zone6rd" ] && proto_export "ZONE6RD=$zone6rd"
 	[ -n "$zone" ] && proto_export "ZONE=$zone"
 	[ -n "$mtu6rd" ] && proto_export "MTU6RD=$mtu6rd"
 	[ -n "$customroutes" ] && proto_export "CUSTOMROUTES=$customroutes"
 	[ "$delegate" = "0" ] && proto_export "IFACE6RD_DELEGATE=0"
 	# Request classless route option (see RFC 3442) by default
-	[ "$classlessroute" = "0" ] || append dhcpopts "-O 121"
+	[ "$classlessroute" = "0" ] || append dhcpopts "-O 121 -O 249"
 
 	# Avoid sending duplicate Option 60 values
 	local emptyvendorid
@@ -116,10 +119,12 @@ proto_dhcp_setup() {
 
 	proto_export "INTERFACE=$config"
 	proto_run_command "$config" udhcpc \
+		-a \
 		-p /var/run/udhcpc-$iface.pid \
 		-s /lib/netifd/dhcp.script \
+		-O 33 \
 		-f -t 0 -i "$iface" \
-		${ipaddr:+-r ${ipaddr/\/*/}} \
+		${ipaddr:+-r $ipaddr} \
 		${hostname:+-x "hostname:$hostname"} \
 		${emptyvendorid:+-V ""} \
 		$clientid $defaultreqopts $broadcast $norelease $dhcpopts

@@ -1,0 +1,20 @@
+--- a/config.c
++++ b/config.c
+@@ -105,12 +105,17 @@
+  */
+ static void config_fixup_bridge_ports(struct uci_section *s)
+ {
++	const char *type;
+ 	struct uci_ptr ptr = {
+ 		.p = s->package,
+ 		.s = s,
+ 		.option = "ifname",
+ 	};
+ 
++	type = uci_lookup_option_string(uci_ctx, s, "type");
++	if (!type || strcmp(type, "bridge") != 0)
++		return;
++
+ 	if (uci_lookup_option(uci_ctx, s, "ports"))
+ 		return;
+ 

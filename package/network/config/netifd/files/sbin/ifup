@@ -1,10 +1,15 @@
 #!/bin/sh
 
 ifup_all=
+setup_wifi=
 
 if_call() {
 	local interface="$1"
+	local prev_mode=""
 	for mode in $modes; do
+		#sleep here to avoid netifd race-condition when ifup/ifdown too close
+		[ -n "$prev_mode" -a "$interface" = "lan" ] && sleep 1
+		prev_mode=$mode
 		ubus call network.interface $mode "{ \"interface\" : \"$interface\" }"
 	done
 }
@@ -13,6 +18,7 @@ case "$0" in
 	*ifdown) modes=down;;
 	*ifup)
 		modes="down up"
+		setup_wifi=1
 	;;
 	*) echo "Invalid command: $0";;
 esac
@@ -21,6 +27,10 @@ while :; do
 	case "$1" in
 		-a)
 			ifup_all=1
+			shift
+		;;
+		-w)
+			setup_wifi=
 			shift
 		;;
 		*)
@@ -34,6 +44,7 @@ if [ -n "$ifup_all" ]; then
 	for interface in $(ubus -S list 'network.interface.*'); do
 		if_call "${interface##network.interface.}"
 	done
+	[ -n "$setup_wifi" ] && [ -x /sbin/wifi ] && /sbin/wifi up 2>/dev/null || true
 	exit
 else
 	ubus -S list "network.interface.$1" > /dev/null || {
@@ -41,4 +52,34 @@ else
 		exit
 	}
 	if_call "$1"
+fi
+
+if [ -n "$setup_wifi" ] && [ -x /sbin/wifi ] && grep -sq config /etc/config/wireless 2>/dev/null; then
+	. /lib/functions.sh
+
+	find_related_radios() {
+		local wdev wnet
+		config_get wdev "$1" device
+		config_get wnet "$1" network
+
+		if [ -n "$wdev" ]; then
+			for wnet in $wnet; do
+				if [ "$wnet" = "$network" ]; then
+					append radio_devs "$wdev" "$N"
+				fi
+			done
+		fi
+	}
+
+	network="$1"
+	config_load wireless
+	config_foreach find_related_radios wifi-iface
+
+	need_wifi_up="0"
+	for dev in $(echo "$radio_devs" | sort -u); do
+		need_wifi_up="1"
+	done
+
+	#only need restart all wifi once
+	[ "$need_wifi_up" = "1" ] && /sbin/wifi up 2>/dev/null || true
 fi

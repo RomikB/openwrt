@@ -54,8 +54,10 @@ export function handler_load(path, cb)
 		system(`./${script} "" "dump" >&${f.fileno()}`);
 		chdir(prev_dir);
 		f.seek();
-		while (!f.error()) {
-			let data = trim(f.read("line"));
+		// Read line-by-line until EOF; reaching EOF returns null without setting f.error()
+		let line;
+		while ((line = f.read("line")) != null) {
+			let data = trim(line);
 			try {
 				data = json(data);
 			} catch (e) {
