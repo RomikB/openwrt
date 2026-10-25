@@ -1,0 +1,11 @@
+#!/bin/sh
+
+[ -f /etc/config/firewall ] || return 0 2>/dev/null || exit 0
+
+uci -q batch << 'EOF'
+	set firewall.@defaults[0].flow_offloading='0'
+	set firewall.@defaults[0].flow_offloading_hw='0'
+	commit firewall
+EOF
+
+return 0 2>/dev/null || exit 0

@@ -1,0 +1,7 @@
+--- a/net/ipv6/Kconfig
++++ b/net/ipv6/Kconfig
+@@ -8,3 +8,3 @@
+ menuconfig IPV6
+-	tristate "The IPv6 protocol"
++	bool "The IPv6 protocol"
+ 	default y

@@ -1,0 +1,23 @@
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1986,9 +1986,6 @@ struct net_device {
+ #if IS_ENABLED(CONFIG_VLAN_8021Q)
+ 	struct vlan_info __rcu	*vlan_info;
+ #endif
+-#if IS_ENABLED(CONFIG_NET_DSA)
+-	struct dsa_port		*dsa_ptr;
+-#endif
+ #if IS_ENABLED(CONFIG_TIPC)
+ 	struct tipc_bearer __rcu *tipc_ptr;
+ #endif
+@@ -2149,6 +2146,10 @@ struct net_device {
+ 	struct lock_class_key	addr_list_lock_key;
+ 	bool			proto_down;
+ 	unsigned		wol_enabled:1;
++
++#if IS_ENABLED(CONFIG_NET_DSA)
++	struct dsa_port		*dsa_ptr;
++#endif
+ };
+ #define to_net_dev(d) container_of(d, struct net_device, dev)
+ 

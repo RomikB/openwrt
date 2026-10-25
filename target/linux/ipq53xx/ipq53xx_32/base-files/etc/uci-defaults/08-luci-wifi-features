@@ -1,0 +1,10 @@
+#!/bin/sh
+# Enable modern Wi-Fi features for Qualcomm QSDK Direct Connect hostapd and wpa_supplicant in LuCI rpcd
+
+LUCI_UCODE="/usr/share/rpcd/ucode/luci"
+if [ -f "$LUCI_UCODE" ]; then
+	sed -i 's/result\.hostapd\[feature\] = system.*hostapd -v.*/result.hostapd[feature] = true;/' "$LUCI_UCODE" 2>/dev/null || true
+	sed -i 's/result\.wpasupplicant\[feature\] = system.*wpa_supplicant -v.*/result.wpasupplicant[feature] = true;/' "$LUCI_UCODE" 2>/dev/null || true
+fi
+
+exit 0

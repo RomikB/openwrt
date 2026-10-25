@@ -1,0 +1,18 @@
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -11086,3 +11086,15 @@
+ }
+ 
+ subsys_initcall(net_dev_init);
++
++/* Xiaomi / Motorcomm vendor compatibility hooks */
++int (*portmap_get_by_vid)(u32 vid, u32 *portmap);
++EXPORT_SYMBOL(portmap_get_by_vid);
++
++void *xqnss_ip_account_ecm_nss_hook;
++EXPORT_SYMBOL(xqnss_ip_account_ecm_nss_hook);
++
++void miwifi_ct_acct_hook(void *ct, void *acct, ...)
++{
++}
++EXPORT_SYMBOL(miwifi_ct_acct_hook);

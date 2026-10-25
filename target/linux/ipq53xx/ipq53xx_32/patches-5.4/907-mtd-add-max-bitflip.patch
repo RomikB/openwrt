@@ -1,0 +1,45 @@
+--- a/include/linux/mtd/mtd.h
++++ b/include/linux/mtd/mtd.h
+@@ -246,6 +246,7 @@ struct mtd_info {
+ 	 * see Documentation/ABI/testing/sysfs-class-mtd for more detail.
+ 	 */
+ 	unsigned int bitflip_threshold;
++	unsigned int max_bitflip;
+ 
+ 	/* Kernel-only stuff starts here. */
+ 	const char *name;
+--- a/drivers/mtd/mtdcore.c
++++ b/drivers/mtd/mtdcore.c
+@@ -256,6 +256,15 @@ static DEVICE_ATTR(bitflip_threshold, S_
+ 		   mtd_bitflip_threshold_show,
+ 		   mtd_bitflip_threshold_store);
+ 
++static ssize_t mtd_max_bitflip_show(struct device *dev,
++		struct device_attribute *attr, char *buf)
++{
++	struct mtd_info *mtd = dev_get_drvdata(dev);
++
++	return snprintf(buf, PAGE_SIZE, "%u\n", mtd->max_bitflip);
++}
++static DEVICE_ATTR(max_bitflip, S_IRUGO, mtd_max_bitflip_show, NULL);
++
+ static ssize_t mtd_ecc_step_size_show(struct device *dev,
+ 		struct device_attribute *attr, char *buf)
+ {
+@@ -325,6 +334,7 @@ static struct attribute *mtd_attrs[] = {
+ 	&dev_attr_bad_blocks.attr,
+ 	&dev_attr_bbt_blocks.attr,
+ 	&dev_attr_bitflip_threshold.attr,
++	&dev_attr_max_bitflip.attr,
+ 	NULL,
+ };
+ ATTRIBUTE_GROUPS(mtd);
+@@ -1266,6 +1276,8 @@ int mtd_read_oob(struct mtd_info *mtd, l
+ 		return ret_code;
+ 	if (mtd->ecc_strength == 0)
+ 		return 0;	/* device lacks ecc */
++	if (ret_code > mtd->max_bitflip)
++		mtd->max_bitflip = ret_code;
+ 	return ret_code >= mtd->bitflip_threshold ? -EUCLEAN : 0;
+ }
+ EXPORT_SYMBOL_GPL(mtd_read_oob);

@@ -1,0 +1,9 @@
+#!/bin/sh
+# Xiaomi Router BE3600 (RD15/RD16): Generate wireless config on firstboot
+
+if [ ! -s /etc/config/wireless ]; then
+	. /lib/wifi/qcawifi_generate.sh
+	generate_wireless_config /etc/config/wireless
+fi
+
+exit 0

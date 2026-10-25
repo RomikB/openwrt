@@ -1,0 +1,76 @@
+#!/bin/sh
+# Xiaomi Router BE3600 (RD15/RD16) board detection script for OpenWrt
+
+
+. /lib/functions/uci-defaults.sh
+
+ipq53xx_setup_model()
+{
+	local board="$1"
+	local model=""
+
+	# 1. Direct kernel proc entry (read by 905-xiaomi-platform-init from MTD 'bdata' at kernel boot)
+	[ -f /proc/xiaoqiang/model ] && model=$(cat /proc/xiaoqiang/model 2>/dev/null)
+
+	# 2. Fallback to bdata / nvram tools if available
+	[ -z "$model" ] && command -v bdata >/dev/null 2>&1 && model=$(bdata get model 2>/dev/null)
+	[ -z "$model" ] && command -v nvram >/dev/null 2>&1 && model=$(nvram get model 2>/dev/null)
+
+	case "$model" in
+	RD16|rd16)
+		ucidef_set_model_name "Xiaomi Router BE3600 (RD16)"
+		;;
+	RD15|rd15)
+		ucidef_set_model_name "Xiaomi Router BE3600 (RD15)"
+		;;
+	*)
+		case "$board" in
+		*rd16*)
+			ucidef_set_model_name "Xiaomi Router BE3600 (RD16)"
+			;;
+		*)
+			ucidef_set_model_name "Xiaomi Router BE3600 (RD15)"
+			;;
+		esac
+		;;
+	esac
+}
+
+ipq53xx_setup_interfaces()
+{
+	local board="$1"
+
+	case "$board" in
+	qcom,ipq5332-ap-mi04.1-c2 |\
+	qcom,ipq5332-rd15 |\
+	qcom,ipq5332-rd16 |\
+	*ap-mi04.1* | *rd15* | *rd16*)
+		# Xiaomi Router BE3600 (RD15/RD16) DSA network interfaces (port1-port4)
+		ucidef_set_interfaces_lan_wan "port2 port3 port4" "port1"
+		;;
+	*)
+		echo "Unsupported hardware: $board"
+		;;
+	esac
+}
+
+ipq53xx_setup_macs()
+{
+	local board="$1"
+	local lan_mac=""
+
+	if [ -x /sbin/getmac ]; then
+		lan_mac=$(/sbin/getmac lan 2>/dev/null)
+	fi
+
+	[ -n "$lan_mac" ] && ucidef_set_label_macaddr "$lan_mac"
+}
+
+board_config_update
+board=$(board_name)
+ipq53xx_setup_model "$board"
+ipq53xx_setup_interfaces "$board"
+ipq53xx_setup_macs "$board"
+board_config_flush
+
+exit 0

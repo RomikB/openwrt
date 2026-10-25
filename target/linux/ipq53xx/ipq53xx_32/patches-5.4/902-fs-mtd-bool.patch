@@ -1,0 +1,122 @@
+--- a/fs/overlayfs/Kconfig
++++ b/fs/overlayfs/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config OVERLAY_FS
+-	tristate "Overlay filesystem support"
++	bool "Overlay filesystem support"
+ 	select EXPORTFS
+ 	help
+ 	  An overlay filesystem combines two filesystems - an 'upper' filesystem
+--- a/fs/jffs2/Kconfig
++++ b/fs/jffs2/Kconfig
+@@ -1,6 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ config JFFS2_FS
+-	tristate "Journalling Flash File System v2 (JFFS2) support"
++	bool "Journalling Flash File System v2 (JFFS2) support"
+ 	select CRC32
+ 	depends on MTD
+ 	help
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -84,7 +84,7 @@
+ 	def_bool n
+ 
+ config EXPORTFS
+-	tristate
++	bool
+ 
+ config EXPORTFS_BLOCK_OPS
+ 	bool "Enable filesystem export operations for block IO"
+--- a/fs/Kconfig.binfmt
++++ b/fs/Kconfig.binfmt
+@@ -78,7 +78,7 @@
+ 	  seen at boot time.  If unsure, say Y.
+ 
+ config BINFMT_SCRIPT
+-	tristate "Kernel support for scripts starting with #!"
++	bool "Kernel support for scripts starting with #!"
+ 	default y
+ 	help
+ 	  Say Y here if you want to execute interpreted scripts starting with
+--- a/drivers/mtd/Kconfig
++++ b/drivers/mtd/Kconfig
+@@ -1,5 +1,5 @@
+ menuconfig MTD
+-	tristate "Memory Technology Device (MTD) support"
++	bool "Memory Technology Device (MTD) support"
+ 	imply NVMEM
+ 	help
+ 	  Memory Technology Devices are flash, RAM and similar chips, often
+@@ -33,10 +33,10 @@
+ # MTD block device support is select'ed if needed
+ #
+ config MTD_BLKDEVS
+-	tristate
++	bool
+ 
+ config MTD_BLOCK
+-	tristate "Caching block device access to MTD devices"
++	bool "Caching block device access to MTD devices"
+ 	depends on BLOCK
+ 	select MTD_BLKDEVS
+ 	help
+--- a/drivers/mtd/parsers/Kconfig
++++ b/drivers/mtd/parsers/Kconfig
+@@ -58,7 +58,7 @@
+ 	  If unsure, say 'N'.
+ 
+ config MTD_OF_PARTS
+-	tristate "OpenFirmware (device tree) partitioning parser"
++	bool "OpenFirmware (device tree) partitioning parser"
+ 	default y
+ 	depends on OF
+ 	help
+--- a/drivers/mtd/chips/Kconfig
++++ b/drivers/mtd/chips/Kconfig
+@@ -3,7 +3,7 @@
+ 	depends on MTD!=n
+ 
+ config MTD_CFI
+-	tristate "Detect flash chips by Common Flash Interface (CFI) probe"
++	bool "Detect flash chips by Common Flash Interface (CFI) probe"
+ 	select MTD_GEN_PROBE
+ 	select MTD_CFI_UTIL
+ 	help
+@@ -27,7 +27,7 @@
+ 	  Intel chips.
+ 
+ config MTD_GEN_PROBE
+-	tristate
++	bool
+ 
+ config MTD_CFI_ADV_OPTIONS
+ 	bool "Flash chip driver advanced configuration options"
+@@ -178,7 +178,7 @@
+ 	  in the programming of OTP bits will waste them.
+ 
+ config MTD_CFI_INTELEXT
+-	tristate "Support for CFI command set 0001 (Intel/Sharp chips)"
++	bool "Support for CFI command set 0001 (Intel/Sharp chips)"
+ 	depends on MTD_GEN_PROBE
+ 	select MTD_CFI_UTIL
+ 	help
+@@ -188,7 +188,7 @@
+ 	  and other parts.
+ 
+ config MTD_CFI_AMDSTD
+-	tristate "Support for CFI command set 0002 (AMD/Fujitsu/Spansion chips)"
++	bool "Support for CFI command set 0002 (AMD/Fujitsu/Spansion chips)"
+ 	depends on MTD_GEN_PROBE
+ 	select MTD_CFI_UTIL
+ 	help
+@@ -207,7 +207,7 @@
+ 	  provides support for command set 0020.
+ 
+ config MTD_CFI_UTIL
+-	tristate
++	bool
+ 
+ config MTD_RAM
+ 	tristate "Support for RAM chips in bus mapping"

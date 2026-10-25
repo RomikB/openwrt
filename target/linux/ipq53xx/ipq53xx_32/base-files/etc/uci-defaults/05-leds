@@ -1,0 +1,18 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+uci -q get system.led_blue && exit 0
+
+uci set system.led_blue=led
+uci set system.led_blue.name='Blue Status'
+uci set system.led_blue.sysfs='blue:status'
+uci set system.led_blue.trigger='default-on'
+
+uci set system.led_orange=led
+uci set system.led_orange.name='Orange Status'
+uci set system.led_orange.sysfs='orange:status'
+uci set system.led_orange.trigger='none'
+
+uci commit system
+exit 0

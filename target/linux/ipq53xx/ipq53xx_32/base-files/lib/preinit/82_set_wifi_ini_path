@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set_wifi_ini_path() {
+	[ -e /sys/module/firmware_class/parameters/path ] && {
+		echo -n "/ini" > /sys/module/firmware_class/parameters/path
+	}
+
+	# Ensure symlinks in /lib/firmware for firmware_request fallback
+	ln -sf /ini/global.ini /lib/firmware/global.ini 2>/dev/null || true
+	ln -sf /ini/internal /lib/firmware/internal 2>/dev/null || true
+	ln -sf /ini/QCA5332.ini /lib/firmware/QCA5332.ini 2>/dev/null || true
+	ln -sf /ini/QCN6432.ini /lib/firmware/QCN6432.ini 2>/dev/null || true
+}
+
+boot_hook_add preinit_main set_wifi_ini_path
