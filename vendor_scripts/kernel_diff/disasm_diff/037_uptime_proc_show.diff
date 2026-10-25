@@ -1,0 +1,336 @@
+# Функция: uptime_proc_show
+# Адрес (наш):    0x8029e310
+# Адрес (vendor): 0x4029e310
+# Размер:         336 байт
+# Изменённых байт:528766
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8029e310 <uptime_proc_show>:
+8029e310:	e92d47f0 	push	{r4, r5, r6, r7, r8, r9, sl, lr}
+8029e314:	e24dd028 	sub	sp, sp, #40	; 0x28
+8029e318:	e59f6120 	ldr	r6, [pc, #288]	; 8029e440 <uptime_proc_show+0x130>
+8029e31c:	e1a07000 	mov	r7, r0
+8029e320:	e3a02000 	mov	r2, #0
+8029e324:	e3e00000 	mvn	r0, #0
+8029e328:	e59f9114 	ldr	r9, [pc, #276]	; 8029e444 <uptime_proc_show+0x134>
+8029e32c:	e5963000 	ldr	r3, [r6]
+8029e330:	e59f8110 	ldr	r8, [pc, #272]	; 8029e448 <uptime_proc_show+0x138>
+8029e334:	e59fa110 	ldr	sl, [pc, #272]	; 8029e44c <uptime_proc_show+0x13c>
+8029e338:	e58d3024 	str	r3, [sp, #36]	; 0x24
+8029e33c:	e3a03000 	mov	r3, #0
+8029e340:	e1cd20f8 	strd	r2, [sp, #8]
+8029e344:	ea000008 	b	8029e36c <uptime_proc_show+0x5c>
+8029e348:	e59f3100 	ldr	r3, [pc, #256]	; 8029e450 <uptime_proc_show+0x140>
+8029e34c:	e1a0200a 	mov	r2, sl
+8029e350:	e1cd40d8 	ldrd	r4, [sp, #8]
+8029e354:	e7933100 	ldr	r3, [r3, r0, lsl #2]
+8029e358:	e0833002 	add	r3, r3, r2
+8029e35c:	e1c322d8 	ldrd	r2, [r3, #40]	; 0x28
+8029e360:	e0944002 	adds	r4, r4, r2
+8029e364:	e0a55003 	adc	r5, r5, r3
+8029e368:	e1cd40f8 	strd	r4, [sp, #8]
+8029e36c:	e1a01009 	mov	r1, r9
+8029e370:	eb1167d1 	bl	806f82bc <cpumask_next>
+8029e374:	e5983000 	ldr	r3, [r8]
+8029e378:	e1500003 	cmp	r0, r3
+8029e37c:	3afffff1 	bcc	8029e348 <uptime_proc_show+0x38>
+8029e380:	e3a00001 	mov	r0, #1
+8029e384:	ebfb9440 	bl	8018348c <ktime_get_with_offset>
+8029e388:	e1a02000 	mov	r2, r0
+8029e38c:	e1a03001 	mov	r3, r1
+8029e390:	e28d0010 	add	r0, sp, #16
+8029e394:	ebfb8207 	bl	8017ebb8 <ns_to_timespec64>
+8029e398:	e28f1098 	add	r1, pc, #152	; 0x98
+8029e39c:	e1c100d0 	ldrd	r0, [r1]
+8029e3a0:	e3a0c000 	mov	ip, #0
+8029e3a4:	e1cd40d8 	ldrd	r4, [sp, #8]
+8029e3a8:	e0832490 	umull	r2, r3, r0, r4
+8029e3ac:	e1720000 	cmn	r2, r0
+8029e3b0:	e0b33001 	adcs	r3, r3, r1
+8029e3b4:	e2ac2000 	adc	r2, ip, #0
+8029e3b8:	e0a23491 	umlal	r3, r2, r1, r4
+8029e3bc:	e0ac3590 	umlal	r3, ip, r0, r5
+8029e3c0:	e3a03000 	mov	r3, #0
+8029e3c4:	e09c2002 	adds	r2, ip, r2
+8029e3c8:	e2a33000 	adc	r3, r3, #0
+8029e3cc:	e0a32591 	umlal	r2, r3, r1, r5
+8029e3d0:	e59f107c 	ldr	r1, [pc, #124]	; 8029e454 <uptime_proc_show+0x144>
+8029e3d4:	e1a05ea2 	lsr	r5, r2, #29
+8029e3d8:	e59d0018 	ldr	r0, [sp, #24]
+8029e3dc:	e1855183 	orr	r5, r5, r3, lsl #3
+8029e3e0:	eb116190 	bl	806f6a28 <__aeabi_idiv>
+8029e3e4:	e59f1068 	ldr	r1, [pc, #104]	; 8029e454 <uptime_proc_show+0x144>
+8029e3e8:	e59d3008 	ldr	r3, [sp, #8]
+8029e3ec:	e1a08000 	mov	r8, r0
+8029e3f0:	e59f0060 	ldr	r0, [pc, #96]	; 8029e458 <uptime_proc_show+0x148>
+8029e3f4:	e0603590 	mls	r0, r0, r5, r3
+8029e3f8:	eb11618a 	bl	806f6a28 <__aeabi_idiv>
+8029e3fc:	e1a03008 	mov	r3, r8
+8029e400:	e59f1054 	ldr	r1, [pc, #84]	; 8029e45c <uptime_proc_show+0x14c>
+8029e404:	e58d0004 	str	r0, [sp, #4]
+8029e408:	e1a00007 	mov	r0, r7
+8029e40c:	e59d2010 	ldr	r2, [sp, #16]
+8029e410:	e58d5000 	str	r5, [sp]
+8029e414:	ebff00d1 	bl	8025e760 <seq_printf>
+8029e418:	e3a00000 	mov	r0, #0
+8029e41c:	e59d2024 	ldr	r2, [sp, #36]	; 0x24
+8029e420:	e5963000 	ldr	r3, [r6]
+8029e424:	e1520003 	cmp	r2, r3
+8029e428:	0a000000 	beq	8029e430 <uptime_proc_show+0x120>
+8029e42c:	ebfa0701 	bl	80120038 <__stack_chk_fail>
+8029e430:	e28dd028 	add	sp, sp, #40	; 0x28
+8029e434:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+8029e438:	36b4a597 	.word	0x36b4a597
+8029e43c:	89705f41 	.word	0x89705f41
+8029e440:	80a07ec8 	.word	0x80a07ec8
+8029e444:	80a07ef0 	.word	0x80a07ef0
+8029e448:	80a07fb0 	.word	0x80a07fb0
+8029e44c:	809422f8 	.word	0x809422f8
+8029e450:	80a08044 	.word	0x80a08044
+8029e454:	00989680 	.word	0x00989680
+8029e458:	3b9aca00 	.word	0x3b9aca00
+8029e45c:	80755dac 	.word	0x80755dac
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4029e310 <.data+0x296310>:
+4029e310:	eb117c39 	bl	0x406fd3fc
+4029e314:	e5983000 	ldr	r3, [r8]
+4029e318:	e1500003 	cmp	r0, r3
+4029e31c:	3afffff1 	bcc	0x4029e2e8
+4029e320:	e3a00001 	mov	r0, #1
+4029e324:	ebfb9458 	bl	0x4018348c
+4029e328:	e1a02000 	mov	r2, r0
+4029e32c:	e1a03001 	mov	r3, r1
+4029e330:	e28d0010 	add	r0, sp, #16
+4029e334:	ebfb821f 	bl	0x4017ebb8
+4029e338:	e28f1098 	add	r1, pc, #152	; 0x98
+4029e33c:	e1c100d0 	ldrd	r0, [r1]
+4029e340:	e3a0c000 	mov	ip, #0
+4029e344:	e1cd40d8 	ldrd	r4, [sp, #8]
+4029e348:	e0832490 	umull	r2, r3, r0, r4
+4029e34c:	e1720000 	cmn	r2, r0
+4029e350:	e0b33001 	adcs	r3, r3, r1
+4029e354:	e2ac2000 	adc	r2, ip, #0
+4029e358:	e0a23491 	umlal	r3, r2, r1, r4
+4029e35c:	e0ac3590 	umlal	r3, ip, r0, r5
+4029e360:	e3a03000 	mov	r3, #0
+4029e364:	e09c2002 	adds	r2, ip, r2
+4029e368:	e2a33000 	adc	r3, r3, #0
+4029e36c:	e0a32591 	umlal	r2, r3, r1, r5
+4029e370:	e59f107c 	ldr	r1, [pc, #124]	; 0x4029e3f4
+4029e374:	e1a05ea2 	lsr	r5, r2, #29
+4029e378:	e59d0018 	ldr	r0, [sp, #24]
+4029e37c:	e1855183 	orr	r5, r5, r3, lsl #3
+4029e380:	eb1175f8 	bl	0x406fbb68
+4029e384:	e59f1068 	ldr	r1, [pc, #104]	; 0x4029e3f4
+4029e388:	e59d3008 	ldr	r3, [sp, #8]
+4029e38c:	e1a08000 	mov	r8, r0
+4029e390:	e59f0060 	ldr	r0, [pc, #96]	; 0x4029e3f8
+4029e394:	e0603590 	mls	r0, r0, r5, r3
+4029e398:	eb1175f2 	bl	0x406fbb68
+4029e39c:	e1a03008 	mov	r3, r8
+4029e3a0:	e59f1054 	ldr	r1, [pc, #84]	; 0x4029e3fc
+4029e3a4:	e58d0004 	str	r0, [sp, #4]
+4029e3a8:	e1a00007 	mov	r0, r7
+4029e3ac:	e59d2010 	ldr	r2, [sp, #16]
+4029e3b0:	e58d5000 	str	r5, [sp]
+4029e3b4:	ebff00e5 	bl	0x4025e750
+4029e3b8:	e3a00000 	mov	r0, #0
+4029e3bc:	e59d2024 	ldr	r2, [sp, #36]	; 0x24
+4029e3c0:	e5963000 	ldr	r3, [r6]
+4029e3c4:	e1520003 	cmp	r2, r3
+4029e3c8:	0a000000 	beq	0x4029e3d0
+4029e3cc:	ebfa0719 	bl	0x40120038
+4029e3d0:	e28dd028 	add	sp, sp, #40	; 0x28
+4029e3d4:	e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+4029e3d8:	36b4a597 	ssatcc	sl, #21, r7, lsl #11
+4029e3dc:	89705f41 	ldmdbhi	r0!, {r0, r6, r8, r9, sl, fp, ip, lr}^
+4029e3e0:	80a07ec8 	adchi	r7, r0, r8, asr #29
+4029e3e4:	80a07ef0 	strdhi	r7, [r0], r0	; <UNPREDICTABLE>
+4029e3e8:	80a07fb0 	strhthi	r7, [r0], r0
+4029e3ec:	809432f8 			; <UNDEFINED> instruction: 0x809432f8
+4029e3f0:	80a08044 	adchi	r8, r0, r4, asr #32
+4029e3f4:	00989680 	addseq	r9, r8, r0, lsl #13
+4029e3f8:	3b9aca00 	blcc	0x3e950c00
+4029e3fc:	8075ae2c 	rsbshi	sl, r5, ip, lsr #28
+4029e400:	e590c004 	ldr	ip, [r0, #4]
+4029e404:	e5903008 	ldr	r3, [r0, #8]
+4029e408:	e35c0001 	cmp	ip, #1
+4029e40c:	e5d32000 	ldrb	r2, [r3]
+4029e410:	da000001 	ble	0x4029e41c
+4029e414:	e3520030 	cmp	r2, #48	; 0x30
+4029e418:	0a00000f 	beq	0x4029e45c
+4029e41c:	e92d4010 	push	{r4, lr}
+4029e420:	e1a02003 	mov	r2, r3
+4029e424:	e59f4040 	ldr	r4, [pc, #64]	; 0x4029e46c
+4029e428:	e3a00000 	mov	r0, #0
+4029e42c:	e3a0e00a 	mov	lr, #10
+4029e430:	e4d21001 	ldrb	r1, [r2], #1
+4029e434:	e2411030 	sub	r1, r1, #48	; 0x30
+4029e438:	e1500004 	cmp	r0, r4
+4029e43c:	93510009 	cmpls	r1, #9
+4029e440:	8a000007 	bhi	0x4029e464
+4029e444:	e020109e 	mla	r0, lr, r0, r1
+4029e448:	e04c1002 	sub	r1, ip, r2
+4029e44c:	e0831001 	add	r1, r3, r1
+4029e450:	e3510000 	cmp	r1, #0
+4029e454:	d8bd8010 	pople	{r4, pc}
+4029e458:	eafffff4 	b	0x4029e430
+4029e45c:	e3e00000 	mvn	r0, #0
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,44 +1,20 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8029e310 <uptime_proc_show>:
+-e92d47f0 	push	{r4, r5, r6, r7, r8, r9, sl, lr}
+-e24dd028 	sub	sp, sp, #40	; 0x28
+-e59f6120 	ldr	r6, [pc, #288]	; 8029e440 <uptime_proc_show+0x130>
+-e1a07000 	mov	r7, r0
+-e3a02000 	mov	r2, #0
+-e3e00000 	mvn	r0, #0
+-e59f9114 	ldr	r9, [pc, #276]	; 8029e444 <uptime_proc_show+0x134>
+-e5963000 	ldr	r3, [r6]
+-e59f8110 	ldr	r8, [pc, #272]	; 8029e448 <uptime_proc_show+0x138>
+-e59fa110 	ldr	sl, [pc, #272]	; 8029e44c <uptime_proc_show+0x13c>
+-e58d3024 	str	r3, [sp, #36]	; 0x24
+-e3a03000 	mov	r3, #0
+-e1cd20f8 	strd	r2, [sp, #8]
+-ea000008 	b	8029e36c <uptime_proc_show+0x5c>
+-e59f3100 	ldr	r3, [pc, #256]	; 8029e450 <uptime_proc_show+0x140>
+-e1a0200a 	mov	r2, sl
+-e1cd40d8 	ldrd	r4, [sp, #8]
+-e7933100 	ldr	r3, [r3, r0, lsl #2]
+-e0833002 	add	r3, r3, r2
+-e1c322d8 	ldrd	r2, [r3, #40]	; 0x28
+-e0944002 	adds	r4, r4, r2
+-e0a55003 	adc	r5, r5, r3
+-e1cd40f8 	strd	r4, [sp, #8]
+-e1a01009 	mov	r1, r9
+-eb1167d1 	bl	806f82bc <cpumask_next>
++4029e310 <.data+0xADDR>:
++eb117c39 	bl	0xADDR
+ e5983000 	ldr	r3, [r8]
+ e1500003 	cmp	r0, r3
+-3afffff1 	bcc	8029e348 <uptime_proc_show+0x38>
++3afffff1 	bcc	0xADDR
+ e3a00001 	mov	r0, #1
+-ebfb9440 	bl	8018348c <ktime_get_with_offset>
++ebfb9458 	bl	0xADDR
+ e1a02000 	mov	r2, r0
+ e1a03001 	mov	r3, r1
+ e28d0010 	add	r0, sp, #16
+-ebfb8207 	bl	8017ebb8 <ns_to_timespec64>
++ebfb821f 	bl	0xADDR
+ e28f1098 	add	r1, pc, #152	; 0x98
+ e1c100d0 	ldrd	r0, [r1]
+ e3a0c000 	mov	ip, #0
+@@ -53,39 +29,63 @@
+ e09c2002 	adds	r2, ip, r2
+ e2a33000 	adc	r3, r3, #0
+ e0a32591 	umlal	r2, r3, r1, r5
+-e59f107c 	ldr	r1, [pc, #124]	; 8029e454 <uptime_proc_show+0x144>
++e59f107c 	ldr	r1, [pc, #124]	; 0xADDR
+ e1a05ea2 	lsr	r5, r2, #29
+ e59d0018 	ldr	r0, [sp, #24]
+ e1855183 	orr	r5, r5, r3, lsl #3
+-eb116190 	bl	806f6a28 <__aeabi_idiv>
+-e59f1068 	ldr	r1, [pc, #104]	; 8029e454 <uptime_proc_show+0x144>
++eb1175f8 	bl	0xADDR
++e59f1068 	ldr	r1, [pc, #104]	; 0xADDR
+ e59d3008 	ldr	r3, [sp, #8]
+ e1a08000 	mov	r8, r0
+-e59f0060 	ldr	r0, [pc, #96]	; 8029e458 <uptime_proc_show+0x148>
++e59f0060 	ldr	r0, [pc, #96]	; 0xADDR
+ e0603590 	mls	r0, r0, r5, r3
+-eb11618a 	bl	806f6a28 <__aeabi_idiv>
++eb1175f2 	bl	0xADDR
+ e1a03008 	mov	r3, r8
+-e59f1054 	ldr	r1, [pc, #84]	; 8029e45c <uptime_proc_show+0x14c>
++e59f1054 	ldr	r1, [pc, #84]	; 0xADDR
+ e58d0004 	str	r0, [sp, #4]
+ e1a00007 	mov	r0, r7
+ e59d2010 	ldr	r2, [sp, #16]
+ e58d5000 	str	r5, [sp]
+-ebff00d1 	bl	8025e760 <seq_printf>
++ebff00e5 	bl	0xADDR
+ e3a00000 	mov	r0, #0
+ e59d2024 	ldr	r2, [sp, #36]	; 0x24
+ e5963000 	ldr	r3, [r6]
+ e1520003 	cmp	r2, r3
+-0a000000 	beq	8029e430 <uptime_proc_show+0x120>
+-ebfa0701 	bl	80120038 <__stack_chk_fail>
++0a000000 	beq	0xADDR
++ebfa0719 	bl	0xADDR
+ e28dd028 	add	sp, sp, #40	; 0x28
+ e8bd87f0 	pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+-36b4a597 	.word	0xADDR
+-89705f41 	.word	0xADDR
+-80a07ec8 	.word	0xADDR
+-80a07ef0 	.word	0xADDR
+-80a07fb0 	.word	0xADDR
+-809422f8 	.word	0xADDR
+-80a08044 	.word	0xADDR
+-00989680 	.word	0xADDR
+-3b9aca00 	.word	0xADDR
+-80755dac 	.word	0xADDR
++36b4a597 	ssatcc	sl, #21, r7, lsl #11
++89705f41 	ldmdbhi	r0!, {r0, r6, r8, r9, sl, fp, ip, lr}^
++80a07ec8 	adchi	r7, r0, r8, asr #29
++80a07ef0 	strdhi	r7, [r0], r0	; <UNPREDICTABLE>
++80a07fb0 	strhthi	r7, [r0], r0
++809432f8 			; <UNDEFINED> instruction: 0xADDR
++80a08044 	adchi	r8, r0, r4, asr #32
++00989680 	addseq	r9, r8, r0, lsl #13
++3b9aca00 	blcc	0xADDR
++8075ae2c 	rsbshi	sl, r5, ip, lsr #28
++e590c004 	ldr	ip, [r0, #4]
++e5903008 	ldr	r3, [r0, #8]
++e35c0001 	cmp	ip, #1
++e5d32000 	ldrb	r2, [r3]
++da000001 	ble	0xADDR
++e3520030 	cmp	r2, #48	; 0x30
++0a00000f 	beq	0xADDR
++e92d4010 	push	{r4, lr}
++e1a02003 	mov	r2, r3
++e59f4040 	ldr	r4, [pc, #64]	; 0xADDR
++e3a00000 	mov	r0, #0
++e3a0e00a 	mov	lr, #10
++e4d21001 	ldrb	r1, [r2], #1
++e2411030 	sub	r1, r1, #48	; 0x30
++e1500004 	cmp	r0, r4
++93510009 	cmpls	r1, #9
++8a000007 	bhi	0xADDR
++e020109e 	mla	r0, lr, r0, r1
++e04c1002 	sub	r1, ip, r2
++e0831001 	add	r1, r3, r1
++e3510000 	cmp	r1, #0
++d8bd8010 	pople	{r4, pc}
++eafffff4 	b	0xADDR
++e3e00000 	mvn	r0, #0

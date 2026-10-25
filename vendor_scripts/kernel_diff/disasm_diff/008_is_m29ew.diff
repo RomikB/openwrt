@@ -1,0 +1,120 @@
+# Функция: is_m29ew
+# Адрес (наш):    0x80452cf0
+# Адрес (vendor): 0x40452cf0
+# Размер:         76 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452cf0 <is_m29ew>:
+80452cf0:	e5903024 	ldr	r3, [r0, #36]	; 0x24
+80452cf4:	e3530089 	cmp	r3, #137	; 0x89
+80452cf8:	1a00000d 	bne	80452d34 <is_m29ew+0x44>
+80452cfc:	e590300c 	ldr	r3, [r0, #12]
+80452d00:	e3530001 	cmp	r3, #1
+80452d04:	1a000002 	bne	80452d14 <is_m29ew+0x24>
+80452d08:	e5d00028 	ldrb	r0, [r0, #40]	; 0x28
+80452d0c:	e350007e 	cmp	r0, #126	; 0x7e
+80452d10:	ea000004 	b	80452d28 <is_m29ew+0x38>
+80452d14:	e3530002 	cmp	r3, #2
+80452d18:	1a000005 	bne	80452d34 <is_m29ew+0x44>
+80452d1c:	e5900028 	ldr	r0, [r0, #40]	; 0x28
+80452d20:	e302327e 	movw	r3, #8830	; 0x227e
+80452d24:	e1500003 	cmp	r0, r3
+80452d28:	13a00000 	movne	r0, #0
+80452d2c:	03a00001 	moveq	r0, #1
+80452d30:	e12fff1e 	bx	lr
+80452d34:	e3a00000 	mov	r0, #0
+80452d38:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452cf0 <.data+0x44acf0>:
+40452cf0:	e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+40452cf4:	80a07ec8 	adchi	r7, r0, r8, asr #29
+40452cf8:	807d0430 	rsbshi	r0, sp, r0, lsr r4
+40452cfc:	807d0471 	rsbshi	r0, sp, r1, ror r4
+40452d00:	807d04b2 	ldrhthi	r0, [sp], #-66	; 0xffffffbe
+40452d04:	807d04e6 	rsbshi	r0, sp, r6, ror #9
+40452d08:	807d0428 	rsbshi	r0, sp, r8, lsr #8
+40452d0c:	807d0519 	rsbshi	r0, sp, r9, lsl r5
+40452d10:	e52de004 	push	{lr}		; (str lr, [sp, #-4]!)
+40452d14:	e5923008 	ldr	r3, [r2, #8]
+40452d18:	e592200c 	ldr	r2, [r2, #12]
+40452d1c:	e5911018 	ldr	r1, [r1, #24]
+40452d20:	e00e0392 	mul	lr, r2, r3
+40452d24:	e151000e 	cmp	r1, lr
+40452d28:	e00c009e 	mul	ip, lr, r0
+40452d2c:	2a000004 	bcs	0x40452d44
+40452d30:	e6ef1070 	uxtb	r1, r0
+40452d34:	e35100aa 	cmp	r1, #170	; 0xaa
+40452d38:	01a020a2 	lsreq	r2, r2, #1
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,26 +1,26 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452cf0 <is_m29ew>:
+-e5903024 	ldr	r3, [r0, #36]	; 0x24
+-e3530089 	cmp	r3, #137	; 0x89
+-1a00000d 	bne	80452d34 <is_m29ew+0x44>
+-e590300c 	ldr	r3, [r0, #12]
+-e3530001 	cmp	r3, #1
+-1a000002 	bne	80452d14 <is_m29ew+0x24>
+-e5d00028 	ldrb	r0, [r0, #40]	; 0x28
+-e350007e 	cmp	r0, #126	; 0x7e
+-ea000004 	b	80452d28 <is_m29ew+0x38>
+-e3530002 	cmp	r3, #2
+-1a000005 	bne	80452d34 <is_m29ew+0x44>
+-e5900028 	ldr	r0, [r0, #40]	; 0x28
+-e302327e 	movw	r3, #8830	; 0x227e
+-e1500003 	cmp	r0, r3
+-13a00000 	movne	r0, #0
+-03a00001 	moveq	r0, #1
+-e12fff1e 	bx	lr
+-e3a00000 	mov	r0, #0
+-e12fff1e 	bx	lr
++40452cf0 <.data+0xADDR>:
++e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
++80a07ec8 	adchi	r7, r0, r8, asr #29
++807d0430 	rsbshi	r0, sp, r0, lsr r4
++807d0471 	rsbshi	r0, sp, r1, ror r4
++807d04b2 	ldrhthi	r0, [sp], #-66	; 0xADDR
++807d04e6 	rsbshi	r0, sp, r6, ror #9
++807d0428 	rsbshi	r0, sp, r8, lsr #8
++807d0519 	rsbshi	r0, sp, r9, lsl r5
++e52de004 	push	{lr}		; (str lr, [sp, #-4]!)
++e5923008 	ldr	r3, [r2, #8]
++e592200c 	ldr	r2, [r2, #12]
++e5911018 	ldr	r1, [r1, #24]
++e00e0392 	mul	lr, r2, r3
++e151000e 	cmp	r1, lr
++e00c009e 	mul	ip, lr, r0
++2a000004 	bcs	0xADDR
++e6ef1070 	uxtb	r1, r0
++e35100aa 	cmp	r1, #170	; 0xaa
++01a020a2 	lsreq	r2, r2, #1

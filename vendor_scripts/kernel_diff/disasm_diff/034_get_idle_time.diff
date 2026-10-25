@@ -1,0 +1,141 @@
+# Функция: get_idle_time
+# Адрес (наш):    0x8029db70
+# Адрес (vendor): 0x4029db70
+# Размер:         116 байт
+# Изменённых байт:528766
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8029db70 <get_idle_time>:
+8029db70:	e3510000 	cmp	r1, #0
+8029db74:	e281301f 	add	r3, r1, #31
+8029db78:	e59f2060 	ldr	r2, [pc, #96]	; 8029dbe0 <get_idle_time+0x70>
+8029db7c:	a1a03001 	movge	r3, r1
+8029db80:	e1a032c3 	asr	r3, r3, #5
+8029db84:	e92d4010 	push	{r4, lr}
+8029db88:	e1a04000 	mov	r4, r0
+8029db8c:	e7923103 	ldr	r3, [r2, r3, lsl #2]
+8029db90:	e201201f 	and	r2, r1, #31
+8029db94:	e1a03233 	lsr	r3, r3, r2
+8029db98:	e3130001 	tst	r3, #1
+8029db9c:	1a000001 	bne	8029dba8 <get_idle_time+0x38>
+8029dba0:	e1c422d8 	ldrd	r2, [r4, #40]	; 0x28
+8029dba4:	ea00000a 	b	8029dbd4 <get_idle_time+0x64>
+8029dba8:	e1a00001 	mov	r0, r1
+8029dbac:	e3a01000 	mov	r1, #0
+8029dbb0:	ebfbcc46 	bl	80190cd0 <get_cpu_idle_time_us>
+8029dbb4:	e3e03000 	mvn	r3, #0
+8029dbb8:	e3e02000 	mvn	r2, #0
+8029dbbc:	e1510003 	cmp	r1, r3
+8029dbc0:	01500002 	cmpeq	r0, r2
+8029dbc4:	0afffff5 	beq	8029dba0 <get_idle_time+0x30>
+8029dbc8:	e3a0cffa 	mov	ip, #1000	; 0x3e8
+8029dbcc:	e0832c90 	umull	r2, r3, r0, ip
+8029dbd0:	e023319c 	mla	r3, ip, r1, r3
+8029dbd4:	e1a00002 	mov	r0, r2
+8029dbd8:	e1a01003 	mov	r1, r3
+8029dbdc:	e8bd8010 	pop	{r4, pc}
+8029dbe0:	80a07ee8 	.word	0x80a07ee8
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4029db70 <.data+0x295b70>:
+4029db70:	e023319c 	mla	r3, ip, r1, r3
+4029db74:	e1a00002 	mov	r0, r2
+4029db78:	e1a01003 	mov	r1, r3
+4029db7c:	e8bd8010 	pop	{r4, pc}
+4029db80:	80a07ee8 	adchi	r7, r0, r8, ror #29
+4029db84:	e3510000 	cmp	r1, #0
+4029db88:	e281301f 	add	r3, r1, #31
+4029db8c:	e59f2060 	ldr	r2, [pc, #96]	; 0x4029dbf4
+4029db90:	a1a03001 	movge	r3, r1
+4029db94:	e1a032c3 	asr	r3, r3, #5
+4029db98:	e92d4010 	push	{r4, lr}
+4029db9c:	e1a04000 	mov	r4, r0
+4029dba0:	e7923103 	ldr	r3, [r2, r3, lsl #2]
+4029dba4:	e201201f 	and	r2, r1, #31
+4029dba8:	e1a03233 	lsr	r3, r3, r2
+4029dbac:	e3130001 	tst	r3, #1
+4029dbb0:	1a000001 	bne	0x4029dbbc
+4029dbb4:	e1c423d0 	ldrd	r2, [r4, #48]	; 0x30
+4029dbb8:	ea00000a 	b	0x4029dbe8
+4029dbbc:	e1a00001 	mov	r0, r1
+4029dbc0:	e3a01000 	mov	r1, #0
+4029dbc4:	ebfbcc8d 	bl	0x40190e00
+4029dbc8:	e3e03000 	mvn	r3, #0
+4029dbcc:	e3e02000 	mvn	r2, #0
+4029dbd0:	e1510003 	cmp	r1, r3
+4029dbd4:	01500002 	cmpeq	r0, r2
+4029dbd8:	0afffff5 	beq	0x4029dbb4
+4029dbdc:	e3a0cffa 	mov	ip, #1000	; 0x3e8
+4029dbe0:	e0832c90 	umull	r2, r3, r0, ip
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,13 +1,18 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8029db70 <get_idle_time>:
++4029db70 <.data+0xADDR>:
++e023319c 	mla	r3, ip, r1, r3
++e1a00002 	mov	r0, r2
++e1a01003 	mov	r1, r3
++e8bd8010 	pop	{r4, pc}
++80a07ee8 	adchi	r7, r0, r8, ror #29
+ e3510000 	cmp	r1, #0
+ e281301f 	add	r3, r1, #31
+-e59f2060 	ldr	r2, [pc, #96]	; 8029dbe0 <get_idle_time+0x70>
++e59f2060 	ldr	r2, [pc, #96]	; 0xADDR
+ a1a03001 	movge	r3, r1
+ e1a032c3 	asr	r3, r3, #5
+ e92d4010 	push	{r4, lr}
+@@ -16,21 +21,16 @@
+ e201201f 	and	r2, r1, #31
+ e1a03233 	lsr	r3, r3, r2
+ e3130001 	tst	r3, #1
+-1a000001 	bne	8029dba8 <get_idle_time+0x38>
+-e1c422d8 	ldrd	r2, [r4, #40]	; 0x28
+-ea00000a 	b	8029dbd4 <get_idle_time+0x64>
++1a000001 	bne	0xADDR
++e1c423d0 	ldrd	r2, [r4, #48]	; 0x30
++ea00000a 	b	0xADDR
+ e1a00001 	mov	r0, r1
+ e3a01000 	mov	r1, #0
+-ebfbcc46 	bl	80190cd0 <get_cpu_idle_time_us>
++ebfbcc8d 	bl	0xADDR
+ e3e03000 	mvn	r3, #0
+ e3e02000 	mvn	r2, #0
+ e1510003 	cmp	r1, r3
+ 01500002 	cmpeq	r0, r2
+-0afffff5 	beq	8029dba0 <get_idle_time+0x30>
++0afffff5 	beq	0xADDR
+ e3a0cffa 	mov	ip, #1000	; 0x3e8
+ e0832c90 	umull	r2, r3, r0, ip
+-e023319c 	mla	r3, ip, r1, r3
+-e1a00002 	mov	r0, r2
+-e1a01003 	mov	r1, r3
+-e8bd8010 	pop	{r4, pc}
+-80a07ee8 	.word	0xADDR

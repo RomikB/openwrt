@@ -1,0 +1,672 @@
+# Функция: do_read_secsi_onechip
+# Адрес (наш):    0x80452d3c
+# Адрес (vendor): 0x40452d3c
+# Размер:         632 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452d3c <do_read_secsi_onechip>:
+80452d3c:	e92d4ff0 	push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+80452d40:	e24dd034 	sub	sp, sp, #52	; 0x34
+80452d44:	e59f6258 	ldr	r6, [pc, #600]	; 80452fa4 <do_read_secsi_onechip+0x268>
+80452d48:	e1a05001 	mov	r5, r1
+80452d4c:	e59d305c 	ldr	r3, [sp, #92]	; 0x5c
+80452d50:	e1a04000 	mov	r4, r0
+80452d54:	e1a08002 	mov	r8, r2
+80452d58:	e3a01000 	mov	r1, #0
+80452d5c:	e3a02014 	mov	r2, #20
+80452d60:	e28d0018 	add	r0, sp, #24
+80452d64:	e58d3010 	str	r3, [sp, #16]
+80452d68:	e285a01c 	add	sl, r5, #28
+80452d6c:	e5963000 	ldr	r3, [r6]
+80452d70:	e285b030 	add	fp, r5, #48	; 0x30
+80452d74:	e59f722c 	ldr	r7, [pc, #556]	; 80452fa8 <do_read_secsi_onechip+0x26c>
+80452d78:	e58d302c 	str	r3, [sp, #44]	; 0x2c
+80452d7c:	eb0a914f 	bl	806f72c0 <__memset>
+80452d80:	e1a0300d 	mov	r3, sp
+80452d84:	e0033007 	and	r3, r3, r7
+80452d88:	e58d6014 	str	r6, [sp, #20]
+80452d8c:	e593300c 	ldr	r3, [r3, #12]
+80452d90:	e58d301c 	str	r3, [sp, #28]
+80452d94:	e59f3210 	ldr	r3, [pc, #528]	; 80452fac <do_read_secsi_onechip+0x270>
+80452d98:	e58d3020 	str	r3, [sp, #32]
+80452d9c:	e1a0000a 	mov	r0, sl
+80452da0:	eb0af92f 	bl	80711264 <mutex_lock>
+80452da4:	e5956008 	ldr	r6, [r5, #8]
+80452da8:	e3560000 	cmp	r6, #0
+80452dac:	0a000012 	beq	80452dfc <do_read_secsi_onechip+0xc0>
+80452db0:	e1a0300d 	mov	r3, sp
+80452db4:	e0033007 	and	r3, r3, r7
+80452db8:	e59f11f0 	ldr	r1, [pc, #496]	; 80452fb0 <do_read_secsi_onechip+0x274>
+80452dbc:	e593200c 	ldr	r2, [r3, #12]
+80452dc0:	e5821590 	str	r1, [r2, #1424]	; 0x590
+80452dc4:	e3a02002 	mov	r2, #2
+80452dc8:	e593300c 	ldr	r3, [r3, #12]
+80452dcc:	e5832000 	str	r2, [r3]
+80452dd0:	f57ff05b 	dmb	ish
+80452dd4:	e28d1018 	add	r1, sp, #24
+80452dd8:	e1a0000b 	mov	r0, fp
+80452ddc:	ebf42229 	bl	8015b688 <add_wait_queue>
+80452de0:	e1a0000a 	mov	r0, sl
+80452de4:	eb0af756 	bl	80710b44 <mutex_unlock>
+80452de8:	eb0af354 	bl	8070fb40 <schedule>
+80452dec:	e1a0000b 	mov	r0, fp
+80452df0:	e28d1018 	add	r1, sp, #24
+80452df4:	ebf42245 	bl	8015b710 <remove_wait_queue>
+80452df8:	eaffffe7 	b	80452d9c <do_read_secsi_onechip+0x60>
+80452dfc:	e5947044 	ldr	r7, [r4, #68]	; 0x44
+80452e00:	e5952000 	ldr	r2, [r5]
+80452e04:	e58d6008 	str	r6, [sp, #8]
+80452e08:	e597300c 	ldr	r3, [r7, #12]
+80452e0c:	e0980002 	adds	r0, r8, r2
+80452e10:	e58d7000 	str	r7, [sp]
+80452e14:	e1a08000 	mov	r8, r0
+80452e18:	e3a000aa 	mov	r0, #170	; 0xaa
+80452e1c:	e58d3004 	str	r3, [sp, #4]
+80452e20:	e1a03004 	mov	r3, r4
+80452e24:	e5971014 	ldr	r1, [r7, #20]
+80452e28:	ebfffdb5 	bl	80452504 <cfi_send_gen_cmd>
+80452e2c:	e5952000 	ldr	r2, [r5]
+80452e30:	e3a00055 	mov	r0, #85	; 0x55
+80452e34:	e58d6008 	str	r6, [sp, #8]
+80452e38:	e597300c 	ldr	r3, [r7, #12]
+80452e3c:	e58d7000 	str	r7, [sp]
+80452e40:	e58d3004 	str	r3, [sp, #4]
+80452e44:	e1a03004 	mov	r3, r4
+80452e48:	e5971018 	ldr	r1, [r7, #24]
+80452e4c:	ebfffdac 	bl	80452504 <cfi_send_gen_cmd>
+80452e50:	e5952000 	ldr	r2, [r5]
+80452e54:	e3a00088 	mov	r0, #136	; 0x88
+80452e58:	e58d6008 	str	r6, [sp, #8]
+80452e5c:	e597300c 	ldr	r3, [r7, #12]
+80452e60:	e58d7000 	str	r7, [sp]
+80452e64:	e58d3004 	str	r3, [sp, #4]
+80452e68:	e1a03004 	mov	r3, r4
+80452e6c:	e5971014 	ldr	r1, [r7, #20]
+80452e70:	ebfffda3 	bl	80452504 <cfi_send_gen_cmd>
+80452e74:	e594302c 	ldr	r3, [r4, #44]	; 0x2c
+80452e78:	e3530000 	cmp	r3, #0
+80452e7c:	0a000004 	beq	80452e94 <do_read_secsi_onechip+0x158>
+80452e80:	e5951000 	ldr	r1, [r5]
+80452e84:	e1a00004 	mov	r0, r4
+80452e88:	e59d2058 	ldr	r2, [sp, #88]	; 0x58
+80452e8c:	e0811008 	add	r1, r1, r8
+80452e90:	e12fff33 	blx	r3
+80452e94:	e5946020 	ldr	r6, [r4, #32]
+80452e98:	e1a02008 	mov	r2, r8
+80452e9c:	e59d3058 	ldr	r3, [sp, #88]	; 0x58
+80452ea0:	e1a00004 	mov	r0, r4
+80452ea4:	e59d1010 	ldr	r1, [sp, #16]
+80452ea8:	e3a07000 	mov	r7, #0
+80452eac:	e12fff36 	blx	r6
+80452eb0:	e5946044 	ldr	r6, [r4, #68]	; 0x44
+80452eb4:	e5952000 	ldr	r2, [r5]
+80452eb8:	e3a000aa 	mov	r0, #170	; 0xaa
+80452ebc:	e58d7008 	str	r7, [sp, #8]
+80452ec0:	e596300c 	ldr	r3, [r6, #12]
+80452ec4:	e58d6000 	str	r6, [sp]
+80452ec8:	e58d3004 	str	r3, [sp, #4]
+80452ecc:	e1a03004 	mov	r3, r4
+80452ed0:	e5961014 	ldr	r1, [r6, #20]
+80452ed4:	ebfffd8a 	bl	80452504 <cfi_send_gen_cmd>
+80452ed8:	e5952000 	ldr	r2, [r5]
+80452edc:	e3a00055 	mov	r0, #85	; 0x55
+80452ee0:	e58d7008 	str	r7, [sp, #8]
+80452ee4:	e596300c 	ldr	r3, [r6, #12]
+80452ee8:	e58d6000 	str	r6, [sp]
+80452eec:	e58d3004 	str	r3, [sp, #4]
+80452ef0:	e1a03004 	mov	r3, r4
+80452ef4:	e5961018 	ldr	r1, [r6, #24]
+80452ef8:	ebfffd81 	bl	80452504 <cfi_send_gen_cmd>
+80452efc:	e5952000 	ldr	r2, [r5]
+80452f00:	e3a00090 	mov	r0, #144	; 0x90
+80452f04:	e58d7008 	str	r7, [sp, #8]
+80452f08:	e596300c 	ldr	r3, [r6, #12]
+80452f0c:	e58d6000 	str	r6, [sp]
+80452f10:	e58d3004 	str	r3, [sp, #4]
+80452f14:	e1a03004 	mov	r3, r4
+80452f18:	e5961014 	ldr	r1, [r6, #20]
+80452f1c:	ebfffd78 	bl	80452504 <cfi_send_gen_cmd>
+80452f20:	e5952000 	ldr	r2, [r5]
+80452f24:	e1a00007 	mov	r0, r7
+80452f28:	e58d7008 	str	r7, [sp, #8]
+80452f2c:	e596300c 	ldr	r3, [r6, #12]
+80452f30:	e58d6000 	str	r6, [sp]
+80452f34:	e58d3004 	str	r3, [sp, #4]
+80452f38:	e1a03004 	mov	r3, r4
+80452f3c:	e5961014 	ldr	r1, [r6, #20]
+80452f40:	ebfffd6f 	bl	80452504 <cfi_send_gen_cmd>
+80452f44:	e594302c 	ldr	r3, [r4, #44]	; 0x2c
+80452f48:	e1530007 	cmp	r3, r7
+80452f4c:	0a000004 	beq	80452f64 <do_read_secsi_onechip+0x228>
+80452f50:	e5951000 	ldr	r1, [r5]
+80452f54:	e1a00004 	mov	r0, r4
+80452f58:	e59d2058 	ldr	r2, [sp, #88]	; 0x58
+80452f5c:	e0811008 	add	r1, r1, r8
+80452f60:	e12fff33 	blx	r3
+80452f64:	e3a03000 	mov	r3, #0
+80452f68:	e3a02001 	mov	r2, #1
+80452f6c:	e3a01003 	mov	r1, #3
+80452f70:	e1a0000b 	mov	r0, fp
+80452f74:	ebf42267 	bl	8015b918 <__wake_up>
+80452f78:	e1a0000a 	mov	r0, sl
+80452f7c:	eb0af6f0 	bl	80710b44 <mutex_unlock>
+80452f80:	e3a00000 	mov	r0, #0
+80452f84:	e59d3014 	ldr	r3, [sp, #20]
+80452f88:	e59d202c 	ldr	r2, [sp, #44]	; 0x2c
+80452f8c:	e5933000 	ldr	r3, [r3]
+80452f90:	e1520003 	cmp	r2, r3
+80452f94:	0a000000 	beq	80452f9c <do_read_secsi_onechip+0x260>
+80452f98:	ebf33426 	bl	80120038 <__stack_chk_fail>
+80452f9c:	e28dd034 	add	sp, sp, #52	; 0x34
+80452fa0:	e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+80452fa4:	80a07ec8 	.word	0x80a07ec8
+80452fa8:	ffffc000 	.word	0xffffc000
+80452fac:	8014452c 	.word	0x8014452c
+80452fb0:	80452db0 	.word	0x80452db0
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452d3c <.data+0x44ad3c>:
+40452d3c:	00030293 	muleq	r3, r3, r2
+40452d40:	018cc003 	orreq	ip, ip, r3
+40452d44:	e1a0000c 	mov	r0, ip
+40452d48:	e49df004 	pop	{pc}		; (ldr pc, [sp], #4)
+40452d4c:	e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+40452d50:	e1a06000 	mov	r6, r0
+40452d54:	e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+40452d58:	e2814008 	add	r4, r1, #8
+40452d5c:	e30f7fff 	movw	r7, #65535	; 0xffff
+40452d60:	e5935044 	ldr	r5, [r3, #68]	; 0x44
+40452d64:	ea00000e 	b	0x40452da4
+40452d68:	e15420b8 	ldrh	r2, [r4, #-8]
+40452d6c:	e1520007 	cmp	r2, r7
+40452d70:	0a000002 	beq	0x40452d80
+40452d74:	e5951024 	ldr	r1, [r5, #36]	; 0x24
+40452d78:	e1520001 	cmp	r2, r1
+40452d7c:	1a000007 	bne	0x40452da0
+40452d80:	e15420b6 	ldrh	r2, [r4, #-6]
+40452d84:	e1520007 	cmp	r2, r7
+40452d88:	0a000002 	beq	0x40452d98
+40452d8c:	e5951028 	ldr	r1, [r5, #40]	; 0x28
+40452d90:	e1520001 	cmp	r2, r1
+40452d94:	1a000001 	bne	0x40452da0
+40452d98:	e1a00006 	mov	r0, r6
+40452d9c:	e12fff33 	blx	r3
+40452da0:	e2844008 	add	r4, r4, #8
+40452da4:	e5143004 	ldr	r3, [r4, #-4]
+40452da8:	e3530000 	cmp	r3, #0
+40452dac:	08bd81f0 	popeq	{r4, r5, r6, r7, r8, pc}
+40452db0:	eaffffec 	b	0x40452d68
+40452db4:	e92d4ff0 	push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+40452db8:	e1a0b003 	mov	fp, r3
+40452dbc:	e59030f4 	ldr	r3, [r0, #244]	; 0xf4
+40452dc0:	e24dd01c 	sub	sp, sp, #28
+40452dc4:	e1a0a002 	mov	sl, r2
+40452dc8:	e590705c 	ldr	r7, [r0, #92]	; 0x5c
+40452dcc:	e58d1014 	str	r1, [sp, #20]
+40452dd0:	e3a06000 	mov	r6, #0
+40452dd4:	e58d300c 	str	r3, [sp, #12]
+40452dd8:	e3a01018 	mov	r1, #24
+40452ddc:	e5939044 	ldr	r9, [r3, #68]	; 0x44
+40452de0:	e5904058 	ldr	r4, [r0, #88]	; 0x58
+40452de4:	ea000000 	b	0x40452dec
+40452de8:	e2866001 	add	r6, r6, #1
+40452dec:	e1540006 	cmp	r4, r6
+40452df0:	da000004 	ble	0x40452e08
+40452df4:	e0030691 	mul	r3, r1, r6
+40452df8:	e18320d7 	ldrd	r2, [r3, r7]
+40452dfc:	e153000b 	cmp	r3, fp
+40452e00:	0152000a 	cmpeq	r2, sl
+40452e04:	9afffff7 	bls	0x40452de8
+40452e08:	e2466001 	sub	r6, r6, #1
+40452e0c:	e3a0c018 	mov	ip, #24
+40452e10:	e00c069c 	mul	ip, ip, r6
+40452e14:	e087300c 	add	r3, r7, ip
+40452e18:	e5931008 	ldr	r1, [r3, #8]
+40452e1c:	e3a03000 	mov	r3, #0
+40452e20:	e2411001 	sub	r1, r1, #1
+40452e24:	e00a2001 	and	r2, sl, r1
+40452e28:	e1923003 	orrs	r3, r2, r3
+40452e2c:	1a00004f 	bne	0x40452f70
+40452e30:	e59d3040 	ldr	r3, [sp, #64]	; 0x40
+40452e34:	e28cc018 	add	ip, ip, #24
+40452e38:	e087c00c 	add	ip, r7, ip
+40452e3c:	e1a0e006 	mov	lr, r6
+40452e40:	e09a0003 	adds	r0, sl, r3
+40452e44:	e2ab1000 	adc	r1, fp, #0
+40452e48:	ea000000 	b	0x40452e50
+40452e4c:	e28ee001 	add	lr, lr, #1
+40452e50:	e154000e 	cmp	r4, lr
+40452e54:	da000004 	ble	0x40452e6c
+40452e58:	e28cc018 	add	ip, ip, #24
+40452e5c:	e14c23d0 	ldrd	r2, [ip, #-48]	; 0xffffffd0
+40452e60:	e1510003 	cmp	r1, r3
+40452e64:	01500002 	cmpeq	r0, r2
+40452e68:	2afffff7 	bcs	0x40452e4c
+40452e6c:	e24ee001 	sub	lr, lr, #1
+40452e70:	e3a03018 	mov	r3, #24
+40452e74:	e3a01000 	mov	r1, #0
+40452e78:	e02e7e93 	mla	lr, r3, lr, r7
+40452e7c:	e59e3008 	ldr	r3, [lr, #8]
+40452e80:	e2433001 	sub	r3, r3, #1
+40452e84:	e0000003 	and	r0, r0, r3
+40452e88:	e1903001 	orrs	r3, r0, r1
+40452e8c:	1a000037 	bne	0x40452f70
+40452e90:	e5995034 	ldr	r5, [r9, #52]	; 0x34
+40452e94:	e2652020 	rsb	r2, r5, #32
+40452e98:	e1a0453a 	lsr	r4, sl, r5
+40452e9c:	e2553020 	subs	r3, r5, #32
+40452ea0:	e184421b 	orr	r4, r4, fp, lsl r2
+40452ea4:	5184435b 	orrpl	r4, r4, fp, asr r3
+40452ea8:	e04a5514 	sub	r5, sl, r4, lsl r5
+40452eac:	ea00002b 	b	0x40452f60
+40452eb0:	e3a03018 	mov	r3, #24
+40452eb4:	e1a02005 	mov	r2, r5
+40452eb8:	e0030693 	mul	r3, r3, r6
+40452ebc:	e59d000c 	ldr	r0, [sp, #12]
+40452ec0:	e59dc014 	ldr	ip, [sp, #20]
+40452ec4:	e58d3010 	str	r3, [sp, #16]
+40452ec8:	e0873003 	add	r3, r7, r3
+40452ecc:	e58d3008 	str	r3, [sp, #8]
+40452ed0:	e5938008 	ldr	r8, [r3, #8]
+40452ed4:	e3a03058 	mov	r3, #88	; 0x58
+40452ed8:	e0219493 	mla	r1, r3, r4, r9
+40452edc:	e59d3044 	ldr	r3, [sp, #68]	; 0x44
+40452ee0:	e2811040 	add	r1, r1, #64	; 0x40
+40452ee4:	e58d3000 	str	r3, [sp]
+40452ee8:	e1a03008 	mov	r3, r8
+40452eec:	e12fff3c 	blx	ip
+40452ef0:	e3500000 	cmp	r0, #0
+40452ef4:	1a00001e 	bne	0x40452f74
+40452ef8:	e59d3040 	ldr	r3, [sp, #64]	; 0x40
+40452efc:	e09aa008 	adds	sl, sl, r8
+40452f00:	e0abbfc8 	adc	fp, fp, r8, asr #31
+40452f04:	e0855008 	add	r5, r5, r8
+40452f08:	e0433008 	sub	r3, r3, r8
+40452f0c:	e58d3040 	str	r3, [sp, #64]	; 0x40
+40452f10:	e59d3008 	ldr	r3, [sp, #8]
+40452f14:	e593300c 	ldr	r3, [r3, #12]
+40452f18:	e0080893 	mul	r8, r3, r8
+40452f1c:	e59d3010 	ldr	r3, [sp, #16]
+40452f20:	e18320d7 	ldrd	r2, [r3, r7]
+40452f24:	e0920008 	adds	r0, r2, r8
+40452f28:	e2a31000 	adc	r1, r3, #0
+40452f2c:	e5993034 	ldr	r3, [r9, #52]	; 0x34
+40452f30:	e151000b 	cmp	r1, fp
+40452f34:	0150000a 	cmpeq	r0, sl
+40452f38:	02866001 	addeq	r6, r6, #1
+40452f3c:	e1b03335 	lsrs	r3, r5, r3
+40452f40:	0a000006 	beq	0x40452f60
+40452f44:	e599302c 	ldr	r3, [r9, #44]	; 0x2c
+40452f48:	e2844001 	add	r4, r4, #1
+40452f4c:	e1530004 	cmp	r3, r4
+40452f50:	ca000001 	bgt	0x40452f5c
+40452f54:	e3a00000 	mov	r0, #0
+40452f58:	ea000005 	b	0x40452f74
+40452f5c:	e3a05000 	mov	r5, #0
+40452f60:	e59d3040 	ldr	r3, [sp, #64]	; 0x40
+40452f64:	e3530000 	cmp	r3, #0
+40452f68:	1affffd0 	bne	0x40452eb0
+40452f6c:	eafffff8 	b	0x40452f54
+40452f70:	e3e00015 	mvn	r0, #21
+40452f74:	e28dd01c 	add	sp, sp, #28
+40452f78:	e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+40452f7c:	e92d43f7 	push	{r0, r1, r2, r4, r5, r6, r7, r8, r9, lr}
+40452f80:	e1a04000 	mov	r4, r0
+40452f84:	e59f60bc 	ldr	r6, [pc, #188]	; 0x40453048
+40452f88:	e1a07001 	mov	r7, r1
+40452f8c:	e5919018 	ldr	r9, [r1, #24]
+40452f90:	e5928008 	ldr	r8, [r2, #8]
+40452f94:	e5963000 	ldr	r3, [r6]
+40452f98:	e1a00009 	mov	r0, r9
+40452f9c:	e1a01008 	mov	r1, r8
+40452fa0:	e58d3004 	str	r3, [sp, #4]
+40452fa4:	eb0aa2ef 	bl	0x406fbb68
+40452fa8:	e1a01009 	mov	r1, r9
+40452fac:	e1a05000 	mov	r5, r0
+40452fb0:	e0000899 	mul	r0, r9, r8
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,165 +1,165 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452d3c <do_read_secsi_onechip>:
++40452d3c <.data+0xADDR>:
++00030293 	muleq	r3, r3, r2
++018cc003 	orreq	ip, ip, r3
++e1a0000c 	mov	r0, ip
++e49df004 	pop	{pc}		; (ldr pc, [sp], #4)
++e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
++e1a06000 	mov	r6, r0
++e59030f4 	ldr	r3, [r0, #244]	; 0xf4
++e2814008 	add	r4, r1, #8
++e30f7fff 	movw	r7, #65535	; 0xffff
++e5935044 	ldr	r5, [r3, #68]	; 0x44
++ea00000e 	b	0xADDR
++e15420b8 	ldrh	r2, [r4, #-8]
++e1520007 	cmp	r2, r7
++0a000002 	beq	0xADDR
++e5951024 	ldr	r1, [r5, #36]	; 0x24
++e1520001 	cmp	r2, r1
++1a000007 	bne	0xADDR
++e15420b6 	ldrh	r2, [r4, #-6]
++e1520007 	cmp	r2, r7
++0a000002 	beq	0xADDR
++e5951028 	ldr	r1, [r5, #40]	; 0x28
++e1520001 	cmp	r2, r1
++1a000001 	bne	0xADDR
++e1a00006 	mov	r0, r6
++e12fff33 	blx	r3
++e2844008 	add	r4, r4, #8
++e5143004 	ldr	r3, [r4, #-4]
++e3530000 	cmp	r3, #0
++08bd81f0 	popeq	{r4, r5, r6, r7, r8, pc}
++eaffffec 	b	0xADDR
+ e92d4ff0 	push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+-e24dd034 	sub	sp, sp, #52	; 0x34
+-e59f6258 	ldr	r6, [pc, #600]	; 80452fa4 <do_read_secsi_onechip+0x268>
+-e1a05001 	mov	r5, r1
+-e59d305c 	ldr	r3, [sp, #92]	; 0x5c
++e1a0b003 	mov	fp, r3
++e59030f4 	ldr	r3, [r0, #244]	; 0xf4
++e24dd01c 	sub	sp, sp, #28
++e1a0a002 	mov	sl, r2
++e590705c 	ldr	r7, [r0, #92]	; 0x5c
++e58d1014 	str	r1, [sp, #20]
++e3a06000 	mov	r6, #0
++e58d300c 	str	r3, [sp, #12]
++e3a01018 	mov	r1, #24
++e5939044 	ldr	r9, [r3, #68]	; 0x44
++e5904058 	ldr	r4, [r0, #88]	; 0x58
++ea000000 	b	0xADDR
++e2866001 	add	r6, r6, #1
++e1540006 	cmp	r4, r6
++da000004 	ble	0xADDR
++e0030691 	mul	r3, r1, r6
++e18320d7 	ldrd	r2, [r3, r7]
++e153000b 	cmp	r3, fp
++0152000a 	cmpeq	r2, sl
++9afffff7 	bls	0xADDR
++e2466001 	sub	r6, r6, #1
++e3a0c018 	mov	ip, #24
++e00c069c 	mul	ip, ip, r6
++e087300c 	add	r3, r7, ip
++e5931008 	ldr	r1, [r3, #8]
++e3a03000 	mov	r3, #0
++e2411001 	sub	r1, r1, #1
++e00a2001 	and	r2, sl, r1
++e1923003 	orrs	r3, r2, r3
++1a00004f 	bne	0xADDR
++e59d3040 	ldr	r3, [sp, #64]	; 0x40
++e28cc018 	add	ip, ip, #24
++e087c00c 	add	ip, r7, ip
++e1a0e006 	mov	lr, r6
++e09a0003 	adds	r0, sl, r3
++e2ab1000 	adc	r1, fp, #0
++ea000000 	b	0xADDR
++e28ee001 	add	lr, lr, #1
++e154000e 	cmp	r4, lr
++da000004 	ble	0xADDR
++e28cc018 	add	ip, ip, #24
++e14c23d0 	ldrd	r2, [ip, #-48]	; 0xADDR
++e1510003 	cmp	r1, r3
++01500002 	cmpeq	r0, r2
++2afffff7 	bcs	0xADDR
++e24ee001 	sub	lr, lr, #1
++e3a03018 	mov	r3, #24
++e3a01000 	mov	r1, #0
++e02e7e93 	mla	lr, r3, lr, r7
++e59e3008 	ldr	r3, [lr, #8]
++e2433001 	sub	r3, r3, #1
++e0000003 	and	r0, r0, r3
++e1903001 	orrs	r3, r0, r1
++1a000037 	bne	0xADDR
++e5995034 	ldr	r5, [r9, #52]	; 0x34
++e2652020 	rsb	r2, r5, #32
++e1a0453a 	lsr	r4, sl, r5
++e2553020 	subs	r3, r5, #32
++e184421b 	orr	r4, r4, fp, lsl r2
++5184435b 	orrpl	r4, r4, fp, asr r3
++e04a5514 	sub	r5, sl, r4, lsl r5
++ea00002b 	b	0xADDR
++e3a03018 	mov	r3, #24
++e1a02005 	mov	r2, r5
++e0030693 	mul	r3, r3, r6
++e59d000c 	ldr	r0, [sp, #12]
++e59dc014 	ldr	ip, [sp, #20]
++e58d3010 	str	r3, [sp, #16]
++e0873003 	add	r3, r7, r3
++e58d3008 	str	r3, [sp, #8]
++e5938008 	ldr	r8, [r3, #8]
++e3a03058 	mov	r3, #88	; 0x58
++e0219493 	mla	r1, r3, r4, r9
++e59d3044 	ldr	r3, [sp, #68]	; 0x44
++e2811040 	add	r1, r1, #64	; 0x40
++e58d3000 	str	r3, [sp]
++e1a03008 	mov	r3, r8
++e12fff3c 	blx	ip
++e3500000 	cmp	r0, #0
++1a00001e 	bne	0xADDR
++e59d3040 	ldr	r3, [sp, #64]	; 0x40
++e09aa008 	adds	sl, sl, r8
++e0abbfc8 	adc	fp, fp, r8, asr #31
++e0855008 	add	r5, r5, r8
++e0433008 	sub	r3, r3, r8
++e58d3040 	str	r3, [sp, #64]	; 0x40
++e59d3008 	ldr	r3, [sp, #8]
++e593300c 	ldr	r3, [r3, #12]
++e0080893 	mul	r8, r3, r8
++e59d3010 	ldr	r3, [sp, #16]
++e18320d7 	ldrd	r2, [r3, r7]
++e0920008 	adds	r0, r2, r8
++e2a31000 	adc	r1, r3, #0
++e5993034 	ldr	r3, [r9, #52]	; 0x34
++e151000b 	cmp	r1, fp
++0150000a 	cmpeq	r0, sl
++02866001 	addeq	r6, r6, #1
++e1b03335 	lsrs	r3, r5, r3
++0a000006 	beq	0xADDR
++e599302c 	ldr	r3, [r9, #44]	; 0x2c
++e2844001 	add	r4, r4, #1
++e1530004 	cmp	r3, r4
++ca000001 	bgt	0xADDR
++e3a00000 	mov	r0, #0
++ea000005 	b	0xADDR
++e3a05000 	mov	r5, #0
++e59d3040 	ldr	r3, [sp, #64]	; 0x40
++e3530000 	cmp	r3, #0
++1affffd0 	bne	0xADDR
++eafffff8 	b	0xADDR
++e3e00015 	mvn	r0, #21
++e28dd01c 	add	sp, sp, #28
++e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
++e92d43f7 	push	{r0, r1, r2, r4, r5, r6, r7, r8, r9, lr}
+ e1a04000 	mov	r4, r0
+-e1a08002 	mov	r8, r2
+-e3a01000 	mov	r1, #0
+-e3a02014 	mov	r2, #20
+-e28d0018 	add	r0, sp, #24
+-e58d3010 	str	r3, [sp, #16]
+-e285a01c 	add	sl, r5, #28
++e59f60bc 	ldr	r6, [pc, #188]	; 0xADDR
++e1a07001 	mov	r7, r1
++e5919018 	ldr	r9, [r1, #24]
++e5928008 	ldr	r8, [r2, #8]
+ e5963000 	ldr	r3, [r6]
+-e285b030 	add	fp, r5, #48	; 0x30
+-e59f722c 	ldr	r7, [pc, #556]	; 80452fa8 <do_read_secsi_onechip+0x26c>
+-e58d302c 	str	r3, [sp, #44]	; 0x2c
+-eb0a914f 	bl	806f72c0 <__memset>
+-e1a0300d 	mov	r3, sp
+-e0033007 	and	r3, r3, r7
+-e58d6014 	str	r6, [sp, #20]
+-e593300c 	ldr	r3, [r3, #12]
+-e58d301c 	str	r3, [sp, #28]
+-e59f3210 	ldr	r3, [pc, #528]	; 80452fac <do_read_secsi_onechip+0x270>
+-e58d3020 	str	r3, [sp, #32]
+-e1a0000a 	mov	r0, sl
+-eb0af92f 	bl	80711264 <mutex_lock>
+-e5956008 	ldr	r6, [r5, #8]
+-e3560000 	cmp	r6, #0
+-0a000012 	beq	80452dfc <do_read_secsi_onechip+0xc0>
+-e1a0300d 	mov	r3, sp
+-e0033007 	and	r3, r3, r7
+-e59f11f0 	ldr	r1, [pc, #496]	; 80452fb0 <do_read_secsi_onechip+0x274>
+-e593200c 	ldr	r2, [r3, #12]
+-e5821590 	str	r1, [r2, #1424]	; 0x590
+-e3a02002 	mov	r2, #2
+-e593300c 	ldr	r3, [r3, #12]
+-e5832000 	str	r2, [r3]
+-f57ff05b 	dmb	ish
+-e28d1018 	add	r1, sp, #24
+-e1a0000b 	mov	r0, fp
+-ebf42229 	bl	8015b688 <add_wait_queue>
+-e1a0000a 	mov	r0, sl
+-eb0af756 	bl	80710b44 <mutex_unlock>
+-eb0af354 	bl	8070fb40 <schedule>
+-e1a0000b 	mov	r0, fp
+-e28d1018 	add	r1, sp, #24
+-ebf42245 	bl	8015b710 <remove_wait_queue>
+-eaffffe7 	b	80452d9c <do_read_secsi_onechip+0x60>
+-e5947044 	ldr	r7, [r4, #68]	; 0x44
+-e5952000 	ldr	r2, [r5]
+-e58d6008 	str	r6, [sp, #8]
+-e597300c 	ldr	r3, [r7, #12]
+-e0980002 	adds	r0, r8, r2
+-e58d7000 	str	r7, [sp]
+-e1a08000 	mov	r8, r0
+-e3a000aa 	mov	r0, #170	; 0xaa
++e1a00009 	mov	r0, r9
++e1a01008 	mov	r1, r8
+ e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5971014 	ldr	r1, [r7, #20]
+-ebfffdb5 	bl	80452504 <cfi_send_gen_cmd>
+-e5952000 	ldr	r2, [r5]
+-e3a00055 	mov	r0, #85	; 0x55
+-e58d6008 	str	r6, [sp, #8]
+-e597300c 	ldr	r3, [r7, #12]
+-e58d7000 	str	r7, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5971018 	ldr	r1, [r7, #24]
+-ebfffdac 	bl	80452504 <cfi_send_gen_cmd>
+-e5952000 	ldr	r2, [r5]
+-e3a00088 	mov	r0, #136	; 0x88
+-e58d6008 	str	r6, [sp, #8]
+-e597300c 	ldr	r3, [r7, #12]
+-e58d7000 	str	r7, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5971014 	ldr	r1, [r7, #20]
+-ebfffda3 	bl	80452504 <cfi_send_gen_cmd>
+-e594302c 	ldr	r3, [r4, #44]	; 0x2c
+-e3530000 	cmp	r3, #0
+-0a000004 	beq	80452e94 <do_read_secsi_onechip+0x158>
+-e5951000 	ldr	r1, [r5]
+-e1a00004 	mov	r0, r4
+-e59d2058 	ldr	r2, [sp, #88]	; 0x58
+-e0811008 	add	r1, r1, r8
+-e12fff33 	blx	r3
+-e5946020 	ldr	r6, [r4, #32]
+-e1a02008 	mov	r2, r8
+-e59d3058 	ldr	r3, [sp, #88]	; 0x58
+-e1a00004 	mov	r0, r4
+-e59d1010 	ldr	r1, [sp, #16]
+-e3a07000 	mov	r7, #0
+-e12fff36 	blx	r6
+-e5946044 	ldr	r6, [r4, #68]	; 0x44
+-e5952000 	ldr	r2, [r5]
+-e3a000aa 	mov	r0, #170	; 0xaa
+-e58d7008 	str	r7, [sp, #8]
+-e596300c 	ldr	r3, [r6, #12]
+-e58d6000 	str	r6, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5961014 	ldr	r1, [r6, #20]
+-ebfffd8a 	bl	80452504 <cfi_send_gen_cmd>
+-e5952000 	ldr	r2, [r5]
+-e3a00055 	mov	r0, #85	; 0x55
+-e58d7008 	str	r7, [sp, #8]
+-e596300c 	ldr	r3, [r6, #12]
+-e58d6000 	str	r6, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5961018 	ldr	r1, [r6, #24]
+-ebfffd81 	bl	80452504 <cfi_send_gen_cmd>
+-e5952000 	ldr	r2, [r5]
+-e3a00090 	mov	r0, #144	; 0x90
+-e58d7008 	str	r7, [sp, #8]
+-e596300c 	ldr	r3, [r6, #12]
+-e58d6000 	str	r6, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5961014 	ldr	r1, [r6, #20]
+-ebfffd78 	bl	80452504 <cfi_send_gen_cmd>
+-e5952000 	ldr	r2, [r5]
+-e1a00007 	mov	r0, r7
+-e58d7008 	str	r7, [sp, #8]
+-e596300c 	ldr	r3, [r6, #12]
+-e58d6000 	str	r6, [sp]
+-e58d3004 	str	r3, [sp, #4]
+-e1a03004 	mov	r3, r4
+-e5961014 	ldr	r1, [r6, #20]
+-ebfffd6f 	bl	80452504 <cfi_send_gen_cmd>
+-e594302c 	ldr	r3, [r4, #44]	; 0x2c
+-e1530007 	cmp	r3, r7
+-0a000004 	beq	80452f64 <do_read_secsi_onechip+0x228>
+-e5951000 	ldr	r1, [r5]
+-e1a00004 	mov	r0, r4
+-e59d2058 	ldr	r2, [sp, #88]	; 0x58
+-e0811008 	add	r1, r1, r8
+-e12fff33 	blx	r3
+-e3a03000 	mov	r3, #0
+-e3a02001 	mov	r2, #1
+-e3a01003 	mov	r1, #3
+-e1a0000b 	mov	r0, fp
+-ebf42267 	bl	8015b918 <__wake_up>
+-e1a0000a 	mov	r0, sl
+-eb0af6f0 	bl	80710b44 <mutex_unlock>
+-e3a00000 	mov	r0, #0
+-e59d3014 	ldr	r3, [sp, #20]
+-e59d202c 	ldr	r2, [sp, #44]	; 0x2c
+-e5933000 	ldr	r3, [r3]
+-e1520003 	cmp	r2, r3
+-0a000000 	beq	80452f9c <do_read_secsi_onechip+0x260>
+-ebf33426 	bl	80120038 <__stack_chk_fail>
+-e28dd034 	add	sp, sp, #52	; 0x34
+-e8bd8ff0 	pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+-80a07ec8 	.word	0xADDR
+-ffffc000 	.word	0xADDR
+-8014452c 	.word	0xADDR
+-80452db0 	.word	0xADDR
++eb0aa2ef 	bl	0xADDR
++e1a01009 	mov	r1, r9
++e1a05000 	mov	r5, r0
++e0000899 	mul	r0, r9, r8

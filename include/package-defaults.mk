@@ -4,7 +4,7 @@
 
 PKG_DEFAULT_DEPENDS = +libc
 
-ifneq ($(PKG_NAME),toolchain)
+ifeq ($(filter toolchain,$(PKG_NAME))$(filter %-vendor,$(PKG_NAME)),)
   PKG_FIXUP_DEPENDS = $(if $(filter kmod-%,$(1)),$(2),$(PKG_DEFAULT_DEPENDS) $(filter-out $(PKG_DEFAULT_DEPENDS),$(2)))
 else
   PKG_FIXUP_DEPENDS = $(2)

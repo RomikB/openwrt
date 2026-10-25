@@ -1,0 +1,2493 @@
+# Функции с отличиями между нашим и стоковым ядром
+# Всего: 415
+
+────────────────────────────────────────────────────────────
+FUNC: get_page_from_freelist
+  our_addr:    0x80221968
+  vendor_addr: 0x40221968
+  size:        2780 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: __alloc_pages_direct_compact
+  our_addr:    0x80222444
+  vendor_addr: 0x40222444
+  size:        444 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: zone_watermark_ok
+  our_addr:    0x80222600
+  vendor_addr: 0x40222600
+  size:        36 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: __isolate_free_page
+  our_addr:    0x80222624
+  vendor_addr: 0x40222624
+  size:        340 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: zone_watermark_ok_safe
+  our_addr:    0x80222778
+  vendor_addr: 0x40222778
+  size:        164 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: warn_alloc
+  our_addr:    0x8022281c
+  vendor_addr: 0x4022281c
+  size:        360 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: gfp_pfmemalloc_allowed
+  our_addr:    0x80222984
+  vendor_addr: 0x40222984
+  size:        144 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: __alloc_pages_nodemask
+  our_addr:    0x80222a14
+  vendor_addr: 0x40222a14
+  size:        3480 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: __get_free_pages
+  our_addr:    0x802237ac
+  vendor_addr: 0x402237ac
+  size:        36 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: get_zeroed_page
+  our_addr:    0x802237d0
+  vendor_addr: 0x402237d0
+  size:        12 байт
+  changed_b:   28646 байт
+────────────────────────────────────────────────────────────
+FUNC: new_slab
+  our_addr:    0x80229d4c
+  vendor_addr: 0x40229d4c
+  size:        2868 байт
+  changed_b:   159378 байт
+────────────────────────────────────────────────────────────
+FUNC: ___slab_alloc.constprop.6
+  our_addr:    0x8022a880
+  vendor_addr: 0x4022a880
+  size:        1544 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: __slab_alloc.constprop.5
+  our_addr:    0x8022ae88
+  vendor_addr: 0x4022ae88
+  size:        36 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: __kmalloc
+  our_addr:    0x8022aeac
+  vendor_addr: 0x4022aeac
+  size:        632 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: kmem_cache_alloc
+  our_addr:    0x8022b124
+  vendor_addr: 0x4022b124
+  size:        588 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: sysfs_slab_alias
+  our_addr:    0x8022b370
+  vendor_addr: 0x4022b370
+  size:        140 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: sysfs_slab_add
+  our_addr:    0x8022b3fc
+  vendor_addr: 0x4022b3fc
+  size:        548 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: show_slab_objects
+  our_addr:    0x8022b620
+  vendor_addr: 0x4022b620
+  size:        396 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: cpu_slabs_show
+  our_addr:    0x8022b7ac
+  vendor_addr: 0x4022b7ac
+  size:        8 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: partial_show
+  our_addr:    0x8022b7b4
+  vendor_addr: 0x4022b7b4
+  size:        8 байт
+  changed_b:   158403 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_fiemap
+  our_addr:    0x8025777c
+  vendor_addr: 0x4025777c
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_atomic_open
+  our_addr:    0x80257784
+  vendor_addr: 0x40257784
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: is_bad_inode
+  our_addr:    0x8025778c
+  vendor_addr: 0x4025778c
+  size:        28 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: make_bad_inode
+  our_addr:    0x802577a8
+  vendor_addr: 0x402577a8
+  size:        172 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: iget_failed
+  our_addr:    0x80257854
+  vendor_addr: 0x40257854
+  size:        32 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_update_time
+  our_addr:    0x80257874
+  vendor_addr: 0x40257874
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_tmpfile
+  our_addr:    0x8025787c
+  vendor_addr: 0x4025787c
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_symlink
+  our_addr:    0x80257884
+  vendor_addr: 0x40257884
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_setattr
+  our_addr:    0x8025788c
+  vendor_addr: 0x4025788c
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: bad_inode_set_acl
+  our_addr:    0x80257894
+  vendor_addr: 0x40257894
+  size:        8 байт
+  changed_b:   9002 байт
+────────────────────────────────────────────────────────────
+FUNC: alloc_vfsmnt
+  our_addr:    0x8025a05c
+  vendor_addr: 0x4025a05c
+  size:        336 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: vfs_create_mount
+  our_addr:    0x8025a1ac
+  vendor_addr: 0x4025a1ac
+  size:        256 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: fc_mount
+  our_addr:    0x8025a2ac
+  vendor_addr: 0x4025a2ac
+  size:        48 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: vfs_kern_mount.part.3
+  our_addr:    0x8025a2dc
+  vendor_addr: 0x4025a2dc
+  size:        136 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: vfs_kern_mount
+  our_addr:    0x8025a364
+  vendor_addr: 0x4025a364
+  size:        20 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: vfs_submount
+  our_addr:    0x8025a378
+  vendor_addr: 0x4025a378
+  size:        48 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: kern_mount
+  our_addr:    0x8025a3a8
+  vendor_addr: 0x4025a3a8
+  size:        36 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: clone_mnt
+  our_addr:    0x8025a3cc
+  vendor_addr: 0x4025a3cc
+  size:        560 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: clone_private_mount
+  our_addr:    0x8025a5fc
+  vendor_addr: 0x4025a5fc
+  size:        156 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: mnt_release_group_id
+  our_addr:    0x8025a698
+  vendor_addr: 0x4025a698
+  size:        36 байт
+  changed_b:   232112 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_pid_status
+  our_addr:    0x8029bc24
+  vendor_addr: 0x4029bc24
+  size:        2000 байт
+  changed_b:   6035 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_tid_stat
+  our_addr:    0x8029c3f4
+  vendor_addr: 0x4029c3f4
+  size:        24 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_tgid_stat
+  our_addr:    0x8029c40c
+  vendor_addr: 0x4029c40c
+  size:        24 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_pid_statm
+  our_addr:    0x8029c424
+  vendor_addr: 0x4029c424
+  size:        300 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: tid_fd_mode
+  our_addr:    0x8029c550
+  vendor_addr: 0x4029c550
+  size:        116 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_fd_link
+  our_addr:    0x8029c5c4
+  vendor_addr: 0x4029c5c4
+  size:        256 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_readfd_common
+  our_addr:    0x8029c6c4
+  vendor_addr: 0x4029c6c4
+  size:        640 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_readfd
+  our_addr:    0x8029c944
+  vendor_addr: 0x4029c944
+  size:        12 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_readfdinfo
+  our_addr:    0x8029c950
+  vendor_addr: 0x4029c950
+  size:        12 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_fd_permission
+  our_addr:    0x8029c95c
+  vendor_addr: 0x4029c95c
+  size:        88 байт
+  changed_b:   5020 байт
+────────────────────────────────────────────────────────────
+FUNC: meminfo_proc_show
+  our_addr:    0x8029d6c0
+  vendor_addr: 0x4029d6c0
+  size:        1144 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: stat_open
+  our_addr:    0x8029db38
+  vendor_addr: 0x4029db38
+  size:        56 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: get_idle_time
+  our_addr:    0x8029db70
+  vendor_addr: 0x4029db70
+  size:        116 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: get_iowait_time
+  our_addr:    0x8029dbe4
+  vendor_addr: 0x4029dbe4
+  size:        116 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: show_stat
+  our_addr:    0x8029dc58
+  vendor_addr: 0x4029dc58
+  size:        1720 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: uptime_proc_show
+  our_addr:    0x8029e310
+  vendor_addr: 0x4029e310
+  size:        336 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: name_to_int
+  our_addr:    0x8029e460
+  vendor_addr: 0x4029e460
+  size:        112 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: version_proc_show
+  our_addr:    0x8029e4d0
+  vendor_addr: 0x4029e4d0
+  size:        68 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: show_softirqs
+  our_addr:    0x8029e514
+  vendor_addr: 0x4029e514
+  size:        268 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_ns_instantiate
+  our_addr:    0x8029e620
+  vendor_addr: 0x4029e620
+  size:        104 байт
+  changed_b:   528766 байт
+────────────────────────────────────────────────────────────
+FUNC: test_skcipher
+  our_addr:    0x80331d20
+  vendor_addr: 0x40331d20
+  size:        252 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_find_test
+  our_addr:    0x80331e1c
+  vendor_addr: 0x40331e1c
+  size:        92 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: check_nonfinal_ahash_op
+  our_addr:    0x80331e78
+  vendor_addr: 0x40331e78
+  size:        132 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_comp
+  our_addr:    0x80331efc
+  vendor_addr: 0x40331efc
+  size:        2052 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_crc32c.part.4
+  our_addr:    0x80332700
+  vendor_addr: 0x40332700
+  size:        232 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: do_ahash_op.constprop.8
+  our_addr:    0x803327e8
+  vendor_addr: 0x403327e8
+  size:        60 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: test_ahash_vec_cfg
+  our_addr:    0x80332824
+  vendor_addr: 0x40332824
+  size:        1568 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: valid_sg_divisions.constprop.9
+  our_addr:    0x80332e44
+  vendor_addr: 0x40332e44
+  size:        180 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: valid_testvec_config
+  our_addr:    0x80332ef8
+  vendor_addr: 0x40332ef8
+  size:        252 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: free_cipher_test_sglists
+  our_addr:    0x80332ff4
+  vendor_addr: 0x40332ff4
+  size:        44 байт
+  changed_b:   5246 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test
+  our_addr:    0x80333598
+  vendor_addr: 0x40333598
+  size:        84 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alloc_cipher_test_sglists
+  our_addr:    0x803335ec
+  vendor_addr: 0x403335ec
+  size:        100 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_aead
+  our_addr:    0x80333650
+  vendor_addr: 0x40333650
+  size:        304 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_skcipher
+  our_addr:    0x80333780
+  vendor_addr: 0x40333780
+  size:        304 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: test_shash_vec_cfg
+  our_addr:    0x803338b0
+  vendor_addr: 0x403338b0
+  size:        1276 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: __alg_test_hash.constprop.7
+  our_addr:    0x80333dac
+  vendor_addr: 0x40333dac
+  size:        844 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_hash
+  our_addr:    0x803340f8
+  vendor_addr: 0x403340f8
+  size:        264 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_crc32c
+  our_addr:    0x80334200
+  vendor_addr: 0x40334200
+  size:        48 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: test_akcipher_one
+  our_addr:    0x80334230
+  vendor_addr: 0x40334230
+  size:        1516 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: alg_test_akcipher
+  our_addr:    0x8033481c
+  vendor_addr: 0x4033481c
+  size:        192 байт
+  changed_b:   287589 байт
+────────────────────────────────────────────────────────────
+FUNC: fill_window
+  our_addr:    0x80384000
+  vendor_addr: 0x40384000
+  size:        864 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: deflate_slow
+  our_addr:    0x80384360
+  vendor_addr: 0x40384360
+  size:        968 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: deflate_fast
+  our_addr:    0x80384728
+  vendor_addr: 0x40384728
+  size:        752 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: deflate_stored
+  our_addr:    0x80384a18
+  vendor_addr: 0x40384a18
+  size:        420 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: zlib_deflateReset
+  our_addr:    0x80384bbc
+  vendor_addr: 0x40384bbc
+  size:        284 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: zlib_deflateInit2
+  our_addr:    0x80384cd8
+  vendor_addr: 0x40384cd8
+  size:        332 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: zlib_deflate
+  our_addr:    0x80384e24
+  vendor_addr: 0x40384e24
+  size:        724 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: zlib_deflateEnd
+  our_addr:    0x803850f8
+  vendor_addr: 0x403850f8
+  size:        92 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: zlib_deflate_workspacesize
+  our_addr:    0x80385154
+  vendor_addr: 0x40385154
+  size:        76 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: init_block
+  our_addr:    0x803851a0
+  vendor_addr: 0x403851a0
+  size:        128 байт
+  changed_b:   739851 байт
+────────────────────────────────────────────────────────────
+FUNC: cfi_read_pri
+  our_addr:    0x80452b0c
+  vendor_addr: 0x40452b0c
+  size:        276 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: cfi_use_status_reg
+  our_addr:    0x80452c20
+  vendor_addr: 0x40452c20
+  size:        48 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_use_secsi
+  our_addr:    0x80452c50
+  vendor_addr: 0x40452c50
+  size:        20 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_use_erase_chip
+  our_addr:    0x80452c64
+  vendor_addr: 0x40452c64
+  size:        52 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_use_atmel_lock
+  our_addr:    0x80452c98
+  vendor_addr: 0x40452c98
+  size:        40 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_quirks
+  our_addr:    0x80452cc0
+  vendor_addr: 0x40452cc0
+  size:        48 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: is_m29ew
+  our_addr:    0x80452cf0
+  vendor_addr: 0x40452cf0
+  size:        76 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: do_read_secsi_onechip
+  our_addr:    0x80452d3c
+  vendor_addr: 0x40452d3c
+  size:        632 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_use_fwh_lock
+  our_addr:    0x80452fb4
+  vendor_addr: 0x40452fb4
+  size:        48 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: fixup_s29ns512p_sectors
+  our_addr:    0x80452fe4
+  vendor_addr: 0x40452fe4
+  size:        60 байт
+  changed_b:   797983 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_check_zlt
+  our_addr:    0x805315c8
+  vendor_addr: 0x405315c8
+  size:        820 байт
+  changed_b:   5176 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_check_pipe_empty
+  our_addr:    0x805318fc
+  vendor_addr: 0x405318fc
+  size:        820 байт
+  changed_b:   5176 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_init
+  our_addr:    0x80531c30
+  vendor_addr: 0x40531c30
+  size:        5688 байт
+  changed_b:   13990 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_exit
+  our_addr:    0x80533268
+  vendor_addr: 0x40533268
+  size:        1260 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_enable
+  our_addr:    0x80533754
+  vendor_addr: 0x40533754
+  size:        1160 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_disable
+  our_addr:    0x80533bdc
+  vendor_addr: 0x40533bdc
+  size:        652 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_is_enabled
+  our_addr:    0x80533e68
+  vendor_addr: 0x40533e68
+  size:        512 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_set_irq
+  our_addr:    0x80534068
+  vendor_addr: 0x40534068
+  size:        1884 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_satellite_mti
+  our_addr:    0x805347c4
+  vendor_addr: 0x405347c4
+  size:        888 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_set_mti
+  our_addr:    0x80534b3c
+  vendor_addr: 0x40534b3c
+  size:        436 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_get_and_clear_irq_status
+  our_addr:    0x80534cf0
+  vendor_addr: 0x40534cf0
+  size:        824 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_set_desc_write_offset
+  our_addr:    0x80535028
+  vendor_addr: 0x40535028
+  size:        512 байт
+  changed_b:   8156 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_timer_config
+  our_addr:    0x80535628
+  vendor_addr: 0x40535628
+  size:        1888 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_timer_reset
+  our_addr:    0x80535d88
+  vendor_addr: 0x40535d88
+  size:        1856 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_timer_get_count
+  our_addr:    0x805364c8
+  vendor_addr: 0x405364c8
+  size:        444 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_pipe_halt
+  our_addr:    0x80536684
+  vendor_addr: 0x40536684
+  size:        604 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_reg
+  our_addr:    0x805368e0
+  vendor_addr: 0x405368e0
+  size:        552 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_pipe_reg
+  our_addr:    0x80536b08
+  vendor_addr: 0x40536b08
+  size:        516 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_selected_reg
+  our_addr:    0x80536d0c
+  vendor_addr: 0x40536d0c
+  size:        10108 байт
+  changed_b:   17256 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_pipe_selected_reg
+  our_addr:    0x80539488
+  vendor_addr: 0x40539488
+  size:        21788 байт
+  changed_b:   45926 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_pipe_desc_fifo
+  our_addr:    0x8053e9a4
+  vendor_addr: 0x4053e9a4
+  size:        2508 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: print_bam_test_bus_reg
+  our_addr:    0x8053f370
+  vendor_addr: 0x4053f370
+  size:        4176 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_output_register_content
+  our_addr:    0x805403c0
+  vendor_addr: 0x405403c0
+  size:        1048 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: bam_check_irq_source
+  our_addr:    0x805407d8
+  vendor_addr: 0x405407d8
+  size:        1468 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: pipe_clear
+  our_addr:    0x80540d94
+  vendor_addr: 0x40540d94
+  size:        88 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: pipe_set_irq
+  our_addr:    0x80540dec
+  vendor_addr: 0x40540dec
+  size:        576 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: alloc_event.constprop.1
+  our_addr:    0x8054102c
+  vendor_addr: 0x4054102c
+  size:        32 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: trigger_event.constprop.2
+  our_addr:    0x8054104c
+  vendor_addr: 0x4054104c
+  size:        500 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: pipe_handler_generic
+  our_addr:    0x80541240
+  vendor_addr: 0x40541240
+  size:        60 байт
+  changed_b:   20901 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_disconnect
+  our_addr:    0x80543950
+  vendor_addr: 0x40543950
+  size:        620 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_set_params
+  our_addr:    0x80543bbc
+  vendor_addr: 0x40543bbc
+  size:        904 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_connect
+  our_addr:    0x80543f44
+  vendor_addr: 0x40543f44
+  size:        2724 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_enable
+  our_addr:    0x805449e8
+  vendor_addr: 0x405449e8
+  size:        40 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_disable
+  our_addr:    0x80544a10
+  vendor_addr: 0x40544a10
+  size:        236 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_reg_event
+  our_addr:    0x80544afc
+  vendor_addr: 0x40544afc
+  size:        364 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_transfer_one
+  our_addr:    0x80544c68
+  vendor_addr: 0x40544c68
+  size:        1456 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_inject_zlt
+  our_addr:    0x80545218
+  vendor_addr: 0x40545218
+  size:        1160 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_get_event
+  our_addr:    0x805456a0
+  vendor_addr: 0x405456a0
+  size:        572 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_pipe_get_iovec
+  our_addr:    0x805458dc
+  vendor_addr: 0x405458dc
+  size:        768 байт
+  changed_b:   9540 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_bam_lock
+  our_addr:    0x80546584
+  vendor_addr: 0x40546584
+  size:        272 байт
+  changed_b:   661 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_check_iovec_flags
+  our_addr:    0x80546694
+  vendor_addr: 0x40546694
+  size:        540 байт
+  changed_b:   661 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_phy2h
+  our_addr:    0x805468b0
+  vendor_addr: 0x405468b0
+  size:        528 байт
+  changed_b:   3062 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_get_config
+  our_addr:    0x80546ac0
+  vendor_addr: 0x40546ac0
+  size:        520 байт
+  changed_b:   2401 байт
+────────────────────────────────────────────────────────────
+FUNC: phy2bam
+  our_addr:    0x80546cc8
+  vendor_addr: 0x40546cc8
+  size:        208 байт
+  changed_b:   2401 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_setup_bam2bam_fifo
+  our_addr:    0x80546d98
+  vendor_addr: 0x40546d98
+  size:        640 байт
+  changed_b:   2401 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_disconnect
+  our_addr:    0x80547018
+  vendor_addr: 0x40547018
+  size:        556 байт
+  changed_b:   2401 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_register_event
+  our_addr:    0x80547244
+  vendor_addr: 0x40547244
+  size:        596 байт
+  changed_b:   2401 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_transfer
+  our_addr:    0x80547498
+  vendor_addr: 0x40547498
+  size:        620 байт
+  changed_b:   144099 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_get_event
+  our_addr:    0x80547704
+  vendor_addr: 0x40547704
+  size:        236 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_is_pipe_empty
+  our_addr:    0x805477f0
+  vendor_addr: 0x405477f0
+  size:        236 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_get_free_count
+  our_addr:    0x805478dc
+  vendor_addr: 0x405478dc
+  size:        236 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_set_config
+  our_addr:    0x805479c8
+  vendor_addr: 0x405479c8
+  size:        480 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_set_owner
+  our_addr:    0x80547ba8
+  vendor_addr: 0x40547ba8
+  size:        560 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_alloc_mem
+  our_addr:    0x80547dd8
+  vendor_addr: 0x40547dd8
+  size:        628 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_free_mem
+  our_addr:    0x8054804c
+  vendor_addr: 0x4054804c
+  size:        560 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_get_unused_desc_num
+  our_addr:    0x8054827c
+  vendor_addr: 0x4054827c
+  size:        404 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_ctrl_bam_dma_clk
+  our_addr:    0x80548410
+  vendor_addr: 0x40548410
+  size:        640 байт
+  changed_b:   141698 байт
+────────────────────────────────────────────────────────────
+FUNC: port_select_store
+  our_addr:    0x8056ee8c
+  vendor_addr: 0x4056ee8c
+  size:        188 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: port_enable_store
+  our_addr:    0x8056ef48
+  vendor_addr: 0x4056ef48
+  size:        176 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: traceid_store
+  our_addr:    0x8056eff8
+  vendor_addr: 0x4056eff8
+  size:        100 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: traceid_show
+  our_addr:    0x8056f05c
+  vendor_addr: 0x4056f05c
+  size:        32 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_enable
+  our_addr:    0x8056f07c
+  vendor_addr: 0x4056f07c
+  size:        336 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_runtime_resume
+  our_addr:    0x8056f1cc
+  vendor_addr: 0x4056f1cc
+  size:        192 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_generic_set_options
+  our_addr:    0x8056f28c
+  vendor_addr: 0x4056f28c
+  size:        104 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_generic_unlink
+  our_addr:    0x8056f2f4
+  vendor_addr: 0x4056f2f4
+  size:        24 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_generic_link
+  our_addr:    0x8056f30c
+  vendor_addr: 0x4056f30c
+  size:        32 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_send
+  our_addr:    0x8056f32c
+  vendor_addr: 0x4056f32c
+  size:        172 байт
+  changed_b:   18081 байт
+────────────────────────────────────────────────────────────
+FUNC: bc_enable_irq_store
+  our_addr:    0x80573fb8
+  vendor_addr: 0x40573fb8
+  size:        148 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: bc_clear_counters_store
+  our_addr:    0x8057404c
+  vendor_addr: 0x4057404c
+  size:        148 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: bc_enable_counters_store
+  our_addr:    0x805740e0
+  vendor_addr: 0x405740e0
+  size:        148 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: bc_sat_mode_store
+  our_addr:    0x80574174
+  vendor_addr: 0x40574174
+  size:        148 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: bc_reset_counters_store
+  our_addr:    0x80574208
+  vendor_addr: 0x40574208
+  size:        228 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: enable_datasets_store
+  our_addr:    0x805742ec
+  vendor_addr: 0x405742ec
+  size:        216 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: mcmb_lanes_select_show
+  our_addr:    0x805743c4
+  vendor_addr: 0x405743c4
+  size:        64 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: mcmb_trig_lane_show
+  our_addr:    0x80574404
+  vendor_addr: 0x40574404
+  size:        64 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: cmb_read_ctl_reg_show
+  our_addr:    0x80574444
+  vendor_addr: 0x40574444
+  size:        220 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: cmb_read_interface_state_show
+  our_addr:    0x80574520
+  vendor_addr: 0x40574520
+  size:        164 байт
+  changed_b:   327809 байт
+────────────────────────────────────────────────────────────
+FUNC: sock_filter_is_valid_access
+  our_addr:    0x805cf920
+  vendor_addr: 0x405cf920
+  size:        164 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: sk_get_filter
+  our_addr:    0x805cf9c4
+  vendor_addr: 0x405cf9c4
+  size:        216 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: bpf_run_sk_reuseport
+  our_addr:    0x805cfa9c
+  vendor_addr: 0x405cfa9c
+  size:        324 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: register_gifconf
+  our_addr:    0x805cfbe0
+  vendor_addr: 0x405cfbe0
+  size:        28 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_ifsioc
+  our_addr:    0x805cfbfc
+  vendor_addr: 0x405cfbfc
+  size:        836 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_load
+  our_addr:    0x805cff40
+  vendor_addr: 0x405cff40
+  size:        136 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_ifconf
+  our_addr:    0x805cffc8
+  vendor_addr: 0x405cffc8
+  size:        168 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_ioctl
+  our_addr:    0x805d0070
+  vendor_addr: 0x405d0070
+  size:        1080 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: tso_count_descs
+  our_addr:    0x805d04a8
+  vendor_addr: 0x405d04a8
+  size:        20 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: tso_build_hdr
+  our_addr:    0x805d04bc
+  vendor_addr: 0x405d04bc
+  size:        260 байт
+  changed_b:   454670 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_mc_map
+  our_addr:    0x8064e970
+  vendor_addr: 0x4064e970
+  size:        348 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_constructor
+  our_addr:    0x8064eacc
+  vendor_addr: 0x4064eacc
+  size:        524 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_invalidate
+  our_addr:    0x8064ecd8
+  vendor_addr: 0x4064ecd8
+  size:        304 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_req_delete
+  our_addr:    0x8064ee08
+  vendor_addr: 0x4064ee08
+  size:        296 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_ioctl
+  our_addr:    0x8064ef30
+  vendor_addr: 0x4064ef30
+  size:        880 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: arp_ifdown
+  our_addr:    0x8064f2a0
+  vendor_addr: 0x4064f2a0
+  size:        16 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: icmp_discard
+  our_addr:    0x8064f2b0
+  vendor_addr: 0x4064f2b0
+  size:        8 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: icmp_global_allow
+  our_addr:    0x8064f2b8
+  vendor_addr: 0x4064f2b8
+  size:        208 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: icmp_socket_deliver
+  our_addr:    0x8064f388
+  vendor_addr: 0x4064f388
+  size:        184 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: icmp_unreach
+  our_addr:    0x8064f440
+  vendor_addr: 0x4064f440
+  size:        592 байт
+  changed_b:   178555 байт
+────────────────────────────────────────────────────────────
+FUNC: __find_acq_core
+  our_addr:    0x806803d4
+  vendor_addr: 0x406803d4
+  size:        1704 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_find_acq
+  our_addr:    0x80680a7c
+  vendor_addr: 0x40680a7c
+  size:        124 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: __xfrm_state_insert
+  our_addr:    0x80680af8
+  vendor_addr: 0x40680af8
+  size:        1300 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_state_insert
+  our_addr:    0x8068100c
+  vendor_addr: 0x4068100c
+  size:        48 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_state_walk_done
+  our_addr:    0x8068103c
+  vendor_addr: 0x4068103c
+  size:        80 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: __xfrm_state_destroy
+  our_addr:    0x8068108c
+  vendor_addr: 0x4068108c
+  size:        156 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_alloc_spi
+  our_addr:    0x80681128
+  vendor_addr: 0x40681128
+  size:        728 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_state_change_notify
+  our_addr:    0x80681400
+  vendor_addr: 0x40681400
+  size:        100 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: __xfrm_state_delete
+  our_addr:    0x80681464
+  vendor_addr: 0x40681464
+  size:        292 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: xfrm_timer_handler
+  our_addr:    0x80681588
+  vendor_addr: 0x40681588
+  size:        580 байт
+  changed_b:   681752 байт
+────────────────────────────────────────────────────────────
+FUNC: _etext
+  our_addr:    0x807149a0
+  vendor_addr: 0x407149a0
+  size:        2012768 байт
+  changed_b:   1122360 байт
+────────────────────────────────────────────────────────────
+FUNC: pppoe_init
+  our_addr:    0x8091b9e8
+  vendor_addr: 0x4091b9e8
+  size:        132 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: pptp_init_module
+  our_addr:    0x8091ba6c
+  vendor_addr: 0x4091ba6c
+  size:        208 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: wwan_init
+  our_addr:    0x8091bb3c
+  vendor_addr: 0x4091bb3c
+  size:        132 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: mhi_wwan_ctrl_driver_init
+  our_addr:    0x8091bbc0
+  vendor_addr: 0x4091bbc0
+  size:        16 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: rtc_hctosys
+  our_addr:    0x8091bbd0
+  vendor_addr: 0x4091bbd0
+  size:        256 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: rtc_init
+  our_addr:    0x8091bcd0
+  vendor_addr: 0x4091bcd0
+  size:        92 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: rtc_dev_init
+  our_addr:    0x8091bd2c
+  vendor_addr: 0x4091bd2c
+  size:        56 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: i2c_init
+  our_addr:    0x8091bd64
+  vendor_addr: 0x4091bd64
+  size:        144 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: i2c_dev_init
+  our_addr:    0x8091bdf4
+  vendor_addr: 0x4091bdf4
+  size:        192 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: qup_i2c_driver_init
+  our_addr:    0x8091beb4
+  vendor_addr: 0x4091beb4
+  size:        16 байт
+  changed_b:   3275 байт
+────────────────────────────────────────────────────────────
+FUNC: tsens_driver_init
+  our_addr:    0x8091c9f0
+  vendor_addr: 0x4091c9f0
+  size:        16 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: watchdog_init
+  our_addr:    0x8091ca00
+  vendor_addr: 0x4091ca00
+  size:        120 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: watchdog_dev_init
+  our_addr:    0x8091ca78
+  vendor_addr: 0x4091ca78
+  size:        252 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_watchdog_driver_init
+  our_addr:    0x8091cb74
+  vendor_addr: 0x4091cb74
+  size:        16 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: dm_init
+  our_addr:    0x8091cb84
+  vendor_addr: 0x4091cb84
+  size:        80 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: local_init
+  our_addr:    0x8091cbd4
+  vendor_addr: 0x4091cbd4
+  size:        132 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: dm_target_init
+  our_addr:    0x8091cc58
+  vendor_addr: 0x4091cc58
+  size:        12 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: dm_linear_init
+  our_addr:    0x8091cc64
+  vendor_addr: 0x4091cc64
+  size:        48 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: dm_stripe_init
+  our_addr:    0x8091cc94
+  vendor_addr: 0x4091cc94
+  size:        44 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: dm_early_create
+  our_addr:    0x8091ccc0
+  vendor_addr: 0x4091ccc0
+  size:        524 байт
+  changed_b:   6708 байт
+────────────────────────────────────────────────────────────
+FUNC: arch_timer_mem_of_init
+  our_addr:    0x8091eacc
+  vendor_addr: 0x4091eacc
+  size:        1136 байт
+  changed_b:   2829 байт
+────────────────────────────────────────────────────────────
+FUNC: dummy_timer_register
+  our_addr:    0x8091ef3c
+  vendor_addr: 0x4091ef3c
+  size:        52 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_core_init
+  our_addr:    0x8091ef70
+  vendor_addr: 0x4091ef70
+  size:        188 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_platform_default_populate_init
+  our_addr:    0x8091f02c
+  vendor_addr: 0x4091f02c
+  size:        172 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_fdt_raw_init
+  our_addr:    0x8091f0d8
+  vendor_addr: 0x4091f0d8
+  size:        124 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_alloc_memory_arch
+  our_addr:    0x8091f154
+  vendor_addr: 0x4091f154
+  size:        92 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_fdt_limit_memory
+  our_addr:    0x8091f1b0
+  vendor_addr: 0x4091f1b0
+  size:        312 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_scan_flat_dt
+  our_addr:    0x8091f2e8
+  vendor_addr: 0x4091f2e8
+  size:        232 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_scan_flat_dt_subnodes
+  our_addr:    0x8091f3d0
+  vendor_addr: 0x4091f3d0
+  size:        140 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_get_flat_dt_subnode_by_name
+  our_addr:    0x8091f45c
+  vendor_addr: 0x4091f45c
+  size:        24 байт
+  changed_b:   1933 байт
+────────────────────────────────────────────────────────────
+FUNC: of_flat_dt_is_compatible
+  our_addr:    0x8091f890
+  vendor_addr: 0x4091f890
+  size:        24 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: of_get_flat_dt_phandle
+  our_addr:    0x8091f8a8
+  vendor_addr: 0x4091f8a8
+  size:        20 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: of_flat_dt_get_machine_name
+  our_addr:    0x8091f8bc
+  vendor_addr: 0x4091f8bc
+  size:        48 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: of_flat_dt_match_machine
+  our_addr:    0x8091f8ec
+  vendor_addr: 0x4091f8ec
+  size:        372 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_scan_chosen_stdout
+  our_addr:    0x8091fa60
+  vendor_addr: 0x4091fa60
+  size:        364 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: dt_mem_next_cell
+  our_addr:    0x8091fbcc
+  vendor_addr: 0x4091fbcc
+  size:        80 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_add_memory_arch
+  our_addr:    0x8091fc1c
+  vendor_addr: 0x4091fc1c
+  size:        492 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_mark_hotplug_memory_arch
+  our_addr:    0x8091fe08
+  vendor_addr: 0x4091fe08
+  size:        8 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_scan_memory
+  our_addr:    0x8091fe10
+  vendor_addr: 0x4091fe10
+  size:        500 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_reserve_memory_arch
+  our_addr:    0x80920004
+  vendor_addr: 0x40920004
+  size:        16 байт
+  changed_b:   2363 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_fdt_reserve_self
+  our_addr:    0x809203c0
+  vendor_addr: 0x409203c0
+  size:        40 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_verify
+  our_addr:    0x809203e8
+  vendor_addr: 0x409203e8
+  size:        84 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_scan_nodes
+  our_addr:    0x8092043c
+  vendor_addr: 0x4092043c
+  size:        80 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_scan
+  our_addr:    0x8092048c
+  vendor_addr: 0x4092048c
+  size:        28 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: unflatten_device_tree
+  our_addr:    0x809204a8
+  vendor_addr: 0x409204a8
+  size:        64 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: unflatten_and_copy_device_tree
+  our_addr:    0x809204e8
+  vendor_addr: 0x409204e8
+  size:        100 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: fdt_bus_default_map
+  our_addr:    0x8092054c
+  vendor_addr: 0x4092054c
+  size:        280 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: fdt_bus_default_translate
+  our_addr:    0x80920664
+  vendor_addr: 0x40920664
+  size:        132 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: fdt_bus_default_count_cells
+  our_addr:    0x809206e8
+  vendor_addr: 0x409206e8
+  size:        132 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: of_flat_dt_translate_address
+  our_addr:    0x8092076c
+  vendor_addr: 0x4092076c
+  size:        1148 байт
+  changed_b:   1736 байт
+────────────────────────────────────────────────────────────
+FUNC: of_irq_init
+  our_addr:    0x80920be8
+  vendor_addr: 0x40920be8
+  size:        748 байт
+  changed_b:   1797 байт
+────────────────────────────────────────────────────────────
+FUNC: early_init_dt_alloc_reserved_memory_arch
+  our_addr:    0x80920ed4
+  vendor_addr: 0x40920ed4
+  size:        100 байт
+  changed_b:   1797 байт
+────────────────────────────────────────────────────────────
+FUNC: __rmem_cmp
+  our_addr:    0x80920f38
+  vendor_addr: 0x40920f38
+  size:        64 байт
+  changed_b:   1797 байт
+────────────────────────────────────────────────────────────
+FUNC: fdt_reserved_mem_save_node
+  our_addr:    0x80920f78
+  vendor_addr: 0x40920f78
+  size:        84 байт
+  changed_b:   1797 байт
+────────────────────────────────────────────────────────────
+FUNC: fdt_init_reserved_mem
+  our_addr:    0x80920fcc
+  vendor_addr: 0x40920fcc
+  size:        1168 байт
+  changed_b:   1797 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_qfprom_driver_init
+  our_addr:    0x8092145c
+  vendor_addr: 0x4092145c
+  size:        16 байт
+  changed_b:   52 байт
+────────────────────────────────────────────────────────────
+FUNC: sps_init
+  our_addr:    0x8092146c
+  vendor_addr: 0x4092146c
+  size:        936 байт
+  changed_b:   612 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_apcs_ipc_init
+  our_addr:    0x80921814
+  vendor_addr: 0x40921814
+  size:        16 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_hwspinlock_init
+  our_addr:    0x80921824
+  vendor_addr: 0x40921824
+  size:        16 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: remoteproc_init
+  our_addr:    0x80921834
+  vendor_addr: 0x40921834
+  size:        80 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: rproc_init_debugfs
+  our_addr:    0x80921884
+  vendor_addr: 0x40921884
+  size:        76 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: rproc_init_sysfs
+  our_addr:    0x809218d0
+  vendor_addr: 0x409218d0
+  size:        52 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: sysmon_driver_init
+  our_addr:    0x80921904
+  vendor_addr: 0x40921904
+  size:        16 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: q6_wcss_driver_init
+  our_addr:    0x80921914
+  vendor_addr: 0x40921914
+  size:        16 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: rpmsg_init
+  our_addr:    0x80921924
+  vendor_addr: 0x40921924
+  size:        56 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_smd_init
+  our_addr:    0x8092195c
+  vendor_addr: 0x4092195c
+  size:        16 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: iio_init
+  our_addr:    0x8092196c
+  vendor_addr: 0x4092196c
+  size:        136 байт
+  changed_b:   487 байт
+────────────────────────────────────────────────────────────
+FUNC: etm_perf_init
+  our_addr:    0x80921a24
+  vendor_addr: 0x40921a24
+  size:        204 байт
+  changed_b:   73 байт
+────────────────────────────────────────────────────────────
+FUNC: tmc_driver_init
+  our_addr:    0x80921af0
+  vendor_addr: 0x40921af0
+  size:        12 байт
+  changed_b:   73 байт
+────────────────────────────────────────────────────────────
+FUNC: static_funnel_driver_init
+  our_addr:    0x80921afc
+  vendor_addr: 0x40921afc
+  size:        16 байт
+  changed_b:   73 байт
+────────────────────────────────────────────────────────────
+FUNC: dynamic_funnel_driver_init
+  our_addr:    0x80921b0c
+  vendor_addr: 0x40921b0c
+  size:        12 байт
+  changed_b:   73 байт
+────────────────────────────────────────────────────────────
+FUNC: static_replicator_driver_init
+  our_addr:    0x80921b18
+  vendor_addr: 0x40921b18
+  size:        16 байт
+  changed_b:   73 байт
+────────────────────────────────────────────────────────────
+FUNC: hwevent_init
+  our_addr:    0x80921b70
+  vendor_addr: 0x40921b70
+  size:        16 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: csr_init
+  our_addr:    0x80921b80
+  vendor_addr: 0x40921b80
+  size:        16 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: stm_core_init
+  our_addr:    0x80921b90
+  vendor_addr: 0x40921b90
+  size:        176 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: stp_configfs_init
+  our_addr:    0x80921c40
+  vendor_addr: 0x40921c40
+  size:        56 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: nvmem_init
+  our_addr:    0x80921c78
+  vendor_addr: 0x40921c78
+  size:        12 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: qfprom_driver_init
+  our_addr:    0x80921c84
+  vendor_addr: 0x40921c84
+  size:        16 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: init_soundcore
+  our_addr:    0x80921c94
+  vendor_addr: 0x40921c94
+  size:        180 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: alsa_sound_init
+  our_addr:    0x80921d48
+  vendor_addr: 0x40921d48
+  size:        140 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: alsa_sound_last_init
+  our_addr:    0x80921dd4
+  vendor_addr: 0x40921dd4
+  size:        116 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: sock_init
+  our_addr:    0x80921e48
+  vendor_addr: 0x40921e48
+  size:        176 байт
+  changed_b:   67373 байт
+────────────────────────────────────────────────────────────
+FUNC: kthreadd_done
+  our_addr:    0x80933804
+  vendor_addr: 0x40933804
+  size:        16 байт
+  changed_b:   76 байт
+────────────────────────────────────────────────────────────
+FUNC: late_time_init
+  our_addr:    0x80933814
+  vendor_addr: 0x40933814
+  size:        4 байт
+  changed_b:   76 байт
+────────────────────────────────────────────────────────────
+FUNC: initcall_levels
+  our_addr:    0x80933818
+  vendor_addr: 0x40933818
+  size:        36 байт
+  changed_b:   76 байт
+────────────────────────────────────────────────────────────
+FUNC: initcall_level_names
+  our_addr:    0x8093383c
+  vendor_addr: 0x4093383c
+  size:        32 байт
+  changed_b:   76 байт
+────────────────────────────────────────────────────────────
+FUNC: actions
+  our_addr:    0x809338f8
+  vendor_addr: 0x409338f8
+  size:        32 байт
+  changed_b:   32 байт
+────────────────────────────────────────────────────────────
+FUNC: dir_list
+  our_addr:    0x80933a18
+  vendor_addr: 0x40933a18
+  size:        8 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: nlink
+  our_addr:    0x80933a20
+  vendor_addr: 0x40933a20
+  size:        4 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: rdev
+  our_addr:    0x80933a24
+  vendor_addr: 0x40933a24
+  size:        4 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: VFP_arch
+  our_addr:    0x80933a28
+  vendor_addr: 0x40933a28
+  size:        4 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: vfp_detect_hook
+  our_addr:    0x80933a2c
+  vendor_addr: 0x40933a2c
+  size:        28 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: machine_desc
+  our_addr:    0x80933a48
+  vendor_addr: 0x40933a48
+  size:        4 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: endian_test
+  our_addr:    0x80933a4c
+  vendor_addr: 0x40933a4c
+  size:        4 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: cache_policies
+  our_addr:    0x80934000
+  vendor_addr: 0x40934000
+  size:        160 байт
+  changed_b:   47 байт
+────────────────────────────────────────────────────────────
+FUNC: arm_lowmem_limit
+  our_addr:    0x809340b0
+  vendor_addr: 0x409340b0
+  size:        3920 байт
+  changed_b:   123 байт
+────────────────────────────────────────────────────────────
+FUNC: bm_pte
+  our_addr:    0x80935000
+  vendor_addr: 0x40935000
+  size:        4096 байт
+  changed_b:   47 байт
+────────────────────────────────────────────────────────────
+FUNC: v7_cache_fns
+  our_addr:    0x80936000
+  vendor_addr: 0x40936000
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: b15_cache_fns
+  our_addr:    0x80936034
+  vendor_addr: 0x40936034
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: v6_user_fns
+  our_addr:    0x80936068
+  vendor_addr: 0x40936068
+  size:        8 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: v7_processor_functions
+  our_addr:    0x80936070
+  vendor_addr: 0x40936070
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: v7_bpiall_processor_functions
+  our_addr:    0x809360a4
+  vendor_addr: 0x409360a4
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: ca8_processor_functions
+  our_addr:    0x809360d8
+  vendor_addr: 0x409360d8
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: ca9mp_processor_functions
+  our_addr:    0x8093610c
+  vendor_addr: 0x4093610c
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: ca15_processor_functions
+  our_addr:    0x80936140
+  vendor_addr: 0x40936140
+  size:        52 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: main_extable_sort_needed
+  our_addr:    0x80936174
+  vendor_addr: 0x40936174
+  size:        4 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: new_log_buf_len
+  our_addr:    0x80936178
+  vendor_addr: 0x40936178
+  size:        4 байт
+  changed_b:   359 байт
+────────────────────────────────────────────────────────────
+FUNC: proc_net_ns_ops
+  our_addr:    0x8093641c
+  vendor_addr: 0x4093641c
+  size:        32 байт
+  changed_b:   8 байт
+────────────────────────────────────────────────────────────
+FUNC: early_platform_driver_list
+  our_addr:    0x80936848
+  vendor_addr: 0x40936848
+  size:        8 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: early_platform_device_list
+  our_addr:    0x80936850
+  vendor_addr: 0x40936850
+  size:        8 байт
+  changed_b:   16 байт
+────────────────────────────────────────────────────────────
+FUNC: ubiblock_param
+  our_addr:    0x8093685c
+  vendor_addr: 0x4093685c
+  size:        2304 байт
+  changed_b:   415 байт
+────────────────────────────────────────────────────────────
+FUNC: m68k_probes
+  our_addr:    0x8093715c
+  vendor_addr: 0x4093715c
+  size:        8 байт
+  changed_b:   415 байт
+────────────────────────────────────────────────────────────
+FUNC: isa_probes
+  our_addr:    0x80937164
+  vendor_addr: 0x40937164
+  size:        8 байт
+  changed_b:   415 байт
+────────────────────────────────────────────────────────────
+FUNC: loopback_net_ops
+  our_addr:    0x8093716c
+  vendor_addr: 0x4093716c
+  size:        32 байт
+  changed_b:   415 байт
+────────────────────────────────────────────────────────────
+FUNC: _inits
+  our_addr:    0x8093718c
+  vendor_addr: 0x4093718c
+  size:        32 байт
+  changed_b:   415 байт
+────────────────────────────────────────────────────────────
+FUNC: arm_idle_driver
+  our_addr:    0x809371ac
+  vendor_addr: 0x409371ac
+  size:        832 байт
+  changed_b:   423 байт
+────────────────────────────────────────────────────────────
+FUNC: proto_net_ops
+  our_addr:    0x809374f8
+  vendor_addr: 0x409374f8
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: net_ns_ops
+  our_addr:    0x80937518
+  vendor_addr: 0x40937518
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: flow_dissector_pernet_ops
+  our_addr:    0x80937538
+  vendor_addr: 0x40937538
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: sysctl_core_ops
+  our_addr:    0x80937558
+  vendor_addr: 0x40937558
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: netdev_net_ops
+  our_addr:    0x80937578
+  vendor_addr: 0x40937578
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: default_device_ops
+  our_addr:    0x80937598
+  vendor_addr: 0x40937598
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_proc_ops
+  our_addr:    0x809375b8
+  vendor_addr: 0x409375b8
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: dev_mc_net_ops
+  our_addr:    0x809375d8
+  vendor_addr: 0x409375d8
+  size:        32 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: netlink_net_ops
+  our_addr:    0x80937808
+  vendor_addr: 0x40937808
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: ip_rt_proc_ops
+  our_addr:    0x80937828
+  vendor_addr: 0x40937828
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: sysctl_route_ops
+  our_addr:    0x80937848
+  vendor_addr: 0x40937848
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: rt_genid_ops
+  our_addr:    0x80937868
+  vendor_addr: 0x40937868
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: ipv4_inetpeer_ops
+  our_addr:    0x80937888
+  vendor_addr: 0x40937888
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: thash_entries
+  our_addr:    0x809378a8
+  vendor_addr: 0x409378a8
+  size:        4 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: tcp_sk_ops
+  our_addr:    0x809378ac
+  vendor_addr: 0x409378ac
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: tcp_net_metrics_ops
+  our_addr:    0x809378cc
+  vendor_addr: 0x409378cc
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: raw_net_ops
+  our_addr:    0x809378ec
+  vendor_addr: 0x409378ec
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: raw_sysctl_ops
+  our_addr:    0x8093790c
+  vendor_addr: 0x4093790c
+  size:        32 байт
+  changed_b:   789 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_percpu_alloc_setup
+  our_addr:    0x80937e04
+  vendor_addr: 0x40937e04
+  size:        16 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: pcpu_fc_names
+  our_addr:    0x80937e14
+  vendor_addr: 0x40937e14
+  size:        12 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: kmalloc_info
+  our_addr:    0x80937e20
+  vendor_addr: 0x40937e20
+  size:        216 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_setup_slab_nomerge
+  our_addr:    0x80937ef8
+  vendor_addr: 0x40937ef8
+  size:        13 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_slub_nomerge
+  our_addr:    0x80937f05
+  vendor_addr: 0x40937f05
+  size:        13 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_disable_randmaps
+  our_addr:    0x80937f12
+  vendor_addr: 0x40937f12
+  size:        11 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_cmdline_parse_stack_guard_gap
+  our_addr:    0x80937f1d
+  vendor_addr: 0x40937f1d
+  size:        17 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_early_init_on_free
+  our_addr:    0x80937f2e
+  vendor_addr: 0x40937f2e
+  size:        13 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_early_init_on_alloc
+  our_addr:    0x80937f3b
+  vendor_addr: 0x40937f3b
+  size:        14 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_early_memblock
+  our_addr:    0x80937f49
+  vendor_addr: 0x40937f49
+  size:        9 байт
+  changed_b:   414 байт
+────────────────────────────────────────────────────────────
+FUNC: blake2s_testvecs
+  our_addr:    0x80938024
+  vendor_addr: 0x40938024
+  size:        8192 байт
+  changed_b:   5592 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_ddebug_setup_query
+  our_addr:    0x8093a024
+  vendor_addr: 0x4093a024
+  size:        14 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_gicv2_force_probe_cfg
+  our_addr:    0x8093a032
+  vendor_addr: 0x4093a032
+  size:        26 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_config_drop_at_rmnet
+  our_addr:    0x8093a04c
+  vendor_addr: 0x4093a04c
+  size:        14 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_config_drop_at_mhi
+  our_addr:    0x8093a05a
+  vendor_addr: 0x4093a05a
+  size:        12 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_config_napi_poll
+  our_addr:    0x8093a066
+  vendor_addr: 0x4093a066
+  size:        17 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_pci_setup
+  our_addr:    0x8093a077
+  vendor_addr: 0x4093a077
+  size:        4 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_pcie_port_pm_setup
+  our_addr:    0x8093a07b
+  vendor_addr: 0x4093a07b
+  size:        14 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_video_setup
+  our_addr:    0x8093a089
+  vendor_addr: 0x4093a089
+  size:        7 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_clk_ignore_unused_setup
+  our_addr:    0x8093a090
+  vendor_addr: 0x4093a090
+  size:        18 байт
+  changed_b:   1286 байт
+────────────────────────────────────────────────────────────
+FUNC: blacklist
+  our_addr:    0x8093a254
+  vendor_addr: 0x4093a254
+  size:        6272 байт
+  changed_b:   2218 байт
+────────────────────────────────────────────────────────────
+FUNC: whitelist
+  our_addr:    0x8093bad4
+  vendor_addr: 0x4093bad4
+  size:        12152 байт
+  changed_b:   1832 байт
+────────────────────────────────────────────────────────────
+FUNC: qcom_cpufreq_match_list
+  our_addr:    0x8093ea4c
+  vendor_addr: 0x4093ea4c
+  size:        1372 байт
+  changed_b:   202 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_cpuidle_sysfs_setup
+  our_addr:    0x8093efa8
+  vendor_addr: 0x4093efa8
+  size:        24 байт
+  changed_b:   49 байт
+────────────────────────────────────────────────────────────
+FUNC: arm_idle_state_match
+  our_addr:    0x8093efc0
+  vendor_addr: 0x4093efc0
+  size:        392 байт
+  changed_b:   72 байт
+────────────────────────────────────────────────────────────
+FUNC: psci_of_match
+  our_addr:    0x8093f148
+  vendor_addr: 0x4093f148
+  size:        784 байт
+  changed_b:   112 байт
+────────────────────────────────────────────────────────────
+FUNC: arch_timer_mem_of_match
+  our_addr:    0x8093f458
+  vendor_addr: 0x4093f458
+  size:        392 байт
+  changed_b:   35 байт
+────────────────────────────────────────────────────────────
+FUNC: arch_timer_of_match
+  our_addr:    0x8093f5e0
+  vendor_addr: 0x4093f5e0
+  size:        588 байт
+  changed_b:   60 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_early_evtstrm_cfg
+  our_addr:    0x8093f82c
+  vendor_addr: 0x4093f82c
+  size:        35 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_netdev_boot_setup
+  our_addr:    0x8093f84f
+  vendor_addr: 0x4093f84f
+  size:        8 байт
+  changed_b:   810 байт
+────────────────────────────────────────────────────────────
+FUNC: snap_err_msg
+  our_addr:    0x8093f85e
+  vendor_addr: 0x4093f85e
+  size:        40 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_set_thash_entries
+  our_addr:    0x8093f886
+  vendor_addr: 0x4093f886
+  size:        15 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_set_tcpmhash_entries
+  our_addr:    0x8093f895
+  vendor_addr: 0x4093f895
+  size:        18 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: __setup_str_set_uhash_entries
+  our_addr:    0x8093f8a7
+  vendor_addr: 0x4093f8a7
+  size:        17 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: fib4_rules_ops_template
+  our_addr:    0x8093f8b8
+  vendor_addr: 0x4093f8b8
+  size:        100 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: ipmr_rules_ops_template
+  our_addr:    0x8093f91c
+  vendor_addr: 0x4093f91c
+  size:        100 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: ip6addrlbl_init_table
+  our_addr:    0x8093f980
+  vendor_addr: 0x4093f980
+  size:        120 байт
+  changed_b:   405 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_fixed_factor_clk
+  our_addr:    0x8093fae0
+  vendor_addr: 0x4093fae0
+  size:        196 байт
+  changed_b:   30 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_fixed_clk
+  our_addr:    0x8093fba4
+  vendor_addr: 0x4093fba4
+  size:        196 байт
+  changed_b:   38 байт
+────────────────────────────────────────────────────────────
+FUNC: __clk_of_table_sentinel
+  our_addr:    0x8093fc68
+  vendor_addr: 0x4093fc68
+  size:        200 байт
+  changed_b:   20 байт
+────────────────────────────────────────────────────────────
+FUNC: __reservedmem_of_table
+  our_addr:    0x8093fd30
+  vendor_addr: 0x4093fd30
+  size:        196 байт
+  changed_b:   39 байт
+────────────────────────────────────────────────────────────
+FUNC: __rmem_of_table_sentinel
+  our_addr:    0x8093fdf4
+  vendor_addr: 0x4093fdf4
+  size:        196 байт
+  changed_b:   20 байт
+────────────────────────────────────────────────────────────
+FUNC: __timer_of_table
+  our_addr:    0x8093feb8
+  vendor_addr: 0x4093feb8
+  size:        196 байт
+  changed_b:   80 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_armv8_arch_timer
+  our_addr:    0x8093ff7c
+  vendor_addr: 0x4093ff7c
+  size:        196 байт
+  changed_b:   57 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_armv7_arch_timer
+  our_addr:    0x80940040
+  vendor_addr: 0x40940040
+  size:        196 байт
+  changed_b:   19 байт
+────────────────────────────────────────────────────────────
+FUNC: __timer_of_table_sentinel
+  our_addr:    0x80940104
+  vendor_addr: 0x40940104
+  size:        196 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table
+  our_addr:    0x809401c8
+  vendor_addr: 0x409401c8
+  size:        0 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table_qcom_smp_kpssv2
+  our_addr:    0x809401c8
+  vendor_addr: 0x409401c8
+  size:        8 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table_qcom_smp_kpssv1
+  our_addr:    0x809401d0
+  vendor_addr: 0x409401d0
+  size:        8 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table_qcom_smp
+  our_addr:    0x809401d8
+  vendor_addr: 0x409401d8
+  size:        8 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table_qcom_smp_a53ss
+  our_addr:    0x809401e0
+  vendor_addr: 0x409401e0
+  size:        8 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpu_method_of_table_sentinel
+  our_addr:    0x809401e8
+  vendor_addr: 0x409401e8
+  size:        8 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpuidle_method_of_table
+  our_addr:    0x809401f0
+  vendor_addr: 0x409401f0
+  size:        0 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __cpuidle_method_of_table_sentinel
+  our_addr:    0x809401f0
+  vendor_addr: 0x409401f0
+  size:        16 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __dtb_end
+  our_addr:    0x80940200
+  vendor_addr: 0x40940200
+  size:        0 байт
+  changed_b:   65 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_pl390
+  our_addr:    0x80940200
+  vendor_addr: 0x40940200
+  size:        196 байт
+  changed_b:   32 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_msm_qgic2
+  our_addr:    0x809402c4
+  vendor_addr: 0x409402c4
+  size:        196 байт
+  changed_b:   58 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_msm_8660_qgic
+  our_addr:    0x80940388
+  vendor_addr: 0x40940388
+  size:        196 байт
+  changed_b:   30 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_cortex_a7_gic
+  our_addr:    0x8094044c
+  vendor_addr: 0x4094044c
+  size:        196 байт
+  changed_b:   35 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_cortex_a9_gic
+  our_addr:    0x80940510
+  vendor_addr: 0x40940510
+  size:        196 байт
+  changed_b:   21 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_cortex_a15_gic
+  our_addr:    0x809405d4
+  vendor_addr: 0x409405d4
+  size:        196 байт
+  changed_b:   31 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_arm1176jzf_dc_gic
+  our_addr:    0x80940698
+  vendor_addr: 0x40940698
+  size:        196 байт
+  changed_b:   31 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_arm11mp_gic
+  our_addr:    0x8094075c
+  vendor_addr: 0x4094075c
+  size:        196 байт
+  changed_b:   3502 байт
+────────────────────────────────────────────────────────────
+FUNC: __of_table_gic_400
+  our_addr:    0x80940820
+  vendor_addr: 0x40940820
+  size:        196 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: irqchip_of_match_end
+  our_addr:    0x809408e4
+  vendor_addr: 0x409408e4
+  size:        196 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __governor_thermal_table
+  our_addr:    0x809409a8
+  vendor_addr: 0x409409a8
+  size:        0 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __thermal_table_entry_thermal_gov_step_wise
+  our_addr:    0x809409a8
+  vendor_addr: 0x409409a8
+  size:        4 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __thermal_table_entry_thermal_gov_user_space
+  our_addr:    0x809409ac
+  vendor_addr: 0x409409ac
+  size:        4 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __earlycon_table
+  our_addr:    0x809409b0
+  vendor_addr: 0x409409b0
+  size:        0 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __governor_thermal_table_end
+  our_addr:    0x809409b0
+  vendor_addr: 0x409409b0
+  size:        0 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __p__UNIQUE_ID___earlycon_msm_serial_dm93
+  our_addr:    0x809409b0
+  vendor_addr: 0x409409b0
+  size:        4 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __p__UNIQUE_ID___earlycon_msm_serial92
+  our_addr:    0x809409b4
+  vendor_addr: 0x409409b4
+  size:        4 байт
+  changed_b:   3487 байт
+────────────────────────────────────────────────────────────
+FUNC: __irf_end
+  our_addr:    0x80941840
+  vendor_addr: 0x40941840
+  size:        2137716676 байт
+  changed_b:   76477 байт

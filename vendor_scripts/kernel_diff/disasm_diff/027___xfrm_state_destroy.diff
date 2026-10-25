@@ -1,0 +1,199 @@
+# Функция: __xfrm_state_destroy
+# Адрес (наш):    0x8068108c
+# Адрес (vendor): 0x4068108c
+# Размер:         156 байт
+# Изменённых байт:681752
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8068108c <__xfrm_state_destroy>:
+8068108c:	e92d4070 	push	{r4, r5, r6, lr}
+80681090:	e1a04000 	mov	r4, r0
+80681094:	e5d0308c 	ldrb	r3, [r0, #140]	; 0x8c
+80681098:	e1a05001 	mov	r5, r1
+8068109c:	e3530005 	cmp	r3, #5
+806810a0:	0a000004 	beq	806810b8 <__xfrm_state_destroy+0x2c>
+806810a4:	e3a03000 	mov	r3, #0
+806810a8:	e3a02009 	mov	r2, #9
+806810ac:	e3a01d0a 	mov	r1, #640	; 0x280
+806810b0:	e59f005c 	ldr	r0, [pc, #92]	; 80681114 <__xfrm_state_destroy+0x88>
+806810b4:	ebea7c64 	bl	8012024c <warn_slowpath_fmt>
+806810b8:	e3550000 	cmp	r5, #0
+806810bc:	0a000003 	beq	806810d0 <__xfrm_state_destroy+0x44>
+806810c0:	ebebe799 	bl	8017af2c <synchronize_rcu>
+806810c4:	e1a00004 	mov	r0, r4
+806810c8:	e8bd4070 	pop	{r4, r5, r6, lr}
+806810cc:	eafff642 	b	8067e9dc <___xfrm_state_destroy>
+806810d0:	e59f0040 	ldr	r0, [pc, #64]	; 80681118 <__xfrm_state_destroy+0x8c>
+806810d4:	eb024c06 	bl	807140f4 <_raw_spin_lock_bh>
+806810d8:	e59f303c 	ldr	r3, [pc, #60]	; 8068111c <__xfrm_state_destroy+0x90>
+806810dc:	e59f0034 	ldr	r0, [pc, #52]	; 80681118 <__xfrm_state_destroy+0x8c>
+806810e0:	e5932000 	ldr	r2, [r3]
+806810e4:	e3520000 	cmp	r2, #0
+806810e8:	e5842000 	str	r2, [r4]
+806810ec:	15824004 	strne	r4, [r2, #4]
+806810f0:	e5834000 	str	r4, [r3]
+806810f4:	e5843004 	str	r3, [r4, #4]
+806810f8:	eb024ce9 	bl	807144a4 <_raw_spin_unlock_bh>
+806810fc:	e59f301c 	ldr	r3, [pc, #28]	; 80681120 <__xfrm_state_destroy+0x94>
+80681100:	e59f201c 	ldr	r2, [pc, #28]	; 80681124 <__xfrm_state_destroy+0x98>
+80681104:	e3a00004 	mov	r0, #4
+80681108:	e5931000 	ldr	r1, [r3]
+8068110c:	e8bd4070 	pop	{r4, r5, r6, lr}
+80681110:	eaead1f2 	b	801358e0 <queue_work_on>
+80681114:	8081d4ec 	.word	0x8081d4ec
+80681118:	80a9b424 	.word	0x80a9b424
+8068111c:	80a9b420 	.word	0x80a9b420
+80681120:	80a07f00 	.word	0x80a07f00
+80681124:	80a3a1bc 	.word	0x80a3a1bc
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4068108c <.data+0x67908c>:
+4068108c:	0a00000d 	beq	0x406810c8
+40681090:	e3530011 	cmp	r3, #17
+40681094:	0a00000b 	beq	0x406810c8
+40681098:	e3530001 	cmp	r3, #1
+4068109c:	ea000003 	b	0x406810b0
+406810a0:	e3530084 	cmp	r3, #132	; 0x84
+406810a4:	0a000007 	beq	0x406810c8
+406810a8:	8a000002 	bhi	0x406810b8
+406810ac:	e353003a 	cmp	r3, #58	; 0x3a
+406810b0:	0a000006 	beq	0x406810d0
+406810b4:	ea00000d 	b	0x406810f0
+406810b8:	e3530087 	cmp	r3, #135	; 0x87
+406810bc:	0a000003 	beq	0x406810d0
+406810c0:	e3530088 	cmp	r3, #136	; 0x88
+406810c4:	1a000009 	bne	0x406810f0
+406810c8:	e1d424be 	ldrh	r2, [r4, #78]	; 0x4e
+406810cc:	ea000008 	b	0x406810f4
+406810d0:	e5d4204c 	ldrb	r2, [r4, #76]	; 0x4c
+406810d4:	ea000002 	b	0x406810e4
+406810d8:	e594204c 	ldr	r2, [r4, #76]	; 0x4c
+406810dc:	e6bf2f32 	rev	r2, r2
+406810e0:	e1a02822 	lsr	r2, r2, #16
+406810e4:	e6bf2fb2 	rev16	r2, r2
+406810e8:	e6ff2072 	uxth	r2, r2
+406810ec:	ea000000 	b	0x406810f4
+406810f0:	e3a02000 	mov	r2, #0
+406810f4:	e1d512b4 	ldrh	r1, [r5, #36]	; 0x24
+406810f8:	e0222001 	eor	r2, r2, r1
+406810fc:	e1d512b6 	ldrh	r1, [r5, #38]	; 0x26
+40681100:	e1120001 	tst	r2, r1
+40681104:	1a00000e 	bne	0x40681144
+40681108:	e5d5202c 	ldrb	r2, [r5, #44]	; 0x2c
+4068110c:	e0430002 	sub	r0, r3, r2
+40681110:	e3520000 	cmp	r2, #0
+40681114:	e16f0f10 	clz	r0, r0
+40681118:	e1a002a0 	lsr	r0, r0, #5
+4068111c:	03a00001 	moveq	r0, #1
+40681120:	e3500000 	cmp	r0, #0
+40681124:	08bd87f0 	popeq	{r4, r5, r6, r7, r8, r9, sl, pc}
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,46 +1,46 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8068108c <__xfrm_state_destroy>:
+-e92d4070 	push	{r4, r5, r6, lr}
+-e1a04000 	mov	r4, r0
+-e5d0308c 	ldrb	r3, [r0, #140]	; 0x8c
+-e1a05001 	mov	r5, r1
+-e3530005 	cmp	r3, #5
+-0a000004 	beq	806810b8 <__xfrm_state_destroy+0x2c>
+-e3a03000 	mov	r3, #0
+-e3a02009 	mov	r2, #9
+-e3a01d0a 	mov	r1, #640	; 0x280
+-e59f005c 	ldr	r0, [pc, #92]	; 80681114 <__xfrm_state_destroy+0x88>
+-ebea7c64 	bl	8012024c <warn_slowpath_fmt>
+-e3550000 	cmp	r5, #0
+-0a000003 	beq	806810d0 <__xfrm_state_destroy+0x44>
+-ebebe799 	bl	8017af2c <synchronize_rcu>
+-e1a00004 	mov	r0, r4
+-e8bd4070 	pop	{r4, r5, r6, lr}
+-eafff642 	b	8067e9dc <___xfrm_state_destroy>
+-e59f0040 	ldr	r0, [pc, #64]	; 80681118 <__xfrm_state_destroy+0x8c>
+-eb024c06 	bl	807140f4 <_raw_spin_lock_bh>
+-e59f303c 	ldr	r3, [pc, #60]	; 8068111c <__xfrm_state_destroy+0x90>
+-e59f0034 	ldr	r0, [pc, #52]	; 80681118 <__xfrm_state_destroy+0x8c>
+-e5932000 	ldr	r2, [r3]
++4068108c <.data+0xADDR>:
++0a00000d 	beq	0xADDR
++e3530011 	cmp	r3, #17
++0a00000b 	beq	0xADDR
++e3530001 	cmp	r3, #1
++ea000003 	b	0xADDR
++e3530084 	cmp	r3, #132	; 0x84
++0a000007 	beq	0xADDR
++8a000002 	bhi	0xADDR
++e353003a 	cmp	r3, #58	; 0x3a
++0a000006 	beq	0xADDR
++ea00000d 	b	0xADDR
++e3530087 	cmp	r3, #135	; 0x87
++0a000003 	beq	0xADDR
++e3530088 	cmp	r3, #136	; 0x88
++1a000009 	bne	0xADDR
++e1d424be 	ldrh	r2, [r4, #78]	; 0x4e
++ea000008 	b	0xADDR
++e5d4204c 	ldrb	r2, [r4, #76]	; 0x4c
++ea000002 	b	0xADDR
++e594204c 	ldr	r2, [r4, #76]	; 0x4c
++e6bf2f32 	rev	r2, r2
++e1a02822 	lsr	r2, r2, #16
++e6bf2fb2 	rev16	r2, r2
++e6ff2072 	uxth	r2, r2
++ea000000 	b	0xADDR
++e3a02000 	mov	r2, #0
++e1d512b4 	ldrh	r1, [r5, #36]	; 0x24
++e0222001 	eor	r2, r2, r1
++e1d512b6 	ldrh	r1, [r5, #38]	; 0x26
++e1120001 	tst	r2, r1
++1a00000e 	bne	0xADDR
++e5d5202c 	ldrb	r2, [r5, #44]	; 0x2c
++e0430002 	sub	r0, r3, r2
+ e3520000 	cmp	r2, #0
+-e5842000 	str	r2, [r4]
+-15824004 	strne	r4, [r2, #4]
+-e5834000 	str	r4, [r3]
+-e5843004 	str	r3, [r4, #4]
+-eb024ce9 	bl	807144a4 <_raw_spin_unlock_bh>
+-e59f301c 	ldr	r3, [pc, #28]	; 80681120 <__xfrm_state_destroy+0x94>
+-e59f201c 	ldr	r2, [pc, #28]	; 80681124 <__xfrm_state_destroy+0x98>
+-e3a00004 	mov	r0, #4
+-e5931000 	ldr	r1, [r3]
+-e8bd4070 	pop	{r4, r5, r6, lr}
+-eaead1f2 	b	801358e0 <queue_work_on>
+-8081d4ec 	.word	0xADDR
+-80a9b424 	.word	0xADDR
+-80a9b420 	.word	0xADDR
+-80a07f00 	.word	0xADDR
+-80a3a1bc 	.word	0xADDR
++e16f0f10 	clz	r0, r0
++e1a002a0 	lsr	r0, r0, #5
++03a00001 	moveq	r0, #1
++e3500000 	cmp	r0, #0
++08bd87f0 	popeq	{r4, r5, r6, r7, r8, r9, sl, pc}

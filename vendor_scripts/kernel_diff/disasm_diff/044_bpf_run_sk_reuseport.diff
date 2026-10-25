@@ -1,0 +1,368 @@
+# Функция: bpf_run_sk_reuseport
+# Адрес (наш):    0x805cfa9c
+# Адрес (vendor): 0x405cfa9c
+# Размер:         324 байт
+# Изменённых байт:454670
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+805cfa9c <bpf_run_sk_reuseport>:
+805cfa9c:	e92d4df0 	push	{r4, r5, r6, r7, r8, sl, fp, lr}
+805cfaa0:	e24dd020 	sub	sp, sp, #32
+805cfaa4:	e593c058 	ldr	ip, [r3, #88]	; 0x58
+805cfaa8:	e1a08002 	mov	r8, r2
+805cfaac:	e58d1004 	str	r1, [sp, #4]
+805cfab0:	e2887028 	add	r7, r8, #40	; 0x28
+805cfab4:	e5931054 	ldr	r1, [r3, #84]	; 0x54
+805cfab8:	e58d3000 	str	r3, [sp]
+805cfabc:	e59330a4 	ldr	r3, [r3, #164]	; 0xa4
+805cfac0:	e041100c 	sub	r1, r1, ip
+805cfac4:	e59f6108 	ldr	r6, [pc, #264]	; 805cfbd4 <bpf_run_sk_reuseport+0x138>
+805cfac8:	e0833001 	add	r3, r3, r1
+805cfacc:	e58d300c 	str	r3, [sp, #12]
+805cfad0:	e59d3040 	ldr	r3, [sp, #64]	; 0x40
+805cfad4:	e3021266 	movw	r1, #8806	; 0x2266
+805cfad8:	e5962000 	ldr	r2, [r6]
+805cfadc:	e58d3010 	str	r3, [sp, #16]
+805cfae0:	e5903010 	ldr	r3, [r0, #16]
+805cfae4:	e58d201c 	str	r2, [sp, #28]
+805cfae8:	e3a02000 	mov	r2, #0
+805cfaec:	e58d2008 	str	r2, [sp, #8]
+805cfaf0:	e58d3014 	str	r3, [sp, #20]
+805cfaf4:	e5d03014 	ldrb	r3, [r0, #20]
+805cfaf8:	e59f00d8 	ldr	r0, [pc, #216]	; 805cfbd8 <bpf_run_sk_reuseport+0x13c>
+805cfafc:	e7e03053 	ubfx	r3, r3, #0, #1
+805cfb00:	e5cd3018 	strb	r3, [sp, #24]
+805cfb04:	ebedc973 	bl	801420d8 <__cant_sleep>
+805cfb08:	e59f30cc 	ldr	r3, [pc, #204]	; 805cfbdc <bpf_run_sk_reuseport+0x140>
+805cfb0c:	e5933000 	ldr	r3, [r3]
+805cfb10:	e3530000 	cmp	r3, #0
+805cfb14:	da00001f 	ble	805cfb98 <bpf_run_sk_reuseport+0xfc>
+805cfb18:	ebef0377 	bl	801908fc <sched_clock>
+805cfb1c:	e5983024 	ldr	r3, [r8, #36]	; 0x24
+805cfb20:	e1a04000 	mov	r4, r0
+805cfb24:	e1a05001 	mov	r5, r1
+805cfb28:	e1a0000d 	mov	r0, sp
+805cfb2c:	e1a01007 	mov	r1, r7
+805cfb30:	e12fff33 	blx	r3
+805cfb34:	e598301c 	ldr	r3, [r8, #28]
+805cfb38:	ee1d2f90 	mrc	15, 0, r2, cr13, cr0, {4}
+805cfb3c:	e59330a0 	ldr	r3, [r3, #160]	; 0xa0
+805cfb40:	e0838002 	add	r8, r3, r2
+805cfb44:	e5981010 	ldr	r1, [r8, #16]
+805cfb48:	e2811001 	add	r1, r1, #1
+805cfb4c:	e5881010 	str	r1, [r8, #16]
+805cfb50:	e1a07000 	mov	r7, r0
+805cfb54:	f57ff05a 	dmb	ishst
+805cfb58:	e18300d2 	ldrd	r0, [r3, r2]
+805cfb5c:	e290a001 	adds	sl, r0, #1
+805cfb60:	e2a1b000 	adc	fp, r1, #0
+805cfb64:	e183a0f2 	strd	sl, [r3, r2]
+805cfb68:	ebef0363 	bl	801908fc <sched_clock>
+805cfb6c:	e1c820d8 	ldrd	r2, [r8, #8]
+805cfb70:	e0504004 	subs	r4, r0, r4
+805cfb74:	e0c15005 	sbc	r5, r1, r5
+805cfb78:	e0920004 	adds	r0, r2, r4
+805cfb7c:	e0a31005 	adc	r1, r3, r5
+805cfb80:	e1c800f8 	strd	r0, [r8, #8]
+805cfb84:	f57ff05a 	dmb	ishst
+805cfb88:	e5983010 	ldr	r3, [r8, #16]
+805cfb8c:	e2833001 	add	r3, r3, #1
+805cfb90:	e5883010 	str	r3, [r8, #16]
+805cfb94:	ea000004 	b	805cfbac <bpf_run_sk_reuseport+0x110>
+805cfb98:	e1a01007 	mov	r1, r7
+805cfb9c:	e5983024 	ldr	r3, [r8, #36]	; 0x24
+805cfba0:	e1a0000d 	mov	r0, sp
+805cfba4:	e12fff33 	blx	r3
+805cfba8:	e1a07000 	mov	r7, r0
+805cfbac:	e3570001 	cmp	r7, #1
+805cfbb0:	e59d201c 	ldr	r2, [sp, #28]
+805cfbb4:	e5963000 	ldr	r3, [r6]
+805cfbb8:	059d0008 	ldreq	r0, [sp, #8]
+805cfbbc:	13e0006e 	mvnne	r0, #110	; 0x6e
+805cfbc0:	e1520003 	cmp	r2, r3
+805cfbc4:	0a000000 	beq	805cfbcc <bpf_run_sk_reuseport+0x130>
+805cfbc8:	ebed411a 	bl	80120038 <__stack_chk_fail>
+805cfbcc:	e28dd020 	add	sp, sp, #32
+805cfbd0:	e8bd8df0 	pop	{r4, r5, r6, r7, r8, sl, fp, pc}
+805cfbd4:	80a07ec8 	.word	0x80a07ec8
+805cfbd8:	80811030 	.word	0x80811030
+805cfbdc:	80a70b1c 	.word	0x80a70b1c
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+405cfa9c <.data+0x5c7a9c>:
+405cfa9c:	8074d5b0 	ldrhthi	sp, [r4], #-80	; 0xffffffb0
+405cfaa0:	e350003b 	cmp	r0, #59	; 0x3b
+405cfaa4:	0a00001c 	beq	0x405cfb1c
+405cfaa8:	8a00000c 	bhi	0x405cfae0
+405cfaac:	e3500031 	cmp	r0, #49	; 0x31
+405cfab0:	0a00002c 	beq	0x405cfb68
+405cfab4:	8a000004 	bhi	0x405cfacc
+405cfab8:	e3500019 	cmp	r0, #25
+405cfabc:	0a000020 	beq	0x405cfb44
+405cfac0:	e350002e 	cmp	r0, #46	; 0x2e
+405cfac4:	0a00001a 	beq	0x405cfb34
+405cfac8:	ea000025 	b	0x405cfb64
+405cfacc:	e3500035 	cmp	r0, #53	; 0x35
+405cfad0:	0a000013 	beq	0x405cfb24
+405cfad4:	e3500039 	cmp	r0, #57	; 0x39
+405cfad8:	0a00000d 	beq	0x405cfb14
+405cfadc:	ea000020 	b	0x405cfb64
+405cfae0:	e3500060 	cmp	r0, #96	; 0x60
+405cfae4:	0a00001c 	beq	0x405cfb5c
+405cfae8:	8a000004 	bhi	0x405cfb00
+405cfaec:	e3500046 	cmp	r0, #70	; 0x46
+405cfaf0:	0a00000d 	beq	0x405cfb2c
+405cfaf4:	e3500051 	cmp	r0, #81	; 0x51
+405cfaf8:	0a00000f 	beq	0x405cfb3c
+405cfafc:	ea000018 	b	0x405cfb64
+405cfb00:	e350006b 	cmp	r0, #107	; 0x6b
+405cfb04:	0a000010 	beq	0x405cfb4c
+405cfb08:	e350006c 	cmp	r0, #108	; 0x6c
+405cfb0c:	0a000010 	beq	0x405cfb54
+405cfb10:	ea000013 	b	0x405cfb64
+405cfb14:	e59f0054 	ldr	r0, [pc, #84]	; 0x405cfb70
+405cfb18:	e12fff1e 	bx	lr
+405cfb1c:	e59f0050 	ldr	r0, [pc, #80]	; 0x405cfb74
+405cfb20:	e12fff1e 	bx	lr
+405cfb24:	e59f004c 	ldr	r0, [pc, #76]	; 0x405cfb78
+405cfb28:	e12fff1e 	bx	lr
+405cfb2c:	e59f0048 	ldr	r0, [pc, #72]	; 0x405cfb7c
+405cfb30:	e12fff1e 	bx	lr
+405cfb34:	e59f0044 	ldr	r0, [pc, #68]	; 0x405cfb80
+405cfb38:	e12fff1e 	bx	lr
+405cfb3c:	e59f0040 	ldr	r0, [pc, #64]	; 0x405cfb84
+405cfb40:	e12fff1e 	bx	lr
+405cfb44:	e59f003c 	ldr	r0, [pc, #60]	; 0x405cfb88
+405cfb48:	e12fff1e 	bx	lr
+405cfb4c:	e59f0038 	ldr	r0, [pc, #56]	; 0x405cfb8c
+405cfb50:	e12fff1e 	bx	lr
+405cfb54:	e59f0034 	ldr	r0, [pc, #52]	; 0x405cfb90
+405cfb58:	e12fff1e 	bx	lr
+405cfb5c:	e59f0030 	ldr	r0, [pc, #48]	; 0x405cfb94
+405cfb60:	e12fff1e 	bx	lr
+405cfb64:	eafffe47 	b	0x405cf488
+405cfb68:	e59f0028 	ldr	r0, [pc, #40]	; 0x405cfb98
+405cfb6c:	e12fff1e 	bx	lr
+405cfb70:	80817ab0 			; <UNDEFINED> instruction: 0x80817ab0
+405cfb74:	80818044 	addhi	r8, r1, r4, asr #32
+405cfb78:	80ade9c8 	adchi	lr, sp, r8, asr #19
+405cfb7c:	80ade9a8 	adchi	lr, sp, r8, lsr #19
+405cfb80:	80817a70 	addhi	r7, r1, r0, ror sl
+405cfb84:	80a74af4 	strdhi	r4, [r7], r4	; <UNPREDICTABLE>
+405cfb88:	80818064 	addhi	r8, r1, r4, rrx
+405cfb8c:	80818f40 	addhi	r8, r1, r0, asr #30
+405cfb90:	80818f20 	addhi	r8, r1, r0, lsr #30
+405cfb94:	808180c4 	addhi	r8, r1, r4, asr #1
+405cfb98:	80817c64 	addhi	r7, r1, r4, ror #24
+405cfb9c:	e350002e 	cmp	r0, #46	; 0x2e
+405cfba0:	0a000027 	beq	0x405cfc44
+405cfba4:	8a00000e 	bhi	0x405cfbe4
+405cfba8:	e350001a 	cmp	r0, #26
+405cfbac:	0a00001c 	beq	0x405cfc24
+405cfbb0:	8a000004 	bhi	0x405cfbc8
+405cfbb4:	e3500009 	cmp	r0, #9
+405cfbb8:	0a000034 	beq	0x405cfc90
+405cfbbc:	e3500019 	cmp	r0, #25
+405cfbc0:	0a000027 	beq	0x405cfc64
+405cfbc4:	ea000030 	b	0x405cfc8c
+405cfbc8:	e3500027 	cmp	r0, #39	; 0x27
+405cfbcc:	0a000016 	beq	0x405cfc2c
+405cfbd0:	e350002b 	cmp	r0, #43	; 0x2b
+405cfbd4:	0a000018 	beq	0x405cfc3c
+405cfbd8:	e3500026 	cmp	r0, #38	; 0x26
+405cfbdc:	1a00002a 	bne	0x405cfc8c
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,88 +1,88 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-805cfa9c <bpf_run_sk_reuseport>:
+-e92d4df0 	push	{r4, r5, r6, r7, r8, sl, fp, lr}
+-e24dd020 	sub	sp, sp, #32
+-e593c058 	ldr	ip, [r3, #88]	; 0x58
+-e1a08002 	mov	r8, r2
+-e58d1004 	str	r1, [sp, #4]
+-e2887028 	add	r7, r8, #40	; 0x28
+-e5931054 	ldr	r1, [r3, #84]	; 0x54
+-e58d3000 	str	r3, [sp]
+-e59330a4 	ldr	r3, [r3, #164]	; 0xa4
+-e041100c 	sub	r1, r1, ip
+-e59f6108 	ldr	r6, [pc, #264]	; 805cfbd4 <bpf_run_sk_reuseport+0x138>
+-e0833001 	add	r3, r3, r1
+-e58d300c 	str	r3, [sp, #12]
+-e59d3040 	ldr	r3, [sp, #64]	; 0x40
+-e3021266 	movw	r1, #8806	; 0x2266
+-e5962000 	ldr	r2, [r6]
+-e58d3010 	str	r3, [sp, #16]
+-e5903010 	ldr	r3, [r0, #16]
+-e58d201c 	str	r2, [sp, #28]
+-e3a02000 	mov	r2, #0
+-e58d2008 	str	r2, [sp, #8]
+-e58d3014 	str	r3, [sp, #20]
+-e5d03014 	ldrb	r3, [r0, #20]
+-e59f00d8 	ldr	r0, [pc, #216]	; 805cfbd8 <bpf_run_sk_reuseport+0x13c>
+-e7e03053 	ubfx	r3, r3, #0, #1
+-e5cd3018 	strb	r3, [sp, #24]
+-ebedc973 	bl	801420d8 <__cant_sleep>
+-e59f30cc 	ldr	r3, [pc, #204]	; 805cfbdc <bpf_run_sk_reuseport+0x140>
+-e5933000 	ldr	r3, [r3]
+-e3530000 	cmp	r3, #0
+-da00001f 	ble	805cfb98 <bpf_run_sk_reuseport+0xfc>
+-ebef0377 	bl	801908fc <sched_clock>
+-e5983024 	ldr	r3, [r8, #36]	; 0x24
+-e1a04000 	mov	r4, r0
+-e1a05001 	mov	r5, r1
+-e1a0000d 	mov	r0, sp
+-e1a01007 	mov	r1, r7
+-e12fff33 	blx	r3
+-e598301c 	ldr	r3, [r8, #28]
+-ee1d2f90 	mrc	15, 0, r2, cr13, cr0, {4}
+-e59330a0 	ldr	r3, [r3, #160]	; 0xa0
+-e0838002 	add	r8, r3, r2
+-e5981010 	ldr	r1, [r8, #16]
+-e2811001 	add	r1, r1, #1
+-e5881010 	str	r1, [r8, #16]
+-e1a07000 	mov	r7, r0
+-f57ff05a 	dmb	ishst
+-e18300d2 	ldrd	r0, [r3, r2]
+-e290a001 	adds	sl, r0, #1
+-e2a1b000 	adc	fp, r1, #0
+-e183a0f2 	strd	sl, [r3, r2]
+-ebef0363 	bl	801908fc <sched_clock>
+-e1c820d8 	ldrd	r2, [r8, #8]
+-e0504004 	subs	r4, r0, r4
+-e0c15005 	sbc	r5, r1, r5
+-e0920004 	adds	r0, r2, r4
+-e0a31005 	adc	r1, r3, r5
+-e1c800f8 	strd	r0, [r8, #8]
+-f57ff05a 	dmb	ishst
+-e5983010 	ldr	r3, [r8, #16]
+-e2833001 	add	r3, r3, #1
+-e5883010 	str	r3, [r8, #16]
+-ea000004 	b	805cfbac <bpf_run_sk_reuseport+0x110>
+-e1a01007 	mov	r1, r7
+-e5983024 	ldr	r3, [r8, #36]	; 0x24
+-e1a0000d 	mov	r0, sp
+-e12fff33 	blx	r3
+-e1a07000 	mov	r7, r0
+-e3570001 	cmp	r7, #1
+-e59d201c 	ldr	r2, [sp, #28]
+-e5963000 	ldr	r3, [r6]
+-059d0008 	ldreq	r0, [sp, #8]
+-13e0006e 	mvnne	r0, #110	; 0x6e
+-e1520003 	cmp	r2, r3
+-0a000000 	beq	805cfbcc <bpf_run_sk_reuseport+0x130>
+-ebed411a 	bl	80120038 <__stack_chk_fail>
+-e28dd020 	add	sp, sp, #32
+-e8bd8df0 	pop	{r4, r5, r6, r7, r8, sl, fp, pc}
+-80a07ec8 	.word	0xADDR
+-80811030 	.word	0xADDR
+-80a70b1c 	.word	0xADDR
++405cfa9c <.data+0xADDR>:
++8074d5b0 	ldrhthi	sp, [r4], #-80	; 0xADDR
++e350003b 	cmp	r0, #59	; 0x3b
++0a00001c 	beq	0xADDR
++8a00000c 	bhi	0xADDR
++e3500031 	cmp	r0, #49	; 0x31
++0a00002c 	beq	0xADDR
++8a000004 	bhi	0xADDR
++e3500019 	cmp	r0, #25
++0a000020 	beq	0xADDR
++e350002e 	cmp	r0, #46	; 0x2e
++0a00001a 	beq	0xADDR
++ea000025 	b	0xADDR
++e3500035 	cmp	r0, #53	; 0x35
++0a000013 	beq	0xADDR
++e3500039 	cmp	r0, #57	; 0x39
++0a00000d 	beq	0xADDR
++ea000020 	b	0xADDR
++e3500060 	cmp	r0, #96	; 0x60
++0a00001c 	beq	0xADDR
++8a000004 	bhi	0xADDR
++e3500046 	cmp	r0, #70	; 0x46
++0a00000d 	beq	0xADDR
++e3500051 	cmp	r0, #81	; 0x51
++0a00000f 	beq	0xADDR
++ea000018 	b	0xADDR
++e350006b 	cmp	r0, #107	; 0x6b
++0a000010 	beq	0xADDR
++e350006c 	cmp	r0, #108	; 0x6c
++0a000010 	beq	0xADDR
++ea000013 	b	0xADDR
++e59f0054 	ldr	r0, [pc, #84]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0050 	ldr	r0, [pc, #80]	; 0xADDR
++e12fff1e 	bx	lr
++e59f004c 	ldr	r0, [pc, #76]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0048 	ldr	r0, [pc, #72]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0044 	ldr	r0, [pc, #68]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0040 	ldr	r0, [pc, #64]	; 0xADDR
++e12fff1e 	bx	lr
++e59f003c 	ldr	r0, [pc, #60]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0038 	ldr	r0, [pc, #56]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0034 	ldr	r0, [pc, #52]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0030 	ldr	r0, [pc, #48]	; 0xADDR
++e12fff1e 	bx	lr
++eafffe47 	b	0xADDR
++e59f0028 	ldr	r0, [pc, #40]	; 0xADDR
++e12fff1e 	bx	lr
++80817ab0 			; <UNDEFINED> instruction: 0xADDR
++80818044 	addhi	r8, r1, r4, asr #32
++80ade9c8 	adchi	lr, sp, r8, asr #19
++80ade9a8 	adchi	lr, sp, r8, lsr #19
++80817a70 	addhi	r7, r1, r0, ror sl
++80a74af4 	strdhi	r4, [r7], r4	; <UNPREDICTABLE>
++80818064 	addhi	r8, r1, r4, rrx
++80818f40 	addhi	r8, r1, r0, asr #30
++80818f20 	addhi	r8, r1, r0, lsr #30
++808180c4 	addhi	r8, r1, r4, asr #1
++80817c64 	addhi	r7, r1, r4, ror #24
++e350002e 	cmp	r0, #46	; 0x2e
++0a000027 	beq	0xADDR
++8a00000e 	bhi	0xADDR
++e350001a 	cmp	r0, #26
++0a00001c 	beq	0xADDR
++8a000004 	bhi	0xADDR
++e3500009 	cmp	r0, #9
++0a000034 	beq	0xADDR
++e3500019 	cmp	r0, #25
++0a000027 	beq	0xADDR
++ea000030 	b	0xADDR
++e3500027 	cmp	r0, #39	; 0x27
++0a000016 	beq	0xADDR
++e350002b 	cmp	r0, #43	; 0x2b
++0a000018 	beq	0xADDR
++e3500026 	cmp	r0, #38	; 0x26
++1a00002a 	bne	0xADDR

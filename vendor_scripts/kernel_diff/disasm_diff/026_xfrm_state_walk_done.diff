@@ -1,0 +1,124 @@
+# Функция: xfrm_state_walk_done
+# Адрес (наш):    0x8068103c
+# Адрес (vendor): 0x4068103c
+# Размер:         80 байт
+# Изменённых байт:681752
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8068103c <xfrm_state_walk_done>:
+8068103c:	e92d4070 	push	{r4, r5, r6, lr}
+80681040:	e1a04000 	mov	r4, r0
+80681044:	e5900010 	ldr	r0, [r0, #16]
+80681048:	e1a05001 	mov	r5, r1
+8068104c:	ebeea0b4 	bl	80229324 <kfree>
+80681050:	e5943000 	ldr	r3, [r4]
+80681054:	e1540003 	cmp	r4, r3
+80681058:	08bd8070 	popeq	{r4, r5, r6, pc}
+8068105c:	e2855d2f 	add	r5, r5, #3008	; 0xbc0
+80681060:	e1a00005 	mov	r0, r5
+80681064:	eb024c22 	bl	807140f4 <_raw_spin_lock_bh>
+80681068:	e1c420d0 	ldrd	r2, [r4]
+8068106c:	e3a00c01 	mov	r0, #256	; 0x100
+80681070:	e3001122 	movw	r1, #290	; 0x122
+80681074:	e5823004 	str	r3, [r2, #4]
+80681078:	e5832000 	str	r2, [r3]
+8068107c:	e1c400f0 	strd	r0, [r4]
+80681080:	e1a00005 	mov	r0, r5
+80681084:	e8bd4070 	pop	{r4, r5, r6, lr}
+80681088:	ea024d05 	b	807144a4 <_raw_spin_unlock_bh>
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4068103c <.data+0x67903c>:
+4068103c:	1a000009 	bne	0x40681068
+40681040:	ea000001 	b	0x4068104c
+40681044:	e1d424bc 	ldrh	r2, [r4, #76]	; 0x4c
+40681048:	ea000006 	b	0x40681068
+4068104c:	e5d4204d 	ldrb	r2, [r4, #77]	; 0x4d
+40681050:	ea000001 	b	0x4068105c
+40681054:	e594204c 	ldr	r2, [r4, #76]	; 0x4c
+40681058:	e6bf2f32 	rev	r2, r2
+4068105c:	e6bf2fb2 	rev16	r2, r2
+40681060:	e6ff2072 	uxth	r2, r2
+40681064:	eaffffff 	b	0x40681068
+40681068:	e1d512b0 	ldrh	r1, [r5, #32]
+4068106c:	e0222001 	eor	r2, r2, r1
+40681070:	e1d512b2 	ldrh	r1, [r5, #34]	; 0x22
+40681074:	e1120001 	tst	r2, r1
+40681078:	1a000031 	bne	0x40681144
+4068107c:	e353002f 	cmp	r3, #47	; 0x2f
+40681080:	0a000014 	beq	0x406810d8
+40681084:	8a000005 	bhi	0x406810a0
+40681088:	e3530006 	cmp	r3, #6
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,27 +1,27 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8068103c <xfrm_state_walk_done>:
+-e92d4070 	push	{r4, r5, r6, lr}
+-e1a04000 	mov	r4, r0
+-e5900010 	ldr	r0, [r0, #16]
+-e1a05001 	mov	r5, r1
+-ebeea0b4 	bl	80229324 <kfree>
+-e5943000 	ldr	r3, [r4]
+-e1540003 	cmp	r4, r3
+-08bd8070 	popeq	{r4, r5, r6, pc}
+-e2855d2f 	add	r5, r5, #3008	; 0xbc0
+-e1a00005 	mov	r0, r5
+-eb024c22 	bl	807140f4 <_raw_spin_lock_bh>
+-e1c420d0 	ldrd	r2, [r4]
+-e3a00c01 	mov	r0, #256	; 0x100
+-e3001122 	movw	r1, #290	; 0x122
+-e5823004 	str	r3, [r2, #4]
+-e5832000 	str	r2, [r3]
+-e1c400f0 	strd	r0, [r4]
+-e1a00005 	mov	r0, r5
+-e8bd4070 	pop	{r4, r5, r6, lr}
+-ea024d05 	b	807144a4 <_raw_spin_unlock_bh>
++4068103c <.data+0xADDR>:
++1a000009 	bne	0xADDR
++ea000001 	b	0xADDR
++e1d424bc 	ldrh	r2, [r4, #76]	; 0x4c
++ea000006 	b	0xADDR
++e5d4204d 	ldrb	r2, [r4, #77]	; 0x4d
++ea000001 	b	0xADDR
++e594204c 	ldr	r2, [r4, #76]	; 0x4c
++e6bf2f32 	rev	r2, r2
++e6bf2fb2 	rev16	r2, r2
++e6ff2072 	uxth	r2, r2
++eaffffff 	b	0xADDR
++e1d512b0 	ldrh	r1, [r5, #32]
++e0222001 	eor	r2, r2, r1
++e1d512b2 	ldrh	r1, [r5, #34]	; 0x22
++e1120001 	tst	r2, r1
++1a000031 	bne	0xADDR
++e353002f 	cmp	r3, #47	; 0x2f
++0a000014 	beq	0xADDR
++8a000005 	bhi	0xADDR
++e3530006 	cmp	r3, #6

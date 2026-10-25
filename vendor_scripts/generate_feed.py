@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+import os
+import re
+import shutil
+import sys
+
+# Validate argument count
+if len(sys.argv) < 6:
+    print("This script is an internal helper. Please run the main script from the OpenWrt root directory:", file=sys.stderr)
+    print("  ./vendor_scripts/prepare_feed.sh [firmware_file.bin]", file=sys.stderr)
+    sys.exit(1)
+
+import json
+from generate_package import generate_single_package, NO_DEPS_PACKAGES
+
+# Parse command line arguments
+status_file = sys.argv[1]
+extracted_rootfs = sys.argv[2]
+feed_dir = sys.argv[3]
+add_pkgs = sys.argv[4].split()
+ignore_pkgs = set(sys.argv[5].split())
+deps_json_file = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] != "" else os.path.join(os.path.dirname(feed_dir), "tmp/kmod_deps.json")
+required_list_file = sys.argv[7] if len(sys.argv) > 7 else None
+native_list_arg = sys.argv[8] if len(sys.argv) > 8 else None
+
+# Load required packages list if provided
+required_pkgs = []
+if required_list_file and os.path.isfile(required_list_file):
+    with open(required_list_file, 'r') as rf:
+        for line in rf:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                required_pkgs.append(line)
+
+# Load native packages list if provided
+native_pkgs = set()
+if native_list_arg:
+    if os.path.isfile(native_list_arg):
+        with open(native_list_arg, 'r') as nf:
+            for line in nf:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    native_pkgs.add(line)
+    else:
+        native_pkgs = set(native_list_arg.split())
+if native_pkgs:
+    print(f"Loaded {len(native_pkgs)} native OpenWrt packages to map without -vendor suffix")
+
+# Load kernel module dependencies extracted from .ko binaries
+extra_kmod_deps = {}
+if os.path.isfile(deps_json_file):
+    with open(deps_json_file, 'r') as f:
+        extra_kmod_deps = json.load(f)
+    print(f"Loaded dynamic kernel module dependencies from {deps_json_file}")
+
+# Parse opkg status file for package metadata and dependencies
+pkg_info = {}
+current_pkg = None
+
+with open(status_file, 'r') as f:
+    for line in f:
+        line_str = line.strip()
+        if line_str.startswith('Package:'):
+            current_pkg = line_str.split(':', 1)[1].strip()
+            pkg_info[current_pkg] = {'version': '1.0', 'depends': [], 'conffiles': []}
+        elif current_pkg:
+            if line_str.startswith('Version:'):
+                pkg_info[current_pkg]['version'] = line_str.split(':', 1)[1].strip()
+            elif line_str.startswith('Depends:'):
+                raw_deps = line_str.split(':', 1)[1].strip()
+                raw_deps = re.sub(r'\([^)]*\)', '', raw_deps)
+                deps = [d.strip() for d in raw_deps.split(',') if d.strip()]
+                pkg_info[current_pkg]['depends'] = deps
+
+# Clear dependencies for packages that should not have stock dependencies traversed into vendor feed
+for nd_pkg in NO_DEPS_PACKAGES:
+    if nd_pkg in pkg_info:
+        pkg_info[nd_pkg]['depends'] = []
+
+# Load configuration file lists from opkg info
+for pkg in pkg_info:
+    conffiles_file = os.path.join(extracted_rootfs, 'usr/lib/opkg/info', f"{pkg}.conffiles")
+    if os.path.isfile(conffiles_file):
+        with open(conffiles_file, 'r') as cf:
+            cfs = [l.strip() for l in cf if l.strip()]
+            pkg_info[pkg]['conffiles'] = cfs
+
+# Resolve target package list and transitive dependencies
+visited = set()
+to_visit = list(add_pkgs)
+resolved = []
+while to_visit:
+    pkg = to_visit.pop(0)
+    if pkg in ignore_pkgs or pkg in native_pkgs or pkg in visited:
+        continue
+    visited.add(pkg)
+    resolved.append(pkg)
+    deps = [d for d in pkg_info.get(pkg, {}).get('depends', []) if d in pkg_info]
+    for extra in extra_kmod_deps.get(pkg, []):
+        if extra not in deps and extra in pkg_info:
+            deps.append(extra)
+    for dep in deps:
+        if dep not in ignore_pkgs and dep not in native_pkgs and dep not in visited:
+            to_visit.append(dep)
+
+# Validate that all required packages are present in the resolved dependency graph before creating feed
+if required_pkgs:
+    resolved_set = set(resolved)
+    missing_required = [p for p in required_pkgs if p not in resolved_set and p not in native_pkgs]
+    if missing_required:
+        print(f"Error: The following required packages from {required_list_file} were not resolved in dependency tree:", file=sys.stderr)
+        for mp in missing_required:
+            print(f"  - {mp}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Validation successful: all {len(required_pkgs)} required packages are present in resolved dependency tree.")
+
+# Clean and create output feed directory only after successful dependency resolution and validation
+if os.path.exists(feed_dir):
+    shutil.rmtree(feed_dir)
+os.makedirs(feed_dir, exist_ok=True)
+
+# Detect hardware platform model (rd15 vs rd16) from extracted rootfs
+hardware_model = "rd15"
+xq_ver_file = os.path.join(extracted_rootfs, "usr/share/xiaoqiang/xiaoqiang_version")
+if os.path.isfile(xq_ver_file):
+    with open(xq_ver_file, 'r') as xqf:
+        for line in xqf:
+            if "HARDWARE" in line:
+                if "RD16" in line.upper():
+                    hardware_model = "rd16"
+                elif "RD15" in line.upper():
+                    hardware_model = "rd15"
+print(f"Target hardware platform detected as: {hardware_model}")
+
+# Generate package directories, copy prebuilt files, and build Makefiles
+all_pkgs_set = set(pkg_info.keys())
+for pkg in resolved:
+    pkg_meta = pkg_info.get(pkg, {})
+    pkg_meta["_all_pkgs"] = all_pkgs_set
+    generate_single_package(
+        pkg=pkg,
+        pkg_meta=pkg_meta,
+        extracted_rootfs=extracted_rootfs,
+        feed_dir=feed_dir,
+        subtarget=hardware_model,
+        native_pkgs=native_pkgs,
+        ignore_pkgs=ignore_pkgs,
+        extra_kmod_deps=extra_kmod_deps,
+    )
+
+print(f"Generated feed for {len(resolved)} packages: {', '.join(resolved)}")

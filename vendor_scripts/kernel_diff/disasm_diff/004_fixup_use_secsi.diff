@@ -1,0 +1,64 @@
+# Функция: fixup_use_secsi
+# Адрес (наш):    0x80452c50
+# Адрес (vendor): 0x40452c50
+# Размер:         20 байт
+# Изменённых байт:797983
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+80452c50 <fixup_use_secsi>:
+80452c50:	e59f3008 	ldr	r3, [pc, #8]	; 80452c60 <fixup_use_secsi+0x10>
+80452c54:	e580308c 	str	r3, [r0, #140]	; 0x8c
+80452c58:	e5803084 	str	r3, [r0, #132]	; 0x84
+80452c5c:	e12fff1e 	bx	lr
+80452c60:	80453568 	.word	0x80453568
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+40452c50 <.data+0x44ac50>:
+40452c50:	e1530007 	cmp	r3, r7
+40452c54:	0a000002 	beq	0x40452c64
+40452c58:	e5951024 	ldr	r1, [r5, #36]	; 0x24
+40452c5c:	e1530001 	cmp	r3, r1
+40452c60:	1a000007 	bne	0x40452c84
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,12 +1,12 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-80452c50 <fixup_use_secsi>:
+-e59f3008 	ldr	r3, [pc, #8]	; 80452c60 <fixup_use_secsi+0x10>
+-e580308c 	str	r3, [r0, #140]	; 0x8c
+-e5803084 	str	r3, [r0, #132]	; 0x84
+-e12fff1e 	bx	lr
+-80453568 	.word	0xADDR
++40452c50 <.data+0xADDR>:
++e1530007 	cmp	r3, r7
++0a000002 	beq	0xADDR
++e5951024 	ldr	r1, [r5, #36]	; 0x24
++e1530001 	cmp	r3, r1
++1a000007 	bne	0xADDR

@@ -269,6 +269,8 @@ $(strip
 endef
 
 ifneq ($(PKG_NAME),toolchain)
+ifneq ($(PKG_NAME),libc-vendor)
+ifneq ($(PKG_NAME),libgcc-vendor)
   define CheckDependencies
 	@( \
 		rm -f $(PKG_INFO_DIR)/$(1).missing; \
@@ -289,6 +291,8 @@ ifneq ($(PKG_NAME),toolchain)
 		fi; \
 	)
   endef
+endif
+endif
 endif
 
 _addsep=$(word 1,$(1))$(foreach w,$(wordlist 2,$(words $(1)),$(1)),$(strip $(2) $(w)))

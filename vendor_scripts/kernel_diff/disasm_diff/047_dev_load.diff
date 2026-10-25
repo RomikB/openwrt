@@ -1,0 +1,180 @@
+# Функция: dev_load
+# Адрес (наш):    0x805cff40
+# Адрес (vendor): 0x405cff40
+# Размер:         136 байт
+# Изменённых байт:454670
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+805cff40 <dev_load>:
+805cff40:	e92d4070 	push	{r4, r5, r6, lr}
+805cff44:	e1a05000 	mov	r5, r0
+805cff48:	e1a04001 	mov	r4, r1
+805cff4c:	ebee9a23 	bl	801767e0 <__rcu_read_lock>
+805cff50:	e1a01004 	mov	r1, r4
+805cff54:	e1a00005 	mov	r0, r5
+805cff58:	ebff325d 	bl	8059c8d4 <dev_get_by_name_rcu>
+805cff5c:	e1a05000 	mov	r5, r0
+805cff60:	ebeea769 	bl	80179d0c <__rcu_read_unlock>
+805cff64:	e3550000 	cmp	r5, #0
+805cff68:	18bd8070 	popne	{r4, r5, r6, pc}
+805cff6c:	e3a0000c 	mov	r0, #12
+805cff70:	ebed62d6 	bl	80128ad0 <capable>
+805cff74:	e3500000 	cmp	r0, #0
+805cff78:	1a000004 	bne	805cff90 <dev_load+0x50>
+805cff7c:	e3a00010 	mov	r0, #16
+805cff80:	ebed62d2 	bl	80128ad0 <capable>
+805cff84:	e3500000 	cmp	r0, #0
+805cff88:	08bd8070 	popeq	{r4, r5, r6, pc}
+805cff8c:	ea000006 	b	805cffac <dev_load+0x6c>
+805cff90:	e1a02004 	mov	r2, r4
+805cff94:	e59f1024 	ldr	r1, [pc, #36]	; 805cffc0 <dev_load+0x80>
+805cff98:	e3a00001 	mov	r0, #1
+805cff9c:	ebedc33b 	bl	80140c90 <__request_module>
+805cffa0:	e3500000 	cmp	r0, #0
+805cffa4:	08bd8070 	popeq	{r4, r5, r6, pc}
+805cffa8:	eafffff3 	b	805cff7c <dev_load+0x3c>
+805cffac:	e1a02004 	mov	r2, r4
+805cffb0:	e59f100c 	ldr	r1, [pc, #12]	; 805cffc4 <dev_load+0x84>
+805cffb4:	e3a00001 	mov	r0, #1
+805cffb8:	e8bd4070 	pop	{r4, r5, r6, lr}
+805cffbc:	eaedc333 	b	80140c90 <__request_module>
+805cffc0:	808119bd 	.word	0x808119bd
+805cffc4:	807409ee 	.word	0x807409ee
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+405cff40 <.data+0x5c7f40>:
+405cff40:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff44:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff48:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff4c:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff50:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff54:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff58:	805d0060 	subshi	r0, sp, r0, rrx
+405cff5c:	805d0068 	subshi	r0, sp, r8, rrx
+405cff60:	805d00d0 	ldrsbhi	r0, [sp], #-0
+405cff64:	805d00c8 	subshi	r0, sp, r8, asr #1
+405cff68:	e59f016c 	ldr	r0, [pc, #364]	; 0x405d00dc
+405cff6c:	e12fff1e 	bx	lr
+405cff70:	e59f0168 	ldr	r0, [pc, #360]	; 0x405d00e0
+405cff74:	e12fff1e 	bx	lr
+405cff78:	e59f0164 	ldr	r0, [pc, #356]	; 0x405d00e4
+405cff7c:	e12fff1e 	bx	lr
+405cff80:	e59f0160 	ldr	r0, [pc, #352]	; 0x405d00e8
+405cff84:	e12fff1e 	bx	lr
+405cff88:	e59f015c 	ldr	r0, [pc, #348]	; 0x405d00ec
+405cff8c:	e12fff1e 	bx	lr
+405cff90:	e59f0158 	ldr	r0, [pc, #344]	; 0x405d00f0
+405cff94:	e12fff1e 	bx	lr
+405cff98:	e59f0154 	ldr	r0, [pc, #340]	; 0x405d00f4
+405cff9c:	e12fff1e 	bx	lr
+405cffa0:	e59f0150 	ldr	r0, [pc, #336]	; 0x405d00f8
+405cffa4:	e12fff1e 	bx	lr
+405cffa8:	e59f014c 	ldr	r0, [pc, #332]	; 0x405d00fc
+405cffac:	e12fff1e 	bx	lr
+405cffb0:	e59f0148 	ldr	r0, [pc, #328]	; 0x405d0100
+405cffb4:	e12fff1e 	bx	lr
+405cffb8:	e59f0144 	ldr	r0, [pc, #324]	; 0x405d0104
+405cffbc:	e12fff1e 	bx	lr
+405cffc0:	e59f0140 	ldr	r0, [pc, #320]	; 0x405d0108
+405cffc4:	e12fff1e 	bx	lr
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,41 +1,41 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-805cff40 <dev_load>:
+-e92d4070 	push	{r4, r5, r6, lr}
+-e1a05000 	mov	r5, r0
+-e1a04001 	mov	r4, r1
+-ebee9a23 	bl	801767e0 <__rcu_read_lock>
+-e1a01004 	mov	r1, r4
+-e1a00005 	mov	r0, r5
+-ebff325d 	bl	8059c8d4 <dev_get_by_name_rcu>
+-e1a05000 	mov	r5, r0
+-ebeea769 	bl	80179d0c <__rcu_read_unlock>
+-e3550000 	cmp	r5, #0
+-18bd8070 	popne	{r4, r5, r6, pc}
+-e3a0000c 	mov	r0, #12
+-ebed62d6 	bl	80128ad0 <capable>
+-e3500000 	cmp	r0, #0
+-1a000004 	bne	805cff90 <dev_load+0x50>
+-e3a00010 	mov	r0, #16
+-ebed62d2 	bl	80128ad0 <capable>
+-e3500000 	cmp	r0, #0
+-08bd8070 	popeq	{r4, r5, r6, pc}
+-ea000006 	b	805cffac <dev_load+0x6c>
+-e1a02004 	mov	r2, r4
+-e59f1024 	ldr	r1, [pc, #36]	; 805cffc0 <dev_load+0x80>
+-e3a00001 	mov	r0, #1
+-ebedc33b 	bl	80140c90 <__request_module>
+-e3500000 	cmp	r0, #0
+-08bd8070 	popeq	{r4, r5, r6, pc}
+-eafffff3 	b	805cff7c <dev_load+0x3c>
+-e1a02004 	mov	r2, r4
+-e59f100c 	ldr	r1, [pc, #12]	; 805cffc4 <dev_load+0x84>
+-e3a00001 	mov	r0, #1
+-e8bd4070 	pop	{r4, r5, r6, lr}
+-eaedc333 	b	80140c90 <__request_module>
+-808119bd 	.word	0xADDR
+-807409ee 	.word	0xADDR
++405cff40 <.data+0xADDR>:
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d0060 	subshi	r0, sp, r0, rrx
++805d0068 	subshi	r0, sp, r8, rrx
++805d00d0 	ldrsbhi	r0, [sp], #-0
++805d00c8 	subshi	r0, sp, r8, asr #1
++e59f016c 	ldr	r0, [pc, #364]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0168 	ldr	r0, [pc, #360]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0164 	ldr	r0, [pc, #356]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0160 	ldr	r0, [pc, #352]	; 0xADDR
++e12fff1e 	bx	lr
++e59f015c 	ldr	r0, [pc, #348]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0158 	ldr	r0, [pc, #344]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0154 	ldr	r0, [pc, #340]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0150 	ldr	r0, [pc, #336]	; 0xADDR
++e12fff1e 	bx	lr
++e59f014c 	ldr	r0, [pc, #332]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0148 	ldr	r0, [pc, #328]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0144 	ldr	r0, [pc, #324]	; 0xADDR
++e12fff1e 	bx	lr
++e59f0140 	ldr	r0, [pc, #320]	; 0xADDR
++e12fff1e 	bx	lr

@@ -1,0 +1,92 @@
+# Функция: xfrm_state_insert
+# Адрес (наш):    0x8068100c
+# Адрес (vendor): 0x4068100c
+# Размер:         48 байт
+# Изменённых байт:681752
+# Реальный diff:  да
+──────────────────────────────────────────────────────────────────────
+
+## НАША ВЕРСИЯ:
+
+/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+8068100c <xfrm_state_insert>:
+8068100c:	e92d4070 	push	{r4, r5, r6, lr}
+80681010:	e1a05000 	mov	r5, r0
+80681014:	e59f401c 	ldr	r4, [pc, #28]	; 80681038 <xfrm_state_insert+0x2c>
+80681018:	e1a00004 	mov	r0, r4
+8068101c:	eb024c34 	bl	807140f4 <_raw_spin_lock_bh>
+80681020:	e1a00005 	mov	r0, r5
+80681024:	ebfff996 	bl	8067f684 <__xfrm_state_bump_genids>
+80681028:	ebfffeb2 	bl	80680af8 <__xfrm_state_insert>
+8068102c:	e1a00004 	mov	r0, r4
+80681030:	e8bd4070 	pop	{r4, r5, r6, lr}
+80681034:	ea024d1a 	b	807144a4 <_raw_spin_unlock_bh>
+80681038:	80a35f80 	.word	0x80a35f80
+
+──────────────────────────────────────────────────────────────────────
+
+## СТОКОВАЯ ВЕРСИЯ (vendor):
+
+/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+
+
+Disassembly of section .data:
+
+4068100c <.data+0x67900c>:
+4068100c:	e3530006 	cmp	r3, #6
+40681010:	0a00000b 	beq	0x40681044
+40681014:	e3530011 	cmp	r3, #17
+40681018:	0a000009 	beq	0x40681044
+4068101c:	e3530001 	cmp	r3, #1
+40681020:	ea000004 	b	0x40681038
+40681024:	e3530084 	cmp	r3, #132	; 0x84
+40681028:	0a000005 	beq	0x40681044
+4068102c:	e3530088 	cmp	r3, #136	; 0x88
+40681030:	0a000003 	beq	0x40681044
+40681034:	e353003a 	cmp	r3, #58	; 0x3a
+40681038:	13a02000 	movne	r2, #0
+
+──────────────────────────────────────────────────────────────────────
+
+## DIFF (нормализованный, без абсолютных адресов):
+--- ours
++++ vendor
+@@ -1,19 +1,19 @@
+ 
+-/home/romikb/openwrt/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213/vmlinux:     file format elf32-littlearm
++/home/romikb/openwrt/vendor_scripts/kernel_diff/vendor_Image:     file format binary
+ 
+ 
+-Disassembly of section .text:
++Disassembly of section .data:
+ 
+-8068100c <xfrm_state_insert>:
+-e92d4070 	push	{r4, r5, r6, lr}
+-e1a05000 	mov	r5, r0
+-e59f401c 	ldr	r4, [pc, #28]	; 80681038 <xfrm_state_insert+0x2c>
+-e1a00004 	mov	r0, r4
+-eb024c34 	bl	807140f4 <_raw_spin_lock_bh>
+-e1a00005 	mov	r0, r5
+-ebfff996 	bl	8067f684 <__xfrm_state_bump_genids>
+-ebfffeb2 	bl	80680af8 <__xfrm_state_insert>
+-e1a00004 	mov	r0, r4
+-e8bd4070 	pop	{r4, r5, r6, lr}
+-ea024d1a 	b	807144a4 <_raw_spin_unlock_bh>
+-80a35f80 	.word	0xADDR
++4068100c <.data+0xADDR>:
++e3530006 	cmp	r3, #6
++0a00000b 	beq	0xADDR
++e3530011 	cmp	r3, #17
++0a000009 	beq	0xADDR
++e3530001 	cmp	r3, #1
++ea000004 	b	0xADDR
++e3530084 	cmp	r3, #132	; 0x84
++0a000005 	beq	0xADDR
++e3530088 	cmp	r3, #136	; 0x88
++0a000003 	beq	0xADDR
++e353003a 	cmp	r3, #58	; 0x3a
++13a02000 	movne	r2, #0
