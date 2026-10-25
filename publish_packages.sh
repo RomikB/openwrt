@@ -1,8 +1,9 @@
 #!/bin/bash
 # ==============================================================================
 # Script: publish_packages.sh
-# Purpose: Collect custom packages and kernel modules, generate signed opkg
-#          repository for GitHub Pages (releases/24.10-SNAPSHOT/targets/ipq53xx/ipq53xx_32/packages).
+# Purpose: Collect custom APK packages and kernel modules, generate signed APK
+#          repository for GitHub Pages (releases/25.12-SNAPSHOT/targets/ipq53xx/ipq53xx_32/packages)
+#          using OpenWrt 25 ECDSA prime256v1 keys.
 # ==============================================================================
 
 set -euo pipefail
@@ -17,63 +18,65 @@ fi
 GHPAGES_ROOT="$1"
 SUBTARGET="${2:-ipq53xx_32}"
 TOPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REL_PATH="releases/24.10-SNAPSHOT/targets/ipq53xx/${SUBTARGET}/packages"
+REL_PATH="releases/25.12-SNAPSHOT/targets/ipq53xx/${SUBTARGET}/packages"
 DEST_DIR="${GHPAGES_ROOT}/${REL_PATH}"
 
-KEY_BUILD="${TOPDIR}/key-build"
-KEY_BUILD_PUB="${TOPDIR}/key-build.pub"
-USIGN_BIN="${TOPDIR}/staging_dir/host/bin/usign"
-MKHASH_BIN="${TOPDIR}/staging_dir/host/bin/mkhash"
-INDEX_SCRIPT="${TOPDIR}/scripts/ipkg-make-index.sh"
-
 ARCH_NAME="arm_cortex-a7_neon-vfpv4"
+TARGET_PKG_DIR="${TOPDIR}/bin/targets/ipq53xx/${SUBTARGET}/packages"
+FEEDS_DIR="${TOPDIR}/bin/packages/${ARCH_NAME}"
+
+# OpenWrt 25 APK keys (ECDSA prime256v1 PEM format)
+KEY_APK_SEC="${BUILD_KEY_APK_SEC:-${TOPDIR}/private-key.pem}"
+KEY_APK_PUB="${BUILD_KEY_APK_PUB:-${TOPDIR}/public-key.pem}"
+APK_HOST_BIN="${TOPDIR}/staging_dir/host/bin/apk"
+INDEX_JSON_SCRIPT="${TOPDIR}/scripts/make-index-json.py"
 
 # Helper function to identify proprietary vendor packages
 is_vendor_package() {
-    local ipk_path="$1"
+    local pkg_path="$1"
     local filename
-    filename="$(basename "${ipk_path}")"
-    local pkg_name="${filename%%_*}"
+    filename="$(basename "${pkg_path}")"
+
+    # Match packages with -vendor in name (e.g. qca-firmware-vendor-rd15-*, libc-vendor-*)
+    case "${filename}" in
+        *-vendor*|*-vendor_*)
+            return 0
+            ;;
+    esac
 
     # Match packages present in vendor_feed directory
-    if [ -d "${TOPDIR}/vendor_feed/${pkg_name}" ] || [ -d "${TOPDIR}/package/feeds/vendor_feed/${pkg_name}" ]; then
-        return 0
+    if [ -d "${TOPDIR}/vendor_feed" ]; then
+        for vdir in "${TOPDIR}/vendor_feed"/*; do
+            [ -d "${vdir}" ] || continue
+            local vname="$(basename "${vdir}")"
+            if [[ "${filename}" == "${vname}"-* ]] || [[ "${filename}" == "${vname}"_* ]]; then
+                return 0
+            fi
+        done
     fi
 
     return 1
 }
 
 # 2. Prerequisites validation
-if [ ! -f "${KEY_BUILD}" ]; then
-    echo "Error: Private build key '${KEY_BUILD}' not found!" >&2
+if [ ! -f "${KEY_APK_SEC}" ]; then
+    echo "Error: APK private key '${KEY_APK_SEC}' not found!" >&2
+    echo "Generate it or run a build first: openssl ecparam -name prime256v1 -genkey -noout -out ${KEY_APK_SEC}" >&2
     exit 1
 fi
 
-if [ ! -f "${KEY_BUILD_PUB}" ]; then
-    echo "Error: Public build key '${KEY_BUILD_PUB}' not found!" >&2
+if [ ! -f "${KEY_APK_PUB}" ]; then
+    echo "Error: APK public key '${KEY_APK_PUB}' not found!" >&2
+    echo "Generate it via: openssl ec -in ${KEY_APK_SEC} -pubout > ${KEY_APK_PUB}" >&2
     exit 1
 fi
 
-if [ -x "${USIGN_BIN}" ]; then
-    USIGN="${USIGN_BIN}"
-elif command -v usign >/dev/null 2>&1; then
-    USIGN="usign"
+if [ -x "${APK_HOST_BIN}" ]; then
+    APK="${APK_HOST_BIN}"
+elif command -v apk >/dev/null 2>&1; then
+    APK="apk"
 else
-    echo "Error: 'usign' utility not found in staging_dir or PATH!" >&2
-    exit 1
-fi
-
-if [ -x "${MKHASH_BIN}" ]; then
-    export MKHASH="${MKHASH_BIN}"
-elif command -v mkhash >/dev/null 2>&1; then
-    export MKHASH="mkhash"
-else
-    echo "Error: 'mkhash' utility not found in staging_dir or PATH!" >&2
-    exit 1
-fi
-
-if [ ! -f "${INDEX_SCRIPT}" ]; then
-    echo "Error: Index generator '${INDEX_SCRIPT}' not found!" >&2
+    echo "Error: 'apk' host utility not found in staging_dir/host/bin or PATH!" >&2
     exit 1
 fi
 
@@ -81,33 +84,32 @@ echo "=== Preparing GitHub Pages package repository ==="
 echo "Subtarget:   ${SUBTARGET}"
 echo "Source:      ${TOPDIR}"
 echo "Destination: ${DEST_DIR}"
+echo "Keys:        ${KEY_APK_SEC} / ${KEY_APK_PUB}"
 
 # 3. Clean old packages in destination directory
 echo "Cleaning old packages and indices in destination..."
 rm -rf "${DEST_DIR}"
 mkdir -p "${DEST_DIR}"
 
-# 4. Copy target-specific packages (kmod-*, rd15-dev-mode, etc.)
-TARGET_PKG_DIR="${TOPDIR}/bin/targets/ipq53xx/${SUBTARGET}/packages"
+# 4. Copy target-specific packages (kmod-*, custom drivers, utilities)
 copied_count=0
 
 if [ -d "${TARGET_PKG_DIR}" ]; then
     echo "Copying target packages from: ${TARGET_PKG_DIR}"
-    for ipk in "${TARGET_PKG_DIR}"/*.ipk; do
-        [ -e "${ipk}" ] || continue
-        if is_vendor_package "${ipk}"; then
-            echo "Skipping nonshared vendor package: $(basename "${ipk}")"
+    for pkg in "${TARGET_PKG_DIR}"/*.apk; do
+        [ -e "${pkg}" ] || continue
+        if is_vendor_package "${pkg}"; then
+            echo "Skipping nonshared vendor package: $(basename "${pkg}")"
             continue
         fi
-        cp "${ipk}" "${DEST_DIR}/"
+        cp "${pkg}" "${DEST_DIR}/"
         copied_count=$((copied_count + 1))
     done
 else
     echo "Warning: Target packages directory '${TARGET_PKG_DIR}' does not exist!"
 fi
 
-# 5. Copy custom feeds, excluding standard upstream feeds and vendor_feed
-FEEDS_DIR="${TOPDIR}/bin/packages/${ARCH_NAME}"
+# 5. Copy custom feeds, excluding standard upstream feeds and proprietary vendor_feed
 if [ -d "${FEEDS_DIR}" ]; then
     for feed_path in "${FEEDS_DIR}"/*; do
         [ -d "${feed_path}" ] || continue
@@ -115,15 +117,15 @@ if [ -d "${FEEDS_DIR}" ]; then
 
         # Exclude standard upstream feeds and proprietary vendor_feed
         case "${feed_name}" in
-            base|luci|packages|routing|telephony|vendor_feed)
+            base|luci|packages|routing|telephony|video|vendor_feed)
                 echo "Skipping excluded feed: ${feed_name}"
                 continue
                 ;;
             *)
                 echo "Copying custom feed packages from: ${feed_name}"
-                for ipk in "${feed_path}"/*.ipk; do
-                    [ -e "${ipk}" ] || continue
-                    cp "${ipk}" "${DEST_DIR}/"
+                for pkg in "${feed_path}"/*.apk; do
+                    [ -e "${pkg}" ] || continue
+                    cp "${pkg}" "${DEST_DIR}/"
                     copied_count=$((copied_count + 1))
                 done
                 ;;
@@ -131,47 +133,52 @@ if [ -d "${FEEDS_DIR}" ]; then
     done
 fi
 
-echo "Total .ipk packages copied: ${copied_count}"
+echo "Total .apk packages copied: ${copied_count}"
 
 if [ "${copied_count}" -eq 0 ]; then
     echo "Error: No packages found to index! Run build first." >&2
     exit 1
 fi
 
-# 6. Generate repository index
-echo "Generating package index (Packages)..."
+# 6. Generate APK repository index & sign with ECDSA key
 cd "${DEST_DIR}"
 
-"${INDEX_SCRIPT}" . 2>&1 > Packages.manifest
-grep -vE '^(Maintainer|LicenseFiles|Source|SourceName|Require|SourceDateEpoch)' Packages.manifest > Packages
+echo "Generating signed APK repository index (packages.adb)..."
+"${APK}" mkndx \
+    --root "${TOPDIR}" \
+    --keys-dir "${TOPDIR}" \
+    --allow-untrusted \
+    --sign "${KEY_APK_SEC}" \
+    --output packages.adb \
+    *.apk
 
-# Workaround usign SHA-512 padding issue (matching OpenWrt package/Makefile)
-case "$(((64 + $(stat -L -c%s Packages)) % 128))" in
-    110|111)
-        echo "Applying usign SHA-512 bug padding workaround..."
-        { echo ""; echo ""; } >> Packages
-        ;;
-esac
-
-# Compressed index
-gzip -9nc Packages > Packages.gz
-
-# 7. Sign package index with usign
-echo "Signing package index with local build key..."
-"${USIGN}" -S -m Packages -s "${KEY_BUILD}"
-
-# 8. Verify generated signature
-echo "Verifying signature..."
-if "${USIGN}" -V -m Packages -p "${KEY_BUILD_PUB}" >/dev/null 2>&1; then
+echo "Verifying APK repository index signature..."
+if "${APK}" verify --keys-dir "${TOPDIR}" packages.adb >/dev/null 2>&1; then
     echo "==> Signature verification: SUCCESS (OK)"
 else
     echo "==> Signature verification: FAILED!" >&2
     exit 1
 fi
 
+# Generate index.json if helper script is available
+if [ -f "${INDEX_JSON_SCRIPT}" ] && command -v python3 >/dev/null 2>&1; then
+    echo "Generating index.json..."
+    "${APK}" adbdump --format json packages.adb | \
+        python3 "${INDEX_JSON_SCRIPT}" -f apk -a "${ARCH_NAME}" - > index.json
+fi
+
+# Copy public key to repository root so clients can install it into /etc/apk/keys/
+echo "Publishing public key: public-key.pem"
+cp "${KEY_APK_PUB}" "${DEST_DIR}/public-key.pem"
+
+# Generate sha256 checksums
+echo "Generating sha256sums..."
+find . -maxdepth 1 -type f -not -name 'sha256sums' -printf "%P\n" | sort | \
+    xargs -r sha256sum > sha256sums
+
 echo ""
 echo "=== Repository successfully published to: ==="
 echo "${DEST_DIR}"
 echo ""
 echo "Files created:"
-ls -lh Packages Packages.gz Packages.sig
+ls -lh packages.adb public-key.pem index.json sha256sums

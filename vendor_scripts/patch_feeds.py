@@ -123,22 +123,6 @@ def patch_luci_app_podkop_makefile(makefile_path):
         print(f"[patch_feeds] Warning: Target block not found in {makefile_path}")
         return False
 
-def patch_lm_sensors_iconv(patch_path):
-    if not os.path.isfile(patch_path):
-        return False
-    with open(patch_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    if r"\#include <iconv.h>" in content:
-        print(f"[patch_feeds] Already patched: {patch_path}")
-        return True
-    if "#include <iconv.h>" in content:
-        content = content.replace("    '#include <iconv.h>'", "    '\\#include <iconv.h>'")
-        content = content.replace("  '#include <iconv.h>'", "  '\\#include <iconv.h>'")
-        with open(patch_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"[patch_feeds] Successfully patched: {patch_path} (escaped # in makefile shell call)")
-        return True
-    return False
 
 def main():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -172,9 +156,6 @@ def main():
     forkop_apply_uc = os.path.join(repo_root, "feeds/forkop/forkop/files/usr/lib/nft/apply.uc")
     patch_forkop_apply_uc(forkop_apply_uc)
 
-    # Patch feeds/packages lm-sensors iconv detection patch (escape # inside makefile shell function)
-    lm_sensors_patch = os.path.join(repo_root, "feeds/packages/utils/lm-sensors/patches/100-Fix-iconv-linking-detection-for-glibc-based-builds.patch")
-    patch_lm_sensors_iconv(lm_sensors_patch)
 
 
     print("[patch_feeds] Feed patching complete.")
