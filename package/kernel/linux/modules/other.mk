@@ -27,6 +27,21 @@ endef
 $(eval $(call KernelPackage,6lowpan))
 
 
+define KernelPackage/bootconfig
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Bootconfig partition for failsafe
+  DEPENDS:=@TARGET_ipq53xx_ipq53xx_32
+  KCONFIG:=CONFIG_BOOTCONFIG_PARTITION
+  FILES:=$(LINUX_DIR)/drivers/platform/ipq/bootconfig.ko
+  AUTOLOAD:=$(call AutoLoad,56,bootconfig,1)
+endef
+
+define KernelPackage/bootconfig/description
+  Kernel module for Qualcomm / IPQ bootconfig partition access and failsafe boot info.
+endef
+
+$(eval $(call KernelPackage,bootconfig))
+
 define KernelPackage/dma-buf
   SUBMENU:=$(OTHER_MENU)
   TITLE:=DMA shared buffer support
@@ -477,7 +492,7 @@ define KernelPackage/mtdtests
   TITLE:=MTD subsystem tests
   KCONFIG:=CONFIG_MTD_TESTS
   FILES:=\
-	$(LINUX_DIR)/drivers/mtd/tests/mtd_nandbiterrs.ko \
+	$(LINUX_DIR)/drivers/mtd/tests/mtd_nandbiterrs.ko@ge6.6 \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_nandecctest.ko \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_oobtest.ko \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_pagetest.ko \
@@ -485,7 +500,7 @@ define KernelPackage/mtdtests
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_speedtest.ko \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_stresstest.ko \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_subpagetest.ko \
-	$(LINUX_DIR)/drivers/mtd/tests/mtd_test.ko \
+	$(LINUX_DIR)/drivers/mtd/tests/mtd_test.ko@ge6.6 \
 	$(LINUX_DIR)/drivers/mtd/tests/mtd_torturetest.ko
 endef
 

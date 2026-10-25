@@ -153,6 +153,7 @@ define BuildKernel
 
   download: $(if $(LINUX_SITE),$(DL_DIR)/$(LINUX_SOURCE))
   prepare: $(STAMP_PREPARED)
+  configure: $(STAMP_CONFIGURED)
   compile: $(LINUX_DIR)/.modules
 	+$(MAKE) -C image compile TARGET_BUILD=
 
