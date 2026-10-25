@@ -21,13 +21,7 @@ init_switch() {
 	setup_switch
 }
 
-init_arch(){
-	. /lib/miwifi/miwifi_core_libs.sh
-	network_extra_init
-}
-
 start_service() {
-	init_arch
 	init_switch
 	
 	procd_open_instance

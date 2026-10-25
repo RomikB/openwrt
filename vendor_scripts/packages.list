@@ -1,12 +1,7 @@
 base-files
 kmod-qca-wifi-lowmem-profile
-nvram
 qca-cfg80211tool
 qca-cnss-daemon
 qca-firmware
 qca-hostap
-qca-hostapd-cli
-qca-wifi-scripts
-qca-wpa-cli
 qca-wpa-supplicant
-wififw_mount_script

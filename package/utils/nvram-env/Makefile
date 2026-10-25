@@ -12,7 +12,6 @@ define Package/nvram-env
   CATEGORY:=Base system
   TITLE:=Drop-in C replacement for nvram and bdata tools via uboot-envtools
   DEPENDS:=+uboot-envtools
-  PROVIDES:=nvram-vendor
 endef
 
 define Package/nvram-env/description

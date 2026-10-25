@@ -513,7 +513,6 @@ $(call Package/iptables/Default)
   CATEGORY:=Libraries
   TITLE:=IPv4 firewall - shared libiptc library
   ABI_VERSION:=2
-  DEPENDS:=+libgcc
 endef
 
 define Package/libip6tc
@@ -522,7 +521,6 @@ $(call Package/iptables/Default)
   CATEGORY:=Libraries
   TITLE:=IPv6 firewall - shared libiptc library
   ABI_VERSION:=2
-  DEPENDS:=+libgcc
 endef
 
 define Package/libiptext
@@ -531,7 +529,7 @@ define Package/libiptext
  CATEGORY:=Libraries
  TITLE:=IPv4 firewall - shared libiptext library
  ABI_VERSION:=0
- DEPENDS:=+libgcc +libxtables
+ DEPENDS:=+libxtables
 endef
 
 define Package/libiptext6
@@ -540,7 +538,7 @@ define Package/libiptext6
  CATEGORY:=Libraries
  TITLE:=IPv6 firewall - shared libiptext library
  ABI_VERSION:=0
- DEPENDS:=+libgcc +libxtables
+ DEPENDS:=+libxtables
 endef
 
 define Package/libiptext-nft
@@ -549,7 +547,7 @@ define Package/libiptext-nft
  CATEGORY:=Libraries
  TITLE:=IPv4/IPv6 firewall - shared libiptext nft library
  ABI_VERSION:=0
- DEPENDS:=+libgcc +libxtables
+ DEPENDS:=+libxtables
 endef
 
 define Package/libxtables
@@ -559,7 +557,7 @@ define Package/libxtables
  TITLE:=IPv4/IPv6 firewall - shared xtables library
  MENU:=1
  ABI_VERSION:=12
- DEPENDS:=+libgcc +IPTABLES_CONNLABEL:libnetfilter-conntrack
+ DEPENDS:=+IPTABLES_CONNLABEL:libnetfilter-conntrack
 endef
 
 define Package/libxtables/config
