@@ -1,0 +1,27 @@
+#!/bin/sh
+# Initial configuration for IPv6 NAT66 (Masquerading) and odhcpd ULA routing
+
+[ -f /etc/config/firewall ] || exit 0
+[ -f /etc/config/dhcp ] || exit 0
+
+# 1. Enable IPv6 Masquerading (NAT66) on zone 'wan'
+for i in $(seq 0 10); do
+	if [ "$(uci -q get firewall.@zone[$i].name)" = "wan" ]; then
+		uci -q set firewall.@zone[$i].masq6='1'
+		break
+	fi
+done
+uci -q commit firewall
+
+# 2. Configure odhcpd and dnsmasq for ULA distribution and forced default route
+uci -q batch << 'EOF'
+	set dhcp.lan.ra='server'
+	set dhcp.lan.dhcpv6='server'
+	set dhcp.lan.ndp='disabled'
+	set dhcp.lan.ra_default='2'
+	set dhcp.lan.ra_slaac='1'
+	set dhcp.@dnsmasq[0].filter_aaaa='0'
+	commit dhcp
+EOF
+
+exit 0

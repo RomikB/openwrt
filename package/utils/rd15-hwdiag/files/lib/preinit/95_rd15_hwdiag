@@ -1,0 +1,203 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Xiaomi Router BE3600 (RD15) Fast Preinit Hardware Diagnostics & Auto-Rollback
+# Runs synchronously in preinit_main (before procd / rc.d) to eliminate hangs.
+
+do_hwdiag_preinit() {
+	# Skip if in failsafe mode
+	[ "$FAILSAFE" = "true" ] && return 0
+
+	# 1. Load PWM RGB LED driver if not loaded and turn PURPLE (Blue=255, Orange=255)
+	# This provides immediate visual proof that OpenWrt Preinit has booted!
+	if [ ! -d /sys/class/leds/blue:status ]; then
+		for mod in /lib/modules/*/pwm-rgb.ko; do
+			[ -f "$mod" ] && insmod "$mod" 2>/dev/null || true
+		done
+	fi
+	if [ -d /sys/class/leds/blue:status ] || [ -d /sys/class/leds/orange:status ]; then
+		echo none > /sys/class/leds/blue:status/trigger 2>/dev/null || true
+		echo none > /sys/class/leds/orange:status/trigger 2>/dev/null || true
+		echo 255 > /sys/class/leds/blue:status/brightness 2>/dev/null || true
+		echo 255 > /sys/class/leds/orange:status/brightness 2>/dev/null || true
+	fi
+
+	# 2. Ensure /data partition is mounted
+	if ! grep -q "/data" /proc/mounts; then
+		mkdir -p /data 2>/dev/null || true
+		mount -t ubifs ubi1:cfg /data 2>/dev/null || \
+		mount -t ubifs ubi1:data /data 2>/dev/null || true
+	fi
+
+	local diag_dir="/data/hwdiag"
+	if [ ! -w /data ]; then
+		diag_dir="/tmp/hwdiag"
+	fi
+	mkdir -p "$diag_dir" 2>/dev/null || true
+
+	# 3. Fast Core & Kernel Logs
+	dmesg > "$diag_dir/dmesg.log" 2>/dev/null || true
+	cp "$diag_dir/dmesg.log" "/data/hwdiag_dmesg.log" 2>/dev/null || true
+	uname -a > "$diag_dir/uname.txt" 2>/dev/null || true
+	cat /proc/version > "$diag_dir/proc_version.txt" 2>/dev/null || true
+	cat /proc/cmdline > "$diag_dir/proc_cmdline.txt" 2>/dev/null || true
+	cat /proc/cpuinfo > "$diag_dir/proc_cpuinfo.txt" 2>/dev/null || true
+	cat /proc/meminfo > "$diag_dir/proc_meminfo.txt" 2>/dev/null || true
+	cat /proc/interrupts > "$diag_dir/proc_interrupts.txt" 2>/dev/null || true
+	lsmod > "$diag_dir/lsmod.txt" 2>/dev/null || true
+	cat /proc/modules > "$diag_dir/proc_modules.txt" 2>/dev/null || true
+
+	# 4. Xiaomi Platform, BDATA, NVRAM & Device Tree
+	if [ -d /proc/xiaoqiang ]; then
+		mkdir -p "$diag_dir/xiaoqiang" 2>/dev/null || true
+		for f in /proc/xiaoqiang/*; do
+			[ -f "$f" ] && cat "$f" > "$diag_dir/xiaoqiang/$(basename "$f")" 2>/dev/null || true
+		done
+	fi
+	if command -v nvram >/dev/null 2>&1; then
+		nvram show > "$diag_dir/nvram_show.txt" 2>/dev/null || true
+	fi
+	if command -v bdata >/dev/null 2>&1; then
+		bdata show > "$diag_dir/bdata_show.txt" 2>/dev/null || true
+	fi
+	[ -f /sys/firmware/fdt ] && cp /sys/firmware/fdt "$diag_dir/live_fdt.dtb" 2>/dev/null || true
+	if [ -d /proc/device-tree ]; then
+		[ -f /proc/device-tree/model ] && tr '\0' '\n' < /proc/device-tree/model > "$diag_dir/dt_model.txt" 2>/dev/null || true
+		[ -f /proc/device-tree/compatible ] && tr '\0' '\n' < /proc/device-tree/compatible > "$diag_dir/dt_compatible.txt" 2>/dev/null || true
+	fi
+
+	# 5. Storage, MTD Partitions & Calibration Data
+	cat /proc/mtd > "$diag_dir/proc_mtd.txt" 2>/dev/null || true
+	cat /proc/partitions > "$diag_dir/proc_partitions.txt" 2>/dev/null || true
+	cat /proc/mounts > "$diag_dir/proc_mounts.txt" 2>/dev/null || true
+	df -h > "$diag_dir/df.txt" 2>/dev/null || true
+
+	local art_dev=""
+	if [ -f /lib/functions.sh ]; then
+		. /lib/functions.sh
+		art_dev=$(find_mtd_part "0:ART" 2>/dev/null || true)
+		[ -z "$art_dev" ] && art_dev=$(find_mmc_part "0:ART" 2>/dev/null || true)
+	fi
+	if [ -n "$art_dev" ] && [ -e "$art_dev" ]; then
+		dd if="$art_dev" of="$diag_dir/art_caldata_header_128k.bin" bs=64k count=2 2>/dev/null || true
+	fi
+
+	local bdata_dev=""
+	if [ -f /lib/functions.sh ]; then
+		bdata_dev=$(find_mtd_part "0:bdata" 2>/dev/null || true)
+		[ -z "$bdata_dev" ] && bdata_dev=$(find_mtd_part "bdata" 2>/dev/null || true)
+		[ -z "$bdata_dev" ] && bdata_dev=$(find_mmc_part "0:bdata" 2>/dev/null || true)
+	fi
+	if [ -n "$bdata_dev" ] && [ -e "$bdata_dev" ]; then
+		dd if="$bdata_dev" of="$diag_dir/bdata_raw_64k.bin" bs=64k count=1 2>/dev/null || true
+	fi
+
+	# 6. Hardware Buses (PCIe and MDIO - passive sysfs)
+	if command -v lspci >/dev/null 2>&1; then
+		lspci -vvv > "$diag_dir/lspci_vvv.txt" 2>/dev/null || true
+		lspci -tv > "$diag_dir/lspci_tree.txt" 2>/dev/null || true
+	fi
+	if [ -d /sys/bus/pci/devices ]; then
+		ls -la /sys/bus/pci/devices/ > "$diag_dir/pci_devices_ls.txt" 2>/dev/null || true
+		for pdev in /sys/bus/pci/devices/*; do
+			if [ -d "$pdev" ]; then
+				local pname=$(basename "$pdev")
+				mkdir -p "$diag_dir/pci_sysfs/$pname" 2>/dev/null || true
+				for attr in vendor device subsystem_vendor subsystem_device class uevent; do
+					[ -f "$pdev/$attr" ] && cat "$pdev/$attr" > "$diag_dir/pci_sysfs/$pname/$attr" 2>/dev/null || true
+				done
+			fi
+		done
+	fi
+	if [ -d /sys/bus/mdio_bus/devices ]; then
+		ls -la /sys/bus/mdio_bus/devices/ > "$diag_dir/mdio_devices_list.txt" 2>/dev/null || true
+		for mdev in /sys/bus/mdio_bus/devices/*; do
+			if [ -d "$mdev" ]; then
+				local mdname=$(basename "$mdev")
+				mkdir -p "$diag_dir/mdio_sysfs/$mdname" 2>/dev/null || true
+				[ -f "$mdev/phy_id" ] && cat "$mdev/phy_id" > "$diag_dir/mdio_sysfs/$mdname/phy_id" 2>/dev/null || true
+				[ -f "$mdev/uevent" ] && cat "$mdev/uevent" > "$diag_dir/mdio_sysfs/$mdname/uevent" 2>/dev/null || true
+			fi
+		done
+	fi
+
+	# 7. Passive Network Interface Status
+	cat /proc/net/dev > "$diag_dir/proc_net_dev.txt" 2>/dev/null || true
+	mkdir -p "$diag_dir/sys_net" 2>/dev/null || true
+	for ifp in /sys/class/net/*; do
+		if [ -d "$ifp" ]; then
+			local ifname=$(basename "$ifp")
+			mkdir -p "$diag_dir/sys_net/$ifname" 2>/dev/null || true
+			for a in address carrier duplex speed operstate mtu flags; do
+				[ -f "$ifp/$a" ] && cat "$ifp/$a" > "$diag_dir/sys_net/$ifname/$a" 2>/dev/null || true
+			done
+		fi
+	done
+
+	# 8. Generate Summary & Tar Archive
+	cat << EOF > "$diag_dir/SUMMARY.txt"
+=====================================================
+Xiaomi RD15 Fast Preinit Diagnostics Summary
+=====================================================
+Boot Phase: Preinit (before procd / rc.d)
+Date: $(date 2>/dev/null || echo "N/A")
+Kernel: $(cat /proc/version 2>/dev/null)
+Cmdline: $(cat /proc/cmdline 2>/dev/null)
+XiaoQiang Model: $(cat /proc/xiaoqiang/model 2>/dev/null || echo "N/A")
+XiaoQiang Boot Status: $(cat /proc/xiaoqiang/boot_status 2>/dev/null || echo "N/A")
+
+Network Interfaces:
+$(ls /sys/class/net 2>/dev/null | tr '\n' ' ')
+
+PCI Devices:
+$(ls /sys/bus/pci/devices 2>/dev/null | tr '\n' ' ')
+
+MDIO Devices:
+$(ls /sys/bus/mdio_bus/devices 2>/dev/null | tr '\n' ' ')
+=====================================================
+EOF
+	cp "$diag_dir/SUMMARY.txt" "/data/rd15_hwdiag_summary.txt" 2>/dev/null || true
+
+	tar -czf "/data/rd15_diag_latest.tar.gz" -C "$diag_dir" . 2>/dev/null || true
+	local timestamp=$(date +%Y%m%d_%H%M%S 2>/dev/null || echo "boot")
+	cp "/data/rd15_diag_latest.tar.gz" "$diag_dir/rd15_diag_${timestamp}.tar.gz" 2>/dev/null || true
+	sync
+
+	# 9. Dual-Boot Rollback via Stock NVRAM
+	local target_slot=0
+	local cmdline=$(cat /proc/cmdline 2>/dev/null || true)
+	if echo "$cmdline" | grep -q "rootfs_1"; then
+		target_slot=0
+	elif echo "$cmdline" | grep -q "rootfs"; then
+		target_slot=1
+	else
+		local cur_nvram=$(nvram get flag_boot_rootfs 2>/dev/null || echo "1")
+		[ "$cur_nvram" = "1" ] && target_slot=0 || target_slot=1
+	fi
+
+	if command -v nvram >/dev/null 2>&1; then
+		nvram set flag_boot_rootfs="$target_slot" 2>/dev/null || true
+		nvram set flag_last_success="$target_slot" 2>/dev/null || true
+		nvram set flag_boot_success="1" 2>/dev/null || true
+		nvram set flag_try_sys1_failed="0" 2>/dev/null || true
+		nvram set flag_try_sys2_failed="0" 2>/dev/null || true
+		nvram commit 2>/dev/null || true
+	fi
+
+	# 10. Switch LED to Solid Orange and Reboot immediately
+	if [ -d /sys/class/leds/blue:status ]; then
+		echo 0 > /sys/class/leds/blue:status/brightness 2>/dev/null || true
+	fi
+	if [ -d /sys/class/leds/orange:status ]; then
+		echo none > /sys/class/leds/orange:status/trigger 2>/dev/null || true
+		echo 255 > /sys/class/leds/orange:status/brightness 2>/dev/null || true
+	fi
+
+	sync
+	echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+	sleep 1
+	reboot -f
+
+	return 0 2>/dev/null || exit 0
+}
+
+boot_hook_add preinit_main do_hwdiag_preinit

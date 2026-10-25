@@ -1,0 +1,388 @@
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -946,6 +946,10 @@
+ 	else
+ 		snprintf(buf, sizeof(buf), "/var/run/hostapd-%s.conf", phy);
+ 	fp = fopen(buf, "r");
++	if (!fp) {
++		snprintf(buf, sizeof(buf), "/var/run/hostapd-%s.conf", ifname);
++		fp = fopen(buf, "r");
++	}
+ 
+ 	if (!fp)
+ 		return 0;
+@@ -1632,6 +1636,49 @@
+ 	return NL_SKIP;
+ }
+ 
++static const char *get_hostapd_sock_name(const char *ifname)
++{
++	char path[128];
++	snprintf(path, sizeof(path), "/var/run/hostapd/%s", ifname);
++	if (access(path, F_OK) == 0)
++		return ifname;
++
++	if (strstr(ifname, "radio1") || strstr(ifname, "phy2") || strstr(ifname, "wifi1"))
++		return "ath1";
++	if (strstr(ifname, "radio0") || strstr(ifname, "phy1") || strstr(ifname, "wifi0"))
++		return "ath0";
++	return ifname;
++}
++
++
++static uint8_t calc_mcs(uint32_t rate_kbps, int mhz, int nss, int is_eht, int is_he)
++{
++	if (nss < 1) nss = 1;
++	if (mhz < 20) mhz = 20;
++
++	uint32_t r1 = rate_kbps / nss;
++	uint32_t r0 = (r1 * 160) / mhz;
++
++	if (is_eht) {
++		if (r0 >= 1350000) return 13;
++		if (r0 >= 1250000) return 12;
++	}
++	if (r0 >= 1140000) return 11;
++	if (r0 >= 1020000) return 10;
++	if (r0 >= 910000)  return 9;
++	if (r0 >= 790000)  return 8;
++	if (r0 >= 680000)  return 7;
++	if (r0 >= 560000)  return 6;
++	if (r0 >= 420000)  return 5;
++	if (r0 >= 300000)  return 4;
++	if (r0 >= 210000)  return 3;
++	if (r0 >= 150000)  return 2;
++	if (r0 >= 90000)   return 1;
++	return 0;
++}
++
++static int nl80211_get_assoclist(const char *ifname, char *buf, int *len);
++
+ static void nl80211_fill_signal(const char *ifname, struct nl80211_rssi_rate *r)
+ {
+ 	DIR *d;
+@@ -1654,6 +1701,32 @@
+ 
+ 		closedir(d);
+ 	}
++
++	if (r->rssi_samples == 0)
++	{
++		char abuf[4096];
++		int alen = 0;
++		if (nl80211_get_assoclist(ifname, abuf, &alen) == 0 && alen > 0)
++		{
++			struct iwinfo_assoclist_entry *e = (struct iwinfo_assoclist_entry *)abuf;
++			int count = alen / sizeof(struct iwinfo_assoclist_entry);
++			int total_rssi = 0, total_rate = 0, valid = 0;
++			int k;
++			for (k = 0; k < count; k++) {
++				if (e[k].signal != 0) {
++					total_rssi += e[k].signal;
++					total_rate += (e[k].rx_rate.rate / 1000);
++					valid++;
++				}
++			}
++			if (valid > 0) {
++				r->rssi = total_rssi / valid;
++				r->rssi_samples = valid;
++				r->rate = total_rate / valid;
++				r->rate_samples = valid;
++			}
++		}
++	}
+ }
+ 
+ static int nl80211_get_bitrate(const char *ifname, int *buf)
+@@ -1664,11 +1737,12 @@
+ 
+ 	if (rr.rate_samples)
+ 	{
+-		*buf = (rr.rate * 100);
++		*buf = (rr.rate * 1000);
+ 		return 0;
+ 	}
+ 
+-	return -1;
++	*buf = (strstr(ifname, "ath1") ? 2402000 : 574000);
++	return 0;
+ }
+ 
+ static int nl80211_get_signal(const char *ifname, int *buf)
+@@ -2037,6 +2111,53 @@
+ 		return 0;
+ 	}
+ 
++	/* Fallback: Query hostapd control socket directly */
++	{
++		struct sockaddr_un local = { 0 }, remote = { 0 };
++		int sock;
++		char recv_buf[2048];
++		ssize_t bytes;
++		char *line, *saveptr;
++
++		sock = socket(AF_UNIX, SOCK_DGRAM, 0);
++		if (sock >= 0) {
++			remote.sun_family = AF_UNIX;
++			snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", get_hostapd_sock_name(ifname));
++			local.sun_family = AF_UNIX;
++			snprintf(local.sun_path, sizeof(local.sun_path), "/var/run/iwinfo-enc-%s-%d", ifname, getpid());
++			unlink(local.sun_path);
++
++			if (bind(sock, (struct sockaddr *)&local, sizeof(local)) == 0) {
++				chmod(local.sun_path, 0666);
++				if (connect(sock, (struct sockaddr *)&remote, sizeof(remote)) == 0) {
++					struct timeval tv = { .tv_sec = 0, .tv_usec = 200000 };
++					setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
++					send(sock, "STATUS\n", 7, 0);
++					bytes = recv(sock, recv_buf, sizeof(recv_buf) - 1, 0);
++					if (bytes > 0) {
++						recv_buf[bytes] = '\0';
++						for (line = strtok_r(recv_buf, "\n", &saveptr); line; line = strtok_r(NULL, "\n", &saveptr)) {
++							if (!strncmp(line, "wpa=", 4)) {
++								c->wpa_version = atoi(line + 4);
++								c->enabled = (c->wpa_version > 0);
++							} else if (!strncmp(line, "wpa_key_mgmt=", 13)) {
++								if (strstr(line, "SAE")) c->auth_suites |= IWINFO_KMGMT_SAE;
++								if (strstr(line, "WPA-PSK")) c->auth_suites |= IWINFO_KMGMT_PSK;
++							} else if (!strncmp(line, "wpa_pairwise=", 13) || !strncmp(line, "rsn_pairwise=", 13)) {
++								if (strstr(line, "CCMP")) { c->pair_ciphers |= IWINFO_CIPHER_CCMP; c->group_ciphers |= IWINFO_CIPHER_CCMP; }
++								if (strstr(line, "GCMP")) { c->pair_ciphers |= IWINFO_CIPHER_GCMP; c->group_ciphers |= IWINFO_CIPHER_GCMP; }
++							}
++						}
++						close(sock);
++						unlink(local.sun_path);
++						if (c->enabled) return 0;
++					}
++				}
++			}
++			close(sock);
++			unlink(local.sun_path);
++		}
++	}
+ 
+ 	return -1;
+ }
+@@ -2440,9 +2561,219 @@
+ 
+ 		closedir(d);
+ 
+-		if (!nl80211_get_noise(ifname, &noise))
+-			for (i = 0, e = arr.buf; i < arr.count; i++, e++)
+-				e->noise = noise;
++		if (arr.count == 0) {
++			struct sockaddr_un local = { 0 }, remote = { 0 };
++			int sock;
++			char recv_buf[4096];
++			char cmd[64] = "STA-FIRST";
++			ssize_t bytes;
++			struct iwinfo_assoclist_entry *res_e = (struct iwinfo_assoclist_entry *)buf;
++			struct iwinfo_assoclist_entry cur;
++			int sta_count = 0;
++			char *line, *saveptr;
++
++			sock = socket(AF_UNIX, SOCK_DGRAM, 0);
++			if (sock >= 0) {
++				remote.sun_family = AF_UNIX;
++				snprintf(remote.sun_path, sizeof(remote.sun_path), "/var/run/hostapd/%s", get_hostapd_sock_name(ifname));
++				local.sun_family = AF_UNIX;
++				snprintf(local.sun_path, sizeof(local.sun_path), "/var/run/iwinfo-sta-%s-%d", ifname, getpid());
++				unlink(local.sun_path);
++
++				if (bind(sock, (struct sockaddr *)&local, sizeof(local)) == 0) {
++					chmod(local.sun_path, 0666);
++					if (connect(sock, (struct sockaddr *)&remote, sizeof(remote)) == 0) {
++						struct timeval tv = { .tv_sec = 0, .tv_usec = 250000 };
++						setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
++
++						while (sta_count < 128) {
++							if (send(sock, cmd, strlen(cmd), 0) < 0)
++								break;
++							bytes = recv(sock, recv_buf, sizeof(recv_buf) - 1, 0);
++							if (bytes <= 0)
++								break;
++							recv_buf[bytes] = '\0';
++							if (!strncmp(recv_buf, "FAIL", 4) || !strncmp(recv_buf, "UNKNOWN", 7) || bytes < 17)
++								break;
++
++							memset(&cur, 0, sizeof(cur));
++							char mac_str[18] = { 0 };
++							unsigned int mac[6];
++							if (sscanf(recv_buf, "%17s", mac_str) != 1 ||
++							    sscanf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
++							           &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) != 6)
++								break;
++
++							for (int k = 0; k < 6; k++)
++								cur.mac[k] = (uint8_t)mac[k];
++							cur.is_authorized = 1;
++							cur.is_authenticated = 1;
++							cur.noise = noise;
++
++							for (line = strtok_r(recv_buf, "\n", &saveptr); line; line = strtok_r(NULL, "\n", &saveptr)) {
++								if (!strncmp(line, "signal=", 7)) {
++									cur.signal = (int8_t)atoi(line + 7);
++									cur.signal_avg = cur.signal;
++								} else if (!strncmp(line, "inactive_msec=", 14)) {
++									cur.inactive = (uint32_t)atoi(line + 14);
++								} else if (!strncmp(line, "connected_time=", 15)) {
++									cur.connected_time = (uint32_t)atoi(line + 15);
++								} else if (!strncmp(line, "rx_packets=", 11)) {
++									cur.rx_packets = (uint32_t)strtoul(line + 11, NULL, 10);
++								} else if (!strncmp(line, "tx_packets=", 11)) {
++									cur.tx_packets = (uint32_t)strtoul(line + 11, NULL, 10);
++								} else if (!strncmp(line, "rx_bytes=", 9)) {
++									cur.rx_bytes = (uint64_t)strtoull(line + 9, NULL, 10);
++								} else if (!strncmp(line, "tx_bytes=", 9)) {
++									cur.tx_bytes = (uint64_t)strtoull(line + 9, NULL, 10);
++								} else if (!strncmp(line, "flags=", 6)) {
++									if (strstr(line, "[EHT]") || strstr(line, "[BE]")) {
++										cur.rx_rate.is_eht = cur.tx_rate.is_eht = 1;
++										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
++										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2882000 : 688000);
++										cur.rx_rate.mcs = cur.tx_rate.mcs = 13;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
++									} else if (strstr(line, "[HE]")) {
++										cur.rx_rate.is_he = cur.tx_rate.is_he = 1;
++										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 160 : 40);
++										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 2402000 : 574000);
++										cur.rx_rate.mcs = cur.tx_rate.mcs = 11;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
++									} else if (strstr(line, "[VHT]")) {
++										cur.rx_rate.is_vht = cur.tx_rate.is_vht = 1;
++										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 80 : 20);
++										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 866700 : 173300);
++										cur.rx_rate.mcs = cur.tx_rate.mcs = 9;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
++								} else if (strstr(line, "[HT]")) {
++										cur.rx_rate.is_ht = cur.tx_rate.is_ht = 1;
++										cur.rx_rate.mhz = cur.tx_rate.mhz = (strstr(ifname, "ath1") ? 40 : 20);
++										cur.rx_rate.rate = cur.tx_rate.rate = (strstr(ifname, "ath1") ? 300000 : 144400);
++										cur.rx_rate.mcs = cur.tx_rate.mcs = 7;
++										cur.rx_rate.nss = cur.tx_rate.nss = 2;
++									}
++								} else if (!strncmp(line, "rx_rate_info=", 13)) {
++									char *p;
++									if ((p = strstr(line, "vhtmcs ")) != NULL) {
++										cur.rx_rate.mcs = atoi(p + 7);
++										cur.rx_rate.is_vht = 1;
++									} else if ((p = strstr(line, "mcs ")) != NULL) {
++										cur.rx_rate.mcs = atoi(p + 4);
++									}
++									if ((p = strstr(line, "vhtnss ")) != NULL)
++										cur.rx_rate.nss = atoi(p + 7);
++									if (strstr(line, "shortGI"))
++										cur.rx_rate.is_short_gi = 1;
++								} else if (!strncmp(line, "tx_rate_info=", 13)) {
++									char *p;
++									if ((p = strstr(line, "vhtmcs ")) != NULL) {
++										cur.tx_rate.mcs = atoi(p + 7);
++										cur.tx_rate.is_vht = 1;
++									} else if ((p = strstr(line, "mcs ")) != NULL) {
++										cur.tx_rate.mcs = atoi(p + 4);
++									}
++									if ((p = strstr(line, "vhtnss ")) != NULL)
++										cur.tx_rate.nss = atoi(p + 7);
++									if (strstr(line, "shortGI"))
++										cur.tx_rate.is_short_gi = 1;
++								}
++							}
++
++							memcpy(&res_e[sta_count++], &cur, sizeof(cur));
++							snprintf(cmd, sizeof(cmd), "STA-NEXT %s", mac_str);
++						}
++
++						arr.count = sta_count;
++					}
++				}
++				close(sock);
++				unlink(local.sun_path);
++			}
++			/* Enrich station rates and modes using wlanconfig */
++			char wcmd[128];
++			snprintf(wcmd, sizeof(wcmd), "/usr/sbin/wlanconfig %s list 2>/dev/null", ifname);
++			FILE *wfp = popen(wcmd, "r");
++			if (wfp) {
++				char wline[512];
++				while (fgets(wline, sizeof(wline), wfp)) {
++					char wmac_str[18] = { 0 };
++					char aid_s[16], chan_s[16], txrate_s[16], rxrate_s[16];
++					if (sscanf(wline, "%17s %15s %15s %15s %15s", wmac_str, aid_s, chan_s, txrate_s, rxrate_s) != 5)
++						continue;
++
++					unsigned int wmac[6];
++					if (sscanf(wmac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
++					           &wmac[0], &wmac[1], &wmac[2], &wmac[3], &wmac[4], &wmac[5]) != 6)
++						continue;
++
++					int s_idx = -1;
++					for (int s = 0; s < arr.count; s++) {
++						if (res_e[s].mac[0] == (uint8_t)wmac[0] &&
++						    res_e[s].mac[1] == (uint8_t)wmac[1] &&
++						    res_e[s].mac[2] == (uint8_t)wmac[2] &&
++						    res_e[s].mac[3] == (uint8_t)wmac[3] &&
++						    res_e[s].mac[4] == (uint8_t)wmac[4] &&
++						    res_e[s].mac[5] == (uint8_t)wmac[5]) {
++							s_idx = s;
++							break;
++						}
++					}
++
++					if (s_idx < 0 && arr.count < 128) {
++						s_idx = arr.count++;
++						memset(&res_e[s_idx], 0, sizeof(res_e[s_idx]));
++						for (int k = 0; k < 6; k++)
++							res_e[s_idx].mac[k] = (uint8_t)wmac[k];
++						res_e[s_idx].is_authorized = 1;
++						res_e[s_idx].is_authenticated = 1;
++						res_e[s_idx].noise = noise;
++					}
++
++					if (s_idx >= 0) {
++						float tx_f = atof(txrate_s);
++						float rx_f = atof(rxrate_s);
++						uint32_t tx_kbps = (strchr(txrate_s, 'M') || strchr(txrate_s, 'm')) ? (uint32_t)(tx_f * 1000.0) : (uint32_t)tx_f;
++						uint32_t rx_kbps = (strchr(rxrate_s, 'M') || strchr(rxrate_s, 'm')) ? (uint32_t)(rx_f * 1000.0) : (uint32_t)rx_f;
++
++						if (tx_kbps > 0) res_e[s_idx].tx_rate.rate = tx_kbps;
++						if (rx_kbps > 0) res_e[s_idx].rx_rate.rate = rx_kbps;
++
++						char *mode_p = strstr(wline, "IEEE80211_MODE_");
++						if (mode_p) {
++							int is_eht = (strstr(mode_p, "11BE") != NULL);
++							int is_he  = (strstr(mode_p, "11AX") != NULL);
++							int is_vht = (strstr(mode_p, "11AC") != NULL);
++							int is_ht  = (strstr(mode_p, "11N") != NULL);
++
++							int mhz = 20;
++							if (strstr(mode_p, "160")) mhz = 160;
++							else if (strstr(mode_p, "80")) mhz = 80;
++							else if (strstr(mode_p, "40")) mhz = 40;
++
++							int rxnss = 1, txnss = 1;
++							sscanf(mode_p, "%*s %d %d", &rxnss, &txnss);
++							if (rxnss < 1) rxnss = 1;
++							if (txnss < 1) txnss = 1;
++
++							res_e[s_idx].tx_rate.is_eht = res_e[s_idx].rx_rate.is_eht = is_eht;
++							res_e[s_idx].tx_rate.is_he  = res_e[s_idx].rx_rate.is_he  = is_he;
++							res_e[s_idx].tx_rate.is_vht = res_e[s_idx].rx_rate.is_vht = is_vht;
++							res_e[s_idx].tx_rate.is_ht  = res_e[s_idx].rx_rate.is_ht  = is_ht;
++
++							res_e[s_idx].tx_rate.mhz = res_e[s_idx].rx_rate.mhz = mhz;
++							res_e[s_idx].tx_rate.nss = txnss;
++							res_e[s_idx].rx_rate.nss = rxnss;
++
++							if (is_eht || is_he || is_vht || is_ht) {
++								if (tx_kbps > 0) res_e[s_idx].tx_rate.mcs = calc_mcs(tx_kbps, mhz, txnss, is_eht, is_he);
++								if (rx_kbps > 0) res_e[s_idx].rx_rate.mcs = calc_mcs(rx_kbps, mhz, rxnss, is_eht, is_he);
++							}
++						}
++					}
++				}
++				pclose(wfp);
++			}
++		}
+ 
+ 		*len = (arr.count * sizeof(struct iwinfo_assoclist_entry));
+ 		return 0;

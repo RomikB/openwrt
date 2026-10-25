@@ -1,0 +1,15 @@
+#!/bin/sh
+# Initial configuration for zapret2 IPv6 support on Xiaomi RD15
+# Runs after zapret2-uci-def-cfg.sh (alphabetical sort in uci-defaults)
+
+[ -d /opt/zapret2 ] || exit 0
+[ -f /etc/config/zapret2 ] || exit 0
+
+# 1. Enable IPv6 processing in zapret2
+uci -q set zapret2.config.DISABLE_IPV6='0'
+uci -q commit zapret2
+
+# 2. Synchronize UCI configuration to /opt/zapret2/config
+[ -x /opt/zapret2/sync_config.sh ] && /opt/zapret2/sync_config.sh
+
+exit 0

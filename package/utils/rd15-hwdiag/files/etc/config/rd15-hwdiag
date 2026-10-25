@@ -1,0 +1,4 @@
+config hwdiag 'settings'
+	option enabled '1'
+	option delay '25'
+	option force_rollback '1'

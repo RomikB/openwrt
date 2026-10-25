@@ -1,0 +1,20 @@
+#!/bin/sh
+# Initial configuration for zapret2 on Xiaomi RD15: apply strategy v1_by_AnonymTsk and link Google hostlist
+# Runs after zapret2-uci-def-cfg.sh (alphabetical sort in uci-defaults)
+
+[ -d /opt/zapret2 ] || exit 0
+[ -f /opt/zapret2/comfunc.sh ] || exit 0
+
+# 1. Apply working strategy v1_by_AnonymTsk to UCI
+. /opt/zapret2/comfunc.sh
+set_cfg_nfqws_strat v1_by_AnonymTsk
+
+# 2. Synchronize UCI configuration to /opt/zapret2/config
+[ -x /opt/zapret2/sync_config.sh ] && /opt/zapret2/sync_config.sh
+
+# 3. Link Google/YouTube domains list to zapret-hosts.txt
+if [ -f /opt/zapret2/ipset/zapret-hosts-google.txt ]; then
+	ln -sf zapret-hosts-google.txt /opt/zapret2/ipset/zapret-hosts.txt
+fi
+
+exit 0

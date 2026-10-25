@@ -1,0 +1,430 @@
+#!/bin/sh
+#
+# Qualcomm QSDK Stock Wi-Fi Test Runner for Xiaomi Router BE3600 (RD15)
+# Executes authentic vendor wireless stack (qcawificfg80211.sh + hostapd.sh)
+# and captures low-level driver execution trace in /tmp/qcawificfg80211_commands.txt
+#
+
+STOCK_CONF="/etc/config/wireless.stock"
+DEFAULT_CONF="/rom/etc/config/wireless.stock"
+ACTIVE_MARKER="/var/run/wifi-stock-test.active"
+NETIFD_MARKER="/var/run/wifi-stock-test.netifd_down"
+TRACE_LOG="/tmp/qcawificfg80211_commands.txt"
+GLOBAL_HOSTAPD_PID="/var/run/hostapd-global.pid"
+GLOBAL_HOSTAPD_SOCK="/var/run/hostapd/global"
+
+usage() {
+	cat << EOF
+Usage: $0 <command> [options]
+
+Commands:
+  up [2g|5g|both]  Stop OpenWrt wireless, load QSDK stack and bring up radios
+  down             Shut down QSDK wireless stack and restore OpenWrt wireless
+  status           Show current physical radios, VAP interfaces, and driver state
+  log [lines|all]  View captured driver commands from /tmp/qcawificfg80211_commands.txt
+  help             Show this help message
+
+Configuration file:
+  $STOCK_CONF (edit this file to adjust SSIDs, channels, and widths)
+EOF
+	exit 1
+}
+
+# -----------------------------------------------------------------------------
+# QSDK Environment Compatibility Helpers
+# -----------------------------------------------------------------------------
+
+scan_wifi() {
+	local cfgfile="${1:-wireless}"
+	DEVICES=""
+	config_load "$cfgfile"
+	config_foreach _record_device wifi-device
+	config_foreach _record_iface wifi-iface
+}
+
+_record_device() {
+	append DEVICES "$1"
+	config_set "$1" vifs ""
+}
+
+_record_iface() {
+	local iface="$1"
+	local dev
+	config_get dev "$iface" device
+	[ -n "$dev" ] && {
+		local vifs
+		config_get vifs "$dev" vifs
+		append vifs "$iface"
+		config_set "$dev" vifs "$vifs"
+	}
+}
+
+start_net() {
+	local iface="$1"
+	[ -n "$iface" ] && ip link set "$iface" up 2>/dev/null || true
+}
+
+set_wifi_up() {
+	local cfg="$1"
+	local ifname="$2"
+	[ -n "$ifname" ] && ip link set "$ifname" up 2>/dev/null || true
+}
+
+set_wifi_down() {
+	local cfg="$1"
+	local ifname="$2"
+	[ -n "$ifname" ] && ip link set "$ifname" down 2>/dev/null || true
+}
+
+find_net_config() {
+	local vif="$1"
+	local cfg
+	config_get cfg "$vif" network "lan"
+	echo "$cfg"
+}
+
+bridge_interface() {
+	local cfg="$1"
+	[ -z "$cfg" ] && echo "br-lan" && return
+	case "$cfg" in
+		lan) echo "br-lan" ;;
+		guest) echo "br-guest" ;;
+		*) echo "br-$cfg" ;;
+	esac
+}
+
+# Dummy stubs for proprietary Xiaomi services not required for pure Wi-Fi tests
+command -v mesh_cmd >/dev/null 2>&1 || mesh_cmd() { return 1; }
+command -v radartool >/dev/null 2>&1 || radartool() { return 0; }
+[ -x /usr/sbin/sysapi.firewall ] || {
+	[ -d /tmp/bin ] || mkdir -p /tmp/bin
+	[ -e /tmp/bin/sysapi.firewall ] || ln -sf /bin/true /tmp/bin/sysapi.firewall
+	export PATH="/tmp/bin:$PATH"
+}
+
+ensure_driver_loaded() {
+	if [ ! -d /sys/module/wifi_3_0 ]; then
+		echo "[wifi-stock-test] Loading Qualcomm Direct Connect Wi-Fi driver modules..."
+		if [ -x /etc/init.d/qca-wifi ]; then
+			/etc/init.d/qca-wifi start
+		fi
+	fi
+
+	local i=0
+	while [ $i -lt 10 ]; do
+		[ -d /sys/class/net/wifi0 ] && [ -d /sys/class/net/wifi1 ] && break
+		sleep 1
+		i=$((i + 1))
+	done
+
+	if [ ! -d /sys/class/net/wifi0 ] || [ ! -d /sys/class/net/wifi1 ]; then
+		echo "[wifi-stock-test] ERROR: Physical interfaces wifi0/wifi1 not registered by driver!" >&2
+		return 1
+	fi
+	return 0
+}
+
+ensure_global_hostapd() {
+	mkdir -p /var/run/hostapd
+	if [ ! -S "$GLOBAL_HOSTAPD_SOCK" ] || ! pgrep -f "hostapd.*-g $GLOBAL_HOSTAPD_SOCK" >/dev/null 2>&1; then
+		echo "[wifi-stock-test] Starting QSDK global hostapd daemon..."
+		[ -f "$GLOBAL_HOSTAPD_PID" ] && kill "$(cat $GLOBAL_HOSTAPD_PID)" 2>/dev/null || true
+		rm -f "$GLOBAL_HOSTAPD_PID" "$GLOBAL_HOSTAPD_SOCK" 2>/dev/null || true
+		/usr/sbin/hostapd -g "$GLOBAL_HOSTAPD_SOCK" -B -P "$GLOBAL_HOSTAPD_PID" -f /tmp/hostapd-global.log
+		sleep 1
+	fi
+
+	if [ ! -S "$GLOBAL_HOSTAPD_SOCK" ]; then
+		echo "[wifi-stock-test] WARNING: Global hostapd socket $GLOBAL_HOSTAPD_SOCK not found!" >&2
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Main Operations
+# -----------------------------------------------------------------------------
+
+test_up() {
+	local mode="${1:-both}"
+	local target_devs=""
+
+	case "$mode" in
+		2g|2.4g) target_devs="wifi0" ;;
+		5g)      target_devs="wifi1" ;;
+		both|*)  target_devs="wifi0 wifi1" ;;
+	esac
+
+	echo "=========================================================="
+	echo " Starting Stock Qualcomm QSDK Wi-Fi Test Runner"
+	echo " Target: $target_devs | Mode: $mode"
+	echo "=========================================================="
+
+	ensure_driver_loaded || exit 1
+
+	# Ensure configuration template exists
+	if [ ! -f "$STOCK_CONF" ]; then
+		if [ -f "$DEFAULT_CONF" ]; then
+			cp -f "$DEFAULT_CONF" "$STOCK_CONF"
+		else
+			echo "[wifi-stock-test] ERROR: Configuration $STOCK_CONF not found!" >&2
+			exit 1
+		fi
+	fi
+
+	# Suspend OpenWrt netifd wireless to avoid state collision
+	local WIRELESS_BAK="/var/run/wireless.openwrt.bak"
+	if [ ! -f "$NETIFD_MARKER" ]; then
+		echo "[wifi-stock-test] Suspending OpenWrt netifd wireless..."
+		ubus call network.wireless down 2>/dev/null || wifi down 2>/dev/null || true
+		touch "$NETIFD_MARKER"
+		sleep 1
+	fi
+
+	# Clear any stale lock processes or files
+	killall -9 lock 2>/dev/null || true
+	rm -f /var/run/wifilock* /var/run/device_* 2>/dev/null || true
+
+	# Cleanly remove existing netifd/test VAPs to avoid radio collisions
+	for ath in ath0 ath1 wl0 wl1; do
+		[ -d "/sys/class/net/$ath" ] && {
+			wlanconfig "$ath" destroy 2>/dev/null || iw dev "$ath" del 2>/dev/null || true
+		}
+	done
+
+	# Backup OpenWrt wireless and apply stock configuration
+	if [ ! -f "$WIRELESS_BAK" ]; then
+		cp -f /etc/config/wireless "$WIRELESS_BAK"
+	fi
+	local mac0=$(cat /sys/class/net/wifi0/address 2>/dev/null)
+	local mac1=$(cat /sys/class/net/wifi1/address 2>/dev/null)
+	cp -f "$STOCK_CONF" /etc/config/wireless
+	[ -n "$mac0" ] && uci -q set wireless.wifi0.macaddr="$mac0"
+	[ -n "$mac1" ] && uci -q set wireless.wifi1.macaddr="$mac1"
+	uci -q set wireless.wifi0.phy="wifi0"
+	uci -q set wireless.wifi1.phy="wifi1"
+	uci -q set wireless.wifi0.force_hostapd_attach="1"
+	uci -q set wireless.wifi1.force_hostapd_attach="1"
+	uci commit wireless
+
+	# Clear locks before running
+	killall -9 lock 2>/dev/null || true
+	rm -f /var/run/wifilock* /var/run/device_* 2>/dev/null || true
+
+	# Ensure global hostapd is running for dynamic BSS attachment
+	ensure_global_hostapd
+
+	# Initialize command trace log
+	export CFG80211_UPDATE_FILE=1
+	export log_file="$TRACE_LOG"
+	rm -f "$TRACE_LOG"
+	touch "$TRACE_LOG"
+
+	echo "[wifi-stock-test] Sourcing QSDK wireless libraries..."
+	. /usr/share/libubox/jshn.sh
+	. /lib/wifi/wifi-utils.sh
+	[ -f /lib/wifi/hostapd.sh ] && . /lib/wifi/hostapd.sh
+	. /lib/wifi/qcawificfg80211.sh
+
+	# Scan stock configuration from /etc/config/wireless
+	scan_wifi "/etc/config/wireless"
+
+	# Execute QSDK enable cycle
+	if eval "type pre_qcawificfg80211" 2>/dev/null >/dev/null; then
+		pre_qcawificfg80211 enable
+	fi
+
+	for dev in $target_devs; do
+		echo "[wifi-stock-test] Executing enable_qcawificfg80211 $dev..."
+		enable_qcawificfg80211 "$dev"
+	done
+
+	if eval "type post_qcawificfg80211" 2>/dev/null >/dev/null; then
+		post_qcawificfg80211 enable
+	fi
+
+	for dev in $target_devs; do
+		echo "[wifi-stock-test] Executing start_qcawificfg80211 $dev..."
+		start_qcawificfg80211 "$dev"
+	done
+
+	# Ensure BSS is attached to global hostapd
+	for iface in wl0 wl1; do
+		if [ -f "/var/run/hostapd-$iface.conf" ] && [ -S "$GLOBAL_HOSTAPD_SOCK" ]; then
+			wpa_cli -g "$GLOBAL_HOSTAPD_SOCK" raw ADD "bss_config=$iface:/var/run/hostapd-$iface.conf" >/dev/null 2>&1 || true
+		fi
+	done
+
+	# Bridge attachment: ensure created VAPs join br-lan for network traffic
+	for iface in wl0 wl1 ath0 ath1; do
+		if [ -d "/sys/class/net/$iface" ]; then
+			ip link set "$iface" master br-lan 2>/dev/null || true
+			ip link set "$iface" up 2>/dev/null || true
+			echo "[wifi-stock-test] Attached $iface to bridge br-lan (UP)"
+		fi
+	done
+
+	echo "$target_devs" > "$ACTIVE_MARKER"
+
+	echo ""
+	echo "=== Stock Wi-Fi Bringup Complete ==="
+	test_status
+	echo ""
+	echo "[wifi-stock-test] Driver command log: $TRACE_LOG ($(wc -l < $TRACE_LOG 2>/dev/null || echo 0) commands captured)"
+	echo "[wifi-stock-test] To stop and return to OpenWrt mode: $0 down"
+}
+
+test_down() {
+	echo "=========================================================="
+	echo " Stopping Stock Qualcomm QSDK Wi-Fi Test"
+	echo "=========================================================="
+
+	local WIRELESS_BAK="/var/run/wireless.openwrt.bak"
+	if [ -f "/etc/config/wireless" ]; then
+		. /usr/share/libubox/jshn.sh
+		. /lib/wifi/wifi-utils.sh
+		. /lib/wifi/qcawificfg80211.sh
+		scan_wifi "/etc/config/wireless"
+
+		local devs="wifi0 wifi1"
+		[ -f "$ACTIVE_MARKER" ] && devs=$(cat "$ACTIVE_MARKER")
+
+		for dev in $devs; do
+			echo "[wifi-stock-test] Executing disable_qcawificfg80211 $dev..."
+			disable_qcawificfg80211 "$dev" 2>/dev/null || true
+		done
+	fi
+
+	# Stop global hostapd daemon if active
+	if [ -f "$GLOBAL_HOSTAPD_PID" ]; then
+		echo "[wifi-stock-test] Stopping global hostapd..."
+		kill "$(cat $GLOBAL_HOSTAPD_PID)" 2>/dev/null || true
+		rm -f "$GLOBAL_HOSTAPD_PID" "$GLOBAL_HOSTAPD_SOCK" 2>/dev/null || true
+	fi
+
+	# Clean up leftover netdev interfaces and hostapd configs
+	for iface in wl0 wl1; do
+		[ -d "/sys/class/net/$iface" ] && {
+			iw dev "$iface" del 2>/dev/null || true
+			wlanconfig "$iface" destroy 2>/dev/null || true
+		}
+		rm -f "/var/run/hostapd-$iface.conf" "/var/run/hostapd-$iface.lock" "/var/run/hostapd/$iface" "/var/run/hostapd-wifi0/$iface" 2>/dev/null || true
+	done
+
+	# Restore original OpenWrt wireless configuration
+	if [ -f "$WIRELESS_BAK" ]; then
+		echo "[wifi-stock-test] Restoring original OpenWrt wireless configuration..."
+		cp -f "$WIRELESS_BAK" /etc/config/wireless
+		rm -f "$WIRELESS_BAK"
+	fi
+
+	# Restore OpenWrt netifd wireless if it was suspended
+	if [ -f "$NETIFD_MARKER" ]; then
+		echo "[wifi-stock-test] Restoring OpenWrt netifd-wireless..."
+		ubus call network.wireless up 2>/dev/null || true
+		rm -f "$NETIFD_MARKER"
+	fi
+
+	rm -f "$ACTIVE_MARKER"
+	echo "[wifi-stock-test] Stock test shutdown finished."
+}
+
+test_status() {
+	echo "--- Test Runner Status ---"
+	if [ -f "$ACTIVE_MARKER" ]; then
+		echo "Mode: STOCK QSDK ACTIVE (Devices: $(cat $ACTIVE_MARKER))"
+	else
+		echo "Mode: OPENWRT STANDARD (Stock test inactive)"
+	fi
+
+	echo ""
+	echo "--- Physical Radios ---"
+	for phy in wifi0 wifi1; do
+		if [ -d "/sys/class/net/$phy" ]; then
+			local addr=$(cat /sys/class/net/$phy/address 2>/dev/null)
+			local hwcaps=$(cat /sys/class/net/$phy/hwcaps 2>/dev/null)
+			echo "$phy: MAC=$addr, HWCAPS=$hwcaps"
+		else
+			echo "$phy: NOT PRESENT"
+		fi
+	done
+
+	echo ""
+	echo "--- VAP Netdev Interfaces ---"
+	local found=0
+	for iface in wl0 wl1 ath0 ath1; do
+		if [ -d "/sys/class/net/$iface" ]; then
+			found=1
+			local state=$(cat /sys/class/net/$iface/operstate 2>/dev/null)
+			local addr=$(cat /sys/class/net/$iface/address 2>/dev/null)
+			local master=$(readlink "/sys/class/net/$iface/master" 2>/dev/null | awk -F/ '{print $NF}')
+			local mode=""
+			[ -x /usr/sbin/cfg80211tool ] && mode=$(cfg80211tool "$iface" get_mode 2>/dev/null | awk -F: '{print $2}')
+			echo "Interface $iface: state=$state, MAC=$addr, bridge=${master:-none}, driver_mode=${mode:-unknown}"
+			if command -v iw >/dev/null 2>&1; then
+				iw dev "$iface" info 2>/dev/null | grep -E "type|channel|txpower|ssid" | sed 's/^/    /'
+			fi
+			local hapd_ctrl=""
+			if [ -S "/var/run/hostapd/$iface" ]; then
+				hapd_ctrl="/var/run/hostapd"
+			elif [ -S "/var/run/hostapd-wifi0/$iface" ]; then
+				hapd_ctrl="/var/run/hostapd-wifi0"
+			elif [ -S "/var/run/hostapd-wifi1/$iface" ]; then
+				hapd_ctrl="/var/run/hostapd-wifi1"
+			fi
+			if [ -n "$hapd_ctrl" ] && command -v hostapd_cli >/dev/null 2>&1; then
+				local hstatus=$(hostapd_cli -p "$hapd_ctrl" -i "$iface" status 2>/dev/null)
+				local hstate=$(echo "$hstatus" | grep "^state=" | cut -d= -f2)
+				local hbe=$(echo "$hstatus" | grep "^ieee80211be=" | cut -d= -f2)
+				local hpwr=$(echo "$hstatus" | grep "^max_txpower=" | cut -d= -f2)
+				local hrx=$(echo "$hstatus" | grep "Total received packets" | awk '{print $NF}')
+				echo "    hostapd: state=${hstate:-unknown}, 802.11be(Wi-Fi 7)=${hbe:-0}, max_txpower=${hpwr:-0}dBm, rx_pkts=${hrx:-0}"
+			fi
+		fi
+	done
+	[ $found -eq 0 ] && echo "No active VAP netdevs found."
+
+	echo ""
+	echo "--- Process & Trace State ---"
+	echo "Global hostapd: $(pgrep -f "hostapd.*-g" >/dev/null && echo 'Running' || echo 'Stopped')"
+	if [ -f "$TRACE_LOG" ]; then
+		echo "Trace log: $TRACE_LOG ($(wc -l < $TRACE_LOG) commands, $(ls -lh $TRACE_LOG | awk '{print $5}'))"
+	else
+		echo "Trace log: Not generated yet"
+	fi
+}
+
+test_log() {
+	local lines="${1:-40}"
+	if [ ! -f "$TRACE_LOG" ]; then
+		echo "[wifi-stock-test] Trace log $TRACE_LOG not found. Run '$0 up' first."
+		return 1
+	fi
+
+	echo "=== Captured QSDK Driver Commands ($TRACE_LOG) ==="
+	if [ "$lines" = "all" ]; then
+		cat "$TRACE_LOG"
+	else
+		tail -n "$lines" "$TRACE_LOG"
+		echo ""
+		echo "--- Showing last $lines lines (use '$0 log all' to view entire log) ---"
+	fi
+}
+
+case "$1" in
+	up)
+		shift
+		test_up "$@"
+	;;
+	down)
+		test_down
+	;;
+	status)
+		test_status
+	;;
+	log)
+		shift
+		test_log "$@"
+	;;
+	*)
+		usage
+	;;
+esac

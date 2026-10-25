@@ -1,0 +1,162 @@
+diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
+index 6376b78..ecb9610 100644
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -370,6 +370,125 @@ static int hostapd_cli_cmd_deauthenticate(struct wpa_ctrl *ctrl, int argc,
+ }
+ 
+ 
++
++static int hostapd_cli_cmd_close_log(struct wpa_ctrl *ctrl, int argc,
++				     char *argv[])
++{
++	return wpa_ctrl_command(ctrl, "CLOSE_LOG");
++}
++
++static int hostapd_cli_cmd_reconfig_remove(struct wpa_ctrl *ctrl, int argc,
++					   char *argv[])
++{
++	char buf[64];
++	if (argc != 1) {
++		printf("Invalid reconfig-remove. Need TBTT argument\n");
++		return -1;
++	}
++	os_snprintf(buf, sizeof(buf), "RECONFIG-REMOVE %s", argv[0]);
++	return wpa_ctrl_command(ctrl, buf);
++}
++
++static int hostapd_cli_cmd_get_pmk(struct wpa_ctrl *ctrl, int argc,
++				   char *argv[])
++{
++	return hostapd_cli_cmd(ctrl, "GET_PMK", 1, argc, argv);
++}
++
++static int hostapd_cli_cmd_r0kh(struct wpa_ctrl *ctrl, int argc,
++				char *argv[])
++{
++	char buf[256];
++	if (argc != 1) {
++		printf("Invalid 'r0kh' command - exactly one argument, ROKH is required.\n");
++		return -1;
++	}
++	os_snprintf(buf, sizeof(buf), "R0KH %s", argv[0]);
++	return wpa_ctrl_command(ctrl, buf);
++}
++
++static int hostapd_cli_cmd_r1kh(struct wpa_ctrl *ctrl, int argc,
++				char *argv[])
++{
++	char buf[256];
++	if (argc != 1) {
++		printf("Invalid 'r1kh' command - exactly one argument, R1KH is required.\n");
++		return -1;
++	}
++	os_snprintf(buf, sizeof(buf), "R1KH %s", argv[0]);
++	return wpa_ctrl_command(ctrl, buf);
++}
++
++static int hostapd_cli_cmd_get_ptk(struct wpa_ctrl *ctrl, int argc,
++				   char *argv[])
++{
++	return hostapd_cli_cmd(ctrl, "GET_PTK", 1, argc, argv);
++}
++
++static int hostapd_cli_cmd_enable_reconfig(struct wpa_ctrl *ctrl, int argc,
++					   char *argv[])
++{
++	return wpa_ctrl_command(ctrl, "RECONFIG-ENABLE");
++}
++
++static int hostapd_cli_cmd_reload_config(struct wpa_ctrl *ctrl, int argc,
++					 char *argv[])
++{
++	return wpa_ctrl_command(ctrl, "RELOAD_CONFIG");
++}
++
++static int hostapd_cli_cmd_channel_bw(struct wpa_ctrl *ctrl,
++				      int argc, char *argv[])
++{
++	return wpa_ctrl_command(ctrl, "CHANNEL_BW");
++}
++
++static int hostapd_cli_cmd_color_change(struct wpa_ctrl *ctrl,
++					int argc, char *argv[])
++{
++	char cmd[256];
++	int res;
++
++	if (argc < 1) {
++		printf("Invalid color_change command: no argument given \n"
++		       "usage: <color> \n");
++		return -1;
++	}
++
++	res = os_snprintf(cmd, sizeof(cmd), "COLOR_CHANGE %s",
++			  argv[0]);
++	if (os_snprintf_error(sizeof(cmd), res)) {
++		printf("Too long CHAN_CHANGE command\n");
++		return -1;
++	}
++
++	return wpa_ctrl_command(ctrl, cmd);
++}
++
++static int hostapd_cli_cmd_req_link_measurement(struct wpa_ctrl *ctrl, int argc,
++						char *argv[])
++{
++	return hostapd_cli_cmd(ctrl, "REQ_LINK_MEASUREMENT", 1, argc, argv);
++}
++
++static int hostapd_cli_cmd_notify_cw_change(struct wpa_ctrl *ctrl,
++					    int argc, char *argv[])
++{
++	char buf[50];
++	int res;
++
++	if (argc < 1) {
++		printf("Invalid 'notify_cw_change' command - no argument given\n"
++		       "usage: <channel_width>\n");
++		return -1;
++	}
++
++	res = os_snprintf(buf, sizeof(buf), "NOTIFY_CW_CHANGE %s", argv[0]);
++	if (os_snprintf_error(sizeof(buf), res))
++		return -1;
++	return wpa_ctrl_command(ctrl, buf);
++}
++
+ static int hostapd_cli_cmd_disassociate(struct wpa_ctrl *ctrl, int argc,
+ 					char *argv[])
+ {
+@@ -1585,6 +1704,31 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
+ 	{ "deauthenticate", hostapd_cli_cmd_deauthenticate,
+ 	  hostapd_complete_stations,
+ 	  "<addr> = deauthenticate a station" },
++	{ "close_log", hostapd_cli_cmd_close_log, NULL,
++	  "= disable debug log output file" },
++	{ "reconfig-remove", hostapd_cli_cmd_reconfig_remove, NULL,
++	  "= reconfig remove interface" },
++	{ "get_pmk", hostapd_cli_cmd_get_pmk, hostapd_complete_stations,
++	  "<macaddr> = get STA PMK" },
++	{ "r0kh", hostapd_cli_cmd_r0kh, NULL,
++	  "<R0KH> = Adds R0KH" },
++	{ "r1kh", hostapd_cli_cmd_r1kh, NULL,
++	  "<R1KH> = Adds R1KH" },
++	{ "get_ptk", hostapd_cli_cmd_get_ptk, hostapd_complete_stations,
++	  "<macaddr> = get STA PTK" },
++	{ "enable-reconfig", hostapd_cli_cmd_enable_reconfig, NULL,
++	  "= enable-reconfig hostapd on current interface" },
++	{ "reload_config", hostapd_cli_cmd_reload_config, NULL,
++	  "= reload conf for current interface" },
++	{ "color_change", hostapd_cli_cmd_color_change, NULL,
++	  "<color> = initiate bss color change to set user color if value between 1-63\n"
++	  "Value 0 will disable the color\n" },
++	{ "channel_bw", hostapd_cli_cmd_channel_bw, NULL,
++	  "= show allowed bandwidth on each channel" },
++	{ "req_link_measurement", hostapd_cli_cmd_req_link_measurement, NULL,
++	  "<addr> = send a link measurement report request to a station" },
++	{ "notify_cw_change", hostapd_cli_cmd_notify_cw_change, NULL,
++	  "<channel_width> = 0 - 20 MHz, 1 - 40 MHz, 2 - 80 MHz, 3 - 160 MHz" },
+ 	{ "disassociate", hostapd_cli_cmd_disassociate,
+ 	  hostapd_complete_stations,
+ 	  "<addr> = disassociate a station" },
