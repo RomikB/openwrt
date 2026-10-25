@@ -336,7 +336,7 @@ def main():
         alt_paths = [
             "./tmp/rootfs",
             "../tmp/rootfs",
-            "./target/linux/ipq53xx/rd15/base-files"
+            "./target/linux/ipq53xx/ipq53xx_32/base-files"
         ]
         found = False
         for p in alt_paths:

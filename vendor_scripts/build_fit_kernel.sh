@@ -4,10 +4,10 @@ set -e
 
 TOPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST_BIN="$TOPDIR/staging_dir/host/bin"
-KERNEL_DIR="$TOPDIR/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213"
+KERNEL_DIR="$TOPDIR/build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_ipq53xx_32/linux-5.4.213"
 OUR_IMAGE="$KERNEL_DIR/arch/arm/boot/Image"
-OUR_DTB="$TOPDIR/target/linux/ipq53xx/rd15/ipq5332-rd15.dtb"
-OUT_KERNEL="${1:-$TOPDIR/target/linux/ipq53xx/rd15/kernel}"
+OUR_DTB="$TOPDIR/target/linux/ipq53xx/ipq53xx_32/ipq5332-rd15.dtb"
+OUT_KERNEL="${1:-$TOPDIR/target/linux/ipq53xx/ipq53xx_32/kernel}"
 
 if [ ! -f "$OUR_IMAGE" ]; then
     echo "[!] Ошибка: скомпилированное ядро не найдено: $OUR_IMAGE" >&2

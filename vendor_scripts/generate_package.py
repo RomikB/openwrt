@@ -21,9 +21,6 @@ SUBTARGET_SPECIFIC_PATTERNS: Dict[str, List[str]] = {
     "qca-firmware": [
         "*bdwlan.b0060*",
     ],
-    "base-files": [
-        "*lib_arch_*",
-    ],
 }
 
 # Declarative dictionary of packages that require file filtering.
@@ -31,15 +28,14 @@ SUBTARGET_SPECIFIC_PATTERNS: Dict[str, List[str]] = {
 # Value: list of glob patterns for relative paths that should be included in the package.
 PACKAGE_FILE_WHITELISTS: Dict[str, List[str]] = {
     "base-files": [
-        "lib/miwifi/*",
+        "lib/miwifi/lib_accel.sh",
+        "lib/miwifi/miwifi_functions.sh",
+        "lib/miwifi/arch/lib_arch_accel.sh",
         "sbin/accelctrl",
-        "sbin/phyhelper",
-        "sbin/port_map",
         "sbin/getmac",
         "sbin/setmac*",
         "sbin/hwversion",
         "lib/preinit/39_mount_*",
-        "etc/hotplug.d/button/51-reset",
     ],
 }
 
@@ -213,7 +209,60 @@ PKG_CONFIG_DEPENDS:=CONFIG_TARGET_SUBTARGET
 """
         extra_install = "\t$(if $(wildcard ./files-$(SUBTARGET)/*),$(CP) ./files-$(SUBTARGET)/* $(1)/)\n"
 
-    makefile_content = f"""include $(TOPDIR)/rules.mk
+    if pkg == "qca-firmware":
+        makefile_content = f"""include $(TOPDIR)/rules.mk
+
+PKG_NAME:={pkg_vendor}
+PKG_VERSION:={pkg_version}
+PKG_RELEASE:={pkg_release}
+PKG_FLAGS:=nonshared
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/qca-firmware-vendor-rd15
+  SECTION:=vendor
+  CATEGORY:=Vendor Prebuilt
+  TITLE:=Prebuilt QCA Wi-Fi firmware package for Xiaomi Router BE3600 (RD15)
+{depends_line}endef
+
+define Package/qca-firmware-vendor-rd16
+  SECTION:=vendor
+  CATEGORY:=Vendor Prebuilt
+  TITLE:=Prebuilt QCA Wi-Fi firmware package for Xiaomi Router BE3600 (RD16)
+{depends_line}endef
+
+define Package/qca-firmware-vendor-rd15/description
+  Prebuilt QCA Wi-Fi firmware and BDF calibration extracted from Xiaomi Router BE3600 (RD15) vendor firmware.
+endef
+
+define Package/qca-firmware-vendor-rd16/description
+  Prebuilt QCA Wi-Fi firmware and BDF calibration extracted from Xiaomi Router BE3600 (RD16) vendor firmware.
+endef
+
+define Build/Configure
+endef
+
+define Build/Compile
+endef
+
+define Package/qca-firmware-vendor-rd15/install
+\t$(INSTALL_DIR) $(1)
+\t$(if $(wildcard ./files/*),$(CP) ./files/* $(1)/)
+\t$(if $(wildcard ./files-rd15/*),$(CP) ./files-rd15/* $(1)/)
+endef
+
+define Package/qca-firmware-vendor-rd16/install
+\t$(INSTALL_DIR) $(1)
+\t$(if $(wildcard ./files/*),$(CP) ./files/* $(1)/)
+\t$(if $(wildcard ./files-rd16/*),$(CP) ./files-rd16/* $(1)/)
+endef
+
+$(eval $(call BuildPackage,qca-firmware-vendor-rd15))
+$(eval $(call BuildPackage,qca-firmware-vendor-rd16))
+"""
+    else:
+        makefile_content = f"""include $(TOPDIR)/rules.mk
 
 PKG_NAME:={pkg_vendor}
 PKG_VERSION:={pkg_version}

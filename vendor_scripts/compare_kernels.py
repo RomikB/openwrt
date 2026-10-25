@@ -21,7 +21,7 @@ from pathlib import Path
 # ─── Пути по умолчанию ───────────────────────────────────────────────────────
 
 OPENWRT = Path(__file__).resolve().parent.parent
-BUILD_TARGET = OPENWRT / "build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_rd15/linux-5.4.213"
+BUILD_TARGET = OPENWRT / "build_dir/target-arm_cortex-a7+neon-vfpv4_musl_eabi/linux-ipq53xx_ipq53xx_32/linux-5.4.213"
 TOOLCHAIN = OPENWRT / "staging_dir/toolchain-arm_cortex-a7+neon-vfpv4_gcc-7.5.0_kernel/bin"
 
 OUR_VMLINUX  = BUILD_TARGET / "vmlinux"
@@ -430,7 +430,7 @@ def generate_report(config_diff, xor_regions, changed_funcs, disasm_results):
     lines.append("\n## 4. Следующие шаги\n\n"
                  "1. **Получить исходники патчей** — искать в GPL-архиве Xiaomi BE3600 "
                  "или в QSDK QCA open-source репозиториях.\n"
-                 "2. **Написать 4-5 патчей** в `target/linux/ipq53xx/rd15/patches-5.4/` "
+                 "2. **Написать 4-5 патчей** в `target/linux/ipq53xx/ipq53xx_32/patches-5.4/` "
                  "для каждого `CONFIG_MIWIFI_*` и `CONFIG_BRIDGE_NETFILTER_DMZ_LOOPBACK`.\n"
                  "3. **Проверить** через повторный XOR-diff после сборки — diff должен "
                  "сократиться до нуля.\n"

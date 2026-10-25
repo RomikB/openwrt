@@ -37,8 +37,7 @@ git-src
 .ccache
 .vscode*
 /vendor_feed*
-/target/linux/ipq53xx/rd*/kernel
-miwifi_rd*_firmware_*.bin
+miwifi_r*_firmware_*.bin
 /reports
 __pycache__/
 *.pyc

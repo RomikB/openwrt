@@ -93,16 +93,6 @@ if [ -z "$UBI_ROOTFS" ] || [ ! -f "$UBI_ROOTFS" ]; then
 fi
 echo "Found UBI rootfs volume: $UBI_ROOTFS"
 
-# Locate and copy extracted kernel image to target subtarget directory
-for kimg in "$FW_TMP_DIR"/*/img-*_vol-kernel.ubifs "$FW_TMP_DIR"/img-*_vol-kernel.ubifs; do
-	if [ -f "$kimg" ]; then
-		echo "Found kernel volume: $kimg, copying to target/linux/ipq53xx/$TARGET_MODEL/kernel..."
-		mkdir -p "target/linux/ipq53xx/$TARGET_MODEL"
-		cp -f "$kimg" "target/linux/ipq53xx/$TARGET_MODEL/kernel"
-		break
-	fi
-done
-
 # Extract filesystem using unsquashfs
 EXTRACTED_ROOTFS="$TMP_DIR/rootfs"
 rm -rf "$EXTRACTED_ROOTFS"
@@ -123,13 +113,6 @@ if [ -f "$EXTRACTED_ROOTFS/usr/share/xiaoqiang/xiaoqiang_version" ]; then
 	if [ -n "$HW_DETECT" ] && [ "$HW_DETECT" != "$TARGET_MODEL" ]; then
 		echo "Notice: Detected hardware $HW_DETECT differs from requested $TARGET_MODEL. Updating target model to $HW_DETECT."
 		TARGET_MODEL="$HW_DETECT"
-		for kimg in "$FW_TMP_DIR"/*/img-*_vol-kernel.ubifs "$FW_TMP_DIR"/img-*_vol-kernel.ubifs; do
-			if [ -f "$kimg" ]; then
-				mkdir -p "target/linux/ipq53xx/$TARGET_MODEL"
-				cp -f "$kimg" "target/linux/ipq53xx/$TARGET_MODEL/kernel"
-				break
-			fi
-		done
 	fi
 fi
 

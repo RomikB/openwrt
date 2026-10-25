@@ -100,7 +100,7 @@
 * **Симптом**: Долгий отклик или зависание сервисов Google/YouTube на смартфонах при наличии IPv6.
 * **Причина**: В большинстве региональных сетей и при каскадном подключении вышестоящий роутер/провайдер выдает только один адрес `/64` без Prefix Delegation (PD) и жестко привязывает его к MAC-адресу. Демон `odhcpd` анонсирует локальные адреса `fd00:...`, но без NAT66 провайдер уничтожает пакеты из-за неизвестного Source IP.
 * **Решение (Штатный NAT66 из коробки)**:
-  В дереве исходников сабтаргета внедрен скрипт первого запуска [`target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/06-ipv6-nat66`](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/06-ipv6-nat66):
+  В дереве исходников сабтаргета внедрен скрипт первого запуска [`target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/06-ipv6-nat66`](../target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/06-ipv6-nat66):
   1. Включает IPv6-маскарадинг на зоне WAN (`firewall.@zone[1].masq6='1'`).
   2. Настраивает раздачу ULA-адресов с принудительным объявлением шлюза (`dhcp.lan.ra_default='2'`, `dhcp.lan.ra_slaac='1'`).
   3. Разрешает IPv6 AAAA-записи в DNS (`dhcp.@dnsmasq[0].filter_aaaa='0'`).
@@ -119,13 +119,13 @@
 #### Правило 3: Первоначальная инициализация и применение конфигурации Zapret2
 Для полной автоматизации при первой установке или сбросе прошивки внедрены два скрипта первоначальной настройки. Благодаря именам с префиксом `zz-...` они гарантированно вызываются в `/etc/init.d/boot` **после** генерации базового конфига пакетом (`zapret2-uci-def-cfg.sh`):
 
-1. **[`target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/zz-zapret2-setup`](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/zz-zapret2-setup)**:
+1. **[`target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/zz-zapret2-setup`](../target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/zz-zapret2-setup)**:
    - Активирует стратегию `v1_by_AnonymTsk` через `set_cfg_nfqws_strat`.
    - Синхронизирует UCI в бинарный конфиг `/opt/zapret2/config`.
    - Создает символическую ссылку `zapret-hosts.txt -> zapret-hosts-google.txt` (подключает полный список YouTube/Google).
    - Сохраняет дефолтный `zapret-hosts-user.txt` (содержит зоны Discord).
    - Сервис по умолчанию **выключен** (`run_on_boot='0'`) до момента, пока пользователь осознанно не включит его в LuCI или через CLI (`/etc/init.d/zapret2 enable`). Все сетевые параметры (FLOWOFFLOAD, INIT_APPLY_FW, MODE_FILTER) уже имеют нужные значения по умолчанию.
-2. **[`target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/zz-zapret2-ipv6`](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/etc/uci-defaults/zz-zapret2-ipv6)**:
+2. **[`target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/zz-zapret2-ipv6`](../target/linux/ipq53xx/ipq53xx_32/base-files/etc/uci-defaults/zz-zapret2-ipv6)**:
    - Выделенный скрипт активации IPv6 в zapret2: выставляет `DISABLE_IPV6='0'` и синхронизирует `/opt/zapret2/config`. Системный сетевой IPv6 NAT66 настраивается скриптом `06-ipv6-nat66`.
 
 При ручном изменении параметров через CLI или LuCI требуется процедура синхронизации:

@@ -19,7 +19,7 @@
   * Видимо ядру Linux HLOS (`MemTotal`): **~176 МБ** (`180 428 кБ`).
   * ~80 МБ зарезервировано аппаратно: TrustZone, DMA-буферы Qualcomm PPE / NSS и CMA-память радиомодулей Wi-Fi.
   * Свободный рабочий пул (`MemAvailable`): **~40–46 МБ** при штатной работе.
-  * *Критический лимит*: суммарный свободный объем памяти не должен падать ниже 20 МБ во избежание деградации Wi-Fi буферов и сбоев выделения SKB. Детальные замеры: [docs/security_and_bypasses.md](file:///home/romikb/openwrt/docs/security_and_bypasses.md#32-замеры-и-бюджет-оперативной-памяти-ram-benchmark).
+  * *Критический лимит*: суммарный свободный объем памяти не должен падать ниже 20 МБ во избежание деградации Wi-Fi буферов и сбоев выделения SKB. Детальные замеры: [docs/security_and_bypasses.md](security_and_bypasses.md#32-замеры-и-бюджет-оперативной-памяти-ram-benchmark).
 
 ---
 
@@ -111,12 +111,12 @@
 #### 4.1.4. [✅ РЕШЕНО] AmneziaWG: отладка LuCI Save&Apply и loopback handshake
 * **Статус**: ✅ Полностью верифицировано на физическом роутере RD15.
 * **Исправление netifd**:
-  1. [`amneziawg.sh`](file:///home/romikb/openwrt/package/feeds/amneziawg/amneziawg-tools/files/amneziawg.sh) — добавлен `proto_config_add_string "peers_hash"` в `proto_amneziawg_init_config()`. Изменение пиров теперь отслеживается netifd.
-  2. [`amneziawg.js`](file:///home/romikb/openwrt/package/feeds/amneziawg/luci-proto-amneziawg/htdocs/luci-static/resources/protocol/amneziawg.js) — переопределен `s.parse()`, вычисляется детерминированный хэш пиров и пишется в `peers_hash`. Изменения применяются без перезагрузки всего интерфейса.
+  1. [`amneziawg.sh`](../package/feeds/amneziawg/amneziawg-tools/files/amneziawg.sh) — добавлен `proto_config_add_string "peers_hash"` в `proto_amneziawg_init_config()`. Изменение пиров теперь отслеживается netifd.
+  2. [`amneziawg.js`](../package/feeds/amneziawg/luci-proto-amneziawg/htdocs/luci-static/resources/protocol/amneziawg.js) — переопределен `s.parse()`, вычисляется детерминированный хэш пиров и пишется в `peers_hash`. Изменения применяются без перезагрузки всего интерфейса.
 * **Результаты тестов**: Loopback-соединение с обфускацией (`Jc=4`, `Jmin=50`, `Jmax=100`, `S1=16`, `S2=24`, `H1..H4`) успешно устанавливает handshake. Замеры производительности шифрования CPU с инструкциями ARM NEON (пик 2.14 Гбит/с) зафиксированы в [разделе 4.2.2](#422-разделённая-маршрутизация-pbr-на-базе-nftables-и-аппаратный-оффлоад-qualcomm-ppe).
 
 #### 4.1.5. [✅ РЕШЕНО] Исправление генерации board.json и DHCP LAN при первой загрузке
-* **Статус**: ✅ Исправлено в `target/linux/ipq53xx/rd15/base-files/` (коммит `2e685af`).
+* **Статус**: ✅ Исправлено в `target/linux/ipq53xx/ipq53xx_32/base-files/` (коммит `2e685af`).
 * **Итог**: Исправлен сопоставитель модели в `/etc/board.d/01_network`, `/etc/board.json` генерируется стабильно, DHCP-сервер `dnsmasq` поднимается из коробки с пулом `192.168.1.100–249`. Детали: [`docs/archive/history.md#14`](archive/history.md#14-исправление-генерации-boardjson-и-dhcp-lan-при-первой-загрузке-коммит-2e685af).
 
 ---
@@ -235,7 +235,7 @@
 **Проблема**: При установке ширины канала 80 МГц (EHT80 / HE80) в режиме 802.11be драйвер/стек QSDK принудительно расширяет полосу до 160 МГц. На 36 канале (UNII-1) полоса захватывает радарные частоты (каналы 52–64), вызывая 60-секундный DFS CAC при старте/перезагрузке вместо мгновенного запуска точки доступа.
 
 **Что нужно**:
-* Проанализировать генерацию директив `eht_oper_chwidth`, `he_oper_chwidth`, `vht_oper_chwidth` и `center_freq_seg0_idx` в [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh).
+* Проанализировать генерацию директив `eht_oper_chwidth`, `he_oper_chwidth`, `vht_oper_chwidth` и `center_freq_seg0_idx` в [hostapd_config.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/wifi/hostapd_config.sh).
 * Исследовать стоковую конфигурацию Xiaomi (`qcawificfg80211.sh` и `cfg80211tool`) при выборе 80 МГц.
 * Проверить параметры драйвера через `iw dev ath1 info`, `hostapd_cli -i ath1 status` и `wlan_cfg80211_chan_to_phymode` в dmesg.
 * Реализовать корректную фиксацию 80 МГц в режиме 802.11be без триггера DFS CAC.
@@ -388,9 +388,9 @@
 
 **Что необходимо реализовать**:
 1. **Регистрация точки назначения `opkg` (`base-files`)**:
-   - Добавить строку `dest data /data` в `/etc/opkg.conf` оверлея сабтаргета (`target/linux/ipq53xx/rd15/base-files/etc/opkg.conf` или через uci-defaults).
+   - Добавить строку `dest data /data` в `/etc/opkg.conf` оверлея сабтаргета (`target/linux/ipq53xx/ipq53xx_32/base-files/etc/opkg.conf` или через uci-defaults).
 2. **Экспорт переменных окружения (`PATH` и `LD_LIBRARY_PATH`)**:
-   - Создать скрипт `target/linux/ipq53xx/rd15/base-files/etc/profile.d/10-data-env.sh`, объявляющий:
+   - Создать скрипт `target/linux/ipq53xx/ipq53xx_32/base-files/etc/profile.d/10-data-env.sh`, объявляющий:
      - `export PATH="$PATH:/data/usr/bin:/data/usr/sbin:/data/bin:/data/sbin"`
      - `export LD_LIBRARY_PATH="/data/usr/lib:/data/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"`
    - Это гарантирует, что бинарники из `/data` можно запускать по имени, а динамический линковщик `musl` корректно найдет зависимые библиотеки.

@@ -12,16 +12,16 @@
   * **RD16**: `eth0` (Uplink 1G к свитчу YT9215S: все 4 порта LAN 1–3, LAN 4/Port 0 и WAN обслуживаются свитчем YT9215S; порт 2.5G отсутствует).
 * **Свитч**: Motorcomm YT9215S (5-портовый GE свитч: LAN 1–3, WAN; на RD16 дополнительно задействован Port 0 как LAN 4).
 * **Wi-Fi**: 2.4 GHz On-SoC IPQ5312 (`ath0`, HE40) + 5 GHz PCIe QCN6432 (`ath1`, HE160/EHT160). Раздельные калибровочные файлы BDF `bdwlan.b0060` изолированы по подплатформам.
-* **Целевые сабтаргеты**:
-  * `target/linux/ipq53xx/rd15/` (Xiaomi Router BE3600 с портом 2.5G)
-  * `target/linux/ipq53xx/rd16/` (Xiaomi Router BE3600 без порта 2.5G, 4x GE)
-* **Профили сборки RD15 (`target/linux/ipq53xx/image/rd15.mk`)**:
-  * `xiaomi-rd15-qsdk` — чистый релизный профиль без пакетов обхода блокировок. **Основной релизный профиль: `qsdk`**.
-  * `xiaomi-rd15-qsdk-singbox` — профиль со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
-  * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
-* **Профили сборки RD16 (`target/linux/ipq53xx/image/rd16.mk`)**:
-  * `xiaomi-rd16-qsdk` — чистый релизный профиль.
-  * `xiaomi-rd16-qsdk-singbox` — профиль со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG. Сами пакеты Podkop/Forkop/RuAntiBlock собираются модульно (`prepare_config.sh`) для установки через opkg.
+* **Целевой сабтаргет**:
+  * `target/linux/ipq53xx/ipq53xx_32/` — единый сабтаргет для Xiaomi Router BE3600 (RD15 и RD16) на базе архитектуры Qualcomm Cortex-A7 (IPQ5332).
+* **Профили сборки (`target/linux/ipq53xx/image/ipq53xx_32.mk`)**:
+  * **RD15** (DTS: `ipq5332-rd15`, пакет 2.5G PHY `kmod-yt-phy-driver`, прошивка `qca-firmware-vendor-rd15`, FIT `miwifirom = 1.0.87`):
+    * `xiaomi-rd15-qsdk` — чистый релизный профиль. **Основной релизный профиль**.
+    * `xiaomi-rd15-qsdk-singbox` — профиль со встроенным sing-box, полным стеком модулей ядра для Podkop/Forkop (TPROXY, socket, NAT, BBR, inet/netlink-diag, TUN), Zapret2 и AmneziaWG.
+    * `xiaomi-rd15-qsdk-dev` — профиль разработчика (открытый WAN-доступ SSH/HTTP/HTTPS/iperf3, утилиты `iperf3`, `htop`, `tcpdump`, пакет `rd15-dev-mode`, тестовый стенд стокового Wi-Fi `wifi-stock-test`).
+  * **RD16** (DTS: `ipq5332-rd16`, без `kmod-yt-phy-driver`, прошивка `qca-firmware-vendor-rd16`, FIT `miwifirom = 1.0.34`):
+    * `xiaomi-rd16-qsdk` — чистый релизный профиль.
+    * `xiaomi-rd16-qsdk-singbox` — профиль со встроенным sing-box и стеком обхода блокировок.
 
 ---
 
@@ -60,7 +60,7 @@
 * Для досрочного завершения или безопасных заглушек использовать строго: `return 0 2>/dev/null || exit 0`.
 
 ### 2.8. Архитектура размещения файлов платформы (`base-files`)
-* Все платформенные скрипты, сервисы и конфигурации маршрутизатора RD15 размещаются строго в оверлее сабтаргета `target/linux/ipq53xx/rd15/base-files/`.
+* Все платформенные скрипты, сервисы и конфигурации маршрутизаторов RD15 и RD16 размещаются строго в оверлее сабтаргета `target/linux/ipq53xx/ipq53xx_32/base-files/`.
 * Запрещено модифицировать ванильные системные файлы в апстримных пакетах (`package/base-files/`).
 
 ---
@@ -72,9 +72,9 @@
 | **Сборка тулчейна ядра GCC 7.5.0** | `./vendor_scripts/build_kmod_toolchain.sh` |
 | **Генерация vendor_feed из стока** | `./vendor_scripts/prepare_feed.sh [rd15|rd16] [firmware.bin]` *(по умолчанию RD15)* |
 | **Патчинг внешних фидов OpenWrt** | `./vendor_scripts/patch_feeds.py` |
-| **Применение defconfig сабтаргета** | `./vendor_scripts/prepare_config.sh [rd15|rd16]` *(по умолчанию RD15)* |
+| **Применение defconfig сабтаргета** | `./vendor_scripts/prepare_config.sh [rd15|rd16|all]` *(по умолчанию RD15)* |
 | **Компиляция ядра и образов** | `make target/linux/compile -j$(nproc)` / `make -j$(nproc)` |
-| **Путь к собранным UBI-образам** | `bin/targets/ipq53xx/{rd15,rd16}/` |
+| **Путь к собранным UBI-образам** | `bin/targets/ipq53xx/ipq53xx_32/` |
 
 ---
 
@@ -83,26 +83,26 @@
 При выполнении специализированных задач обращайтесь к профильным документам в каталоге `docs/`:
 
 * **Архитектура гибрида, Wi-Fi стек, системные патчи procd/netifd/busybox, BDF**:
-  $\to$ [docs/architecture.md](file:///home/romikb/openwrt/docs/architecture.md)
+  $\to$ [docs/architecture.md](docs/architecture.md)
 * **Режимы Wi-Fi (AP, Multi-SSID Guest, STA/WISP), LuCI, матрица и статус**:
-  $\to$ [docs/wifi_architecture_and_modes.md](file:///home/romikb/openwrt/docs/wifi_architecture_and_modes.md)
+  $\to$ [docs/wifi_architecture_and_modes.md](docs/wifi_architecture_and_modes.md)
 * **Трассировка команд вендорного драйвера QSDK (171 вызов cfg80211tool/wlanconfig/hostapd)**:
-  $\to$ [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)
+  $\to$ [docs/stock_wifi_driver_trace.md](docs/stock_wifi_driver_trace.md)
 * **Коммутатор Motorcomm YT9215S, сетевой стек, ревизии 2.5G PHY (QCA8081 / YT8821), 4 патча драйвера, DSA**:
-  $\to$ [docs/switch_yt9215s.md](file:///home/romikb/openwrt/docs/switch_yt9215s.md)
+  $\to$ [docs/switch_yt9215s.md](docs/switch_yt9215s.md)
 * **Архитектура QinQ (802.1ad) для пользовательских VLAN поверх открытого DSA (перспективная доработка)**:
-  $\to$ [docs/dsa_qinq_architecture.md](file:///home/romikb/openwrt/docs/dsa_qinq_architecture.md)
+  $\to$ [docs/dsa_qinq_architecture.md](docs/dsa_qinq_architecture.md)
 * **Ядро QSDK 12.5, аудит 18 модулей PPE/ECM/SSDK/Switch, конвейер vendor_feed**:
-  $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md)
+  $\to$ [docs/kernel_and_vendor_feed.md](docs/kernel_and_vendor_feed.md)
 * **Firewall4 (nftables), аппаратный оффлоад PPE/ECM, стенд и методика iperf3**:
-  $\to$ [docs/networking_and_firewall.md](file:///home/romikb/openwrt/docs/networking_and_firewall.md)
+  $\to$ [docs/networking_and_firewall.md](docs/networking_and_firewall.md)
 * **Методика и результаты бенчмарков аппаратного ускорения (Qualcomm PPE/ECM, RAM baseline)**:
-  $\to$ [docs/traffic_acceleration_benchmarks.md](file:///home/romikb/openwrt/docs/traffic_acceleration_benchmarks.md)
+  $\to$ [docs/traffic_acceleration_benchmarks.md](docs/traffic_acceleration_benchmarks.md)
 * **Безопасность, обход блокировок (Zapret2, RuAntiBlock), VPN (AmneziaWG) и DNS**:
-  $\to$ [docs/security_and_bypasses.md](file:///home/romikb/openwrt/docs/security_and_bypasses.md)
+  $\to$ [docs/security_and_bypasses.md](docs/security_and_bypasses.md)
 * **Дорожная карта, бюджет флеш-памяти и активный бэклог (AmneziaWG, LuCI)**:
-  $\to$ [docs/roadmap.md](file:///home/romikb/openwrt/docs/roadmap.md)
+  $\to$ [docs/roadmap.md](docs/roadmap.md)
 * **Архив исторических логов и завершенных отчетов**:
-  $\to$ [docs/archive/](file:///home/romikb/openwrt/docs/archive/) (`dsa_implementation.md`, `stock_wifi_bridge_mlo_and_mesh_analysis.md`, `channel_12_13_regulatory.md`, `dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
+  $\to$ [docs/archive/](docs/archive/) (`dsa_implementation.md`, `stock_wifi_bridge_mlo_and_mesh_analysis.md`, `channel_12_13_regulatory.md`, `dmesg_analysis.md`, `amneziawg_kernel54.md`, `qsdk_audit_notes.md`, `migration_to_1081_kernel.md`)
 
 

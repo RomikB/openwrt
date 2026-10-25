@@ -30,7 +30,7 @@ VENDOR_ROOTFS = TOPDIR / "tmp" / "rootfs"
 VENDOR_MODULES_DIR = VENDOR_ROOTFS / "lib" / "modules" / "5.4.213"
 VENDOR_PACKAGES_DIR = TOPDIR / "vendor_packages"
 BIN_DIR = TOPDIR / "bin"
-BUILD_DIR = TOPDIR / "build_dir" / "target-arm_cortex-a7+neon-vfpv4_musl_eabi" / "linux-ipq53xx_rd15" / "linux-5.4.213"
+BUILD_DIR = TOPDIR / "build_dir" / "target-arm_cortex-a7+neon-vfpv4_musl_eabi" / "linux-ipq53xx_ipq53xx_32" / "linux-5.4.213"
 
 # Поиск тулчейна ядра для кросс-инструментов
 TOOLCHAIN_BIN = TOPDIR / "staging_dir" / "toolchain-arm_cortex-a7+neon-vfpv4_gcc-7.5.0_kernel" / "bin"

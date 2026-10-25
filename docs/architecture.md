@@ -140,7 +140,7 @@
 
 ## 8. Инициализация платформы и индикация
 
-* **Генерация `board.json` и сетевые настройки**: Скрипт `target/linux/ipq53xx/rd15/base-files/etc/board.d/01_network` сопоставляет идентификаторы платы (`*ap-mi04.1*` и `*rd15*`), настраивая интерфейс `br-lan` со статическим IP `192.168.1.1/24` и пул DHCP `192.168.1.100`–`192.168.1.249`.
+* **Генерация `board.json` и сетевые настройки**: Скрипт `target/linux/ipq53xx/ipq53xx_32/base-files/etc/board.d/02_network` сопоставляет идентификаторы платы (`*ap-mi04.1*` и `*rd15*`), настраивая интерфейс `br-lan` со статическим IP `192.168.1.1/24` и пул DHCP `192.168.1.100`–`192.168.1.249`.
 * **Светодиодная индикация (RGB LED)**: Модуль ядра `kmod-pwm-rgb` управляет трехцветным светодиодом на передней панели роутера через утилиту `/sbin/xqled` и скрипт `/etc/diag.sh` (желтый цвет при старте, синий при штатной работе, оранжевый/красный при сбоях).
 * **Аппаратные кнопки**: Модуль `kmod-gpio-button-hotplug` обрабатывает нажатия кнопок `Reset` и `Mesh` (вызов скрипта `/etc/rc.button/reset` для штатного сброса настроек).
 
@@ -148,32 +148,19 @@
 
 ## 9. Модификации базовых системных пакетов OpenWrt 24
 
-Для обеспечения бесшовного взаимодействия нативного пользовательского пространства OpenWrt 24 с ядром 5.4.213 и закрытыми сервисами вендора в базовые пакеты дерева `package/` были внесены следующие точечные изменения:
+Для обеспечения бесшовного взаимодействия нативного пользовательского пространства OpenWrt 24 с ядром 5.4.213 в базовые пакеты дерева `package/` были внесены следующие точечные изменения:
 
-### 9.1. Системные демоны (`procd`, `ubus`, `netifd`, `busybox`)
+### 9.1. Системные демоны (`procd`, `netifd`)
 
-1. **`procd`** (`package/system/procd/patches/001-compat-ubus-symlink.patch`):
-   * Выставление корректных прав доступа `01777` на каталог `/tmp/run` при раннем монтировании в `initd/early.c`.
-   * Создание симлинка `/var/run/ubus.sock -> /var/run/ubus/ubus.sock` от имени `root` при раннем старте `procd` до перехода демона `ubusd` под системного пользователя `ubus`.
+1. **`procd`** (`package/system/procd/`):
+   * В `files/procd.sh` добавлена проверка доступности `/sbin/ujail` перед активацией изоляции процессов (`[ -x /sbin/ujail ] || return 0`), предотвращающая сбои при конфигурациях без пакета `procd-ujail`.
 
-2. **`ubus`** (`package/system/ubus/patches/001-compat-symlink.patch`):
-   * Поддержка обратной совместимости пути сокета IPC для устаревших вендорных клиентов (`switch_ctl`, `nvram-vendor`).
-
-3. **`netifd`** (`package/network/config/netifd/patches/`):
+2. **`netifd`** (`package/network/config/netifd/patches/`):
    * `001-fix-ifname-fixup-for-non-bridges.patch` — ограничение логики `ifname -> ports` исключительно интерфейсами сетевых мостов.
    * `002-fix-bridge-netlink-attrs.patch` — предотвращение отправки неподдерживаемых Netlink-атрибутов моста (`IFLA_BR_VLAN_FILTERING`) в ядро 5.4 без поддержки VLAN filtering и fallback на `ioctl(SIOCBRADDBR)`.
 
-4. **`busybox` (v1.36.1-r2)**:
-   * Активированы флаги `CONFIG_BUSYBOX_DEFAULT_PIE=y` и `CONFIG_BUSYBOX_DEFAULT_FEATURE_SUID=y` (обязательное требование ASLR монолитного ядра Qualcomm).
-   * Включены 30 расширенных апплетов (`timeout`, `stat`, `devmem`, `watch`, `arping`, `wget`, `xz` и др.).
-   * Поддержка флага `udhcpc -a` (ARP Ping для быстрой проверки доступности IP-адресов).
-
-### 9.2. Адаптация сборочных Makefiles
-* **`package/network/services/ppp/Makefile`**: Зависимость перенаправлена на нативный тулчейн, добавлен флаг `+libgcc`.
-* **`package/libs/ncurses/Makefile`**: Добавлена явная сборочная зависимость `+libgcc` для `Package/libncurses`.
-
-### 9.3. Точность смещений структур ядра QSDK 12.5 (Out-of-tree `kmod-*`)
-Система сборки сабтаргета `rd15` (`target/linux/ipq53xx/rd15/kernel-build.mk`) на базе официального репозитория Qualcomm CodeLinaro QSDK 12.5 (ветка `NHSS.QSDK.12.5`, коммит `c2ca06284375ae9af06de73ea309065cc1be6e7b`) гарантирует абсолютную бинарную точность смещений критических структур ядра:
+### 9.2. Точность смещений структур ядра QSDK 12.5 (Out-of-tree `kmod-*`)
+Система сборки сабтаргета `ipq53xx_32` (`target/linux/ipq53xx/ipq53xx_32/kernel-build.mk`) на базе официального репозитория Qualcomm CodeLinaro QSDK 12.5 (ветка `NHSS.QSDK.12.5`, коммит `c2ca06284375ae9af06de73ea309065cc1be6e7b`) гарантирует абсолютную бинарную точность смещений критических структур ядра:
 * `net_device.netdev_ops` = 296
 * `net_device.flags` = 316
 * `net_device.type` = 348

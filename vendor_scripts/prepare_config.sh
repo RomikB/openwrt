@@ -13,7 +13,8 @@ disable() {
 TARGET_MODEL="${1:-rd15}"
 case "$TARGET_MODEL" in
     rd16|RD16) TARGET_MODEL="rd16" ;;
-    *) TARGET_MODEL="rd15" ;;
+    all|ALL)   TARGET_MODEL="all" ;;
+    *)         TARGET_MODEL="rd15" ;;
 esac
 
 echo "Preparing target configuration for Xiaomi Router BE3600 ($TARGET_MODEL)..."
@@ -21,18 +22,28 @@ echo "Preparing target configuration for Xiaomi Router BE3600 ($TARGET_MODEL)...
 rm -f .config
 
 enable TARGET_ipq53xx
-enable TARGET_ipq53xx_${TARGET_MODEL}
+enable TARGET_ipq53xx_ipq53xx_32
 enable TARGET_MULTI_PROFILE
 enable TARGET_PER_DEVICE_ROOTFS
 
-if [ "$TARGET_MODEL" = "rd16" ]; then
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk
-    enable TARGET_DEVICE_ipq53xx_rd16_DEVICE_xiaomi-rd16-qsdk-singbox
-else
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-singbox
-    enable TARGET_DEVICE_ipq53xx_rd15_DEVICE_xiaomi-rd15-qsdk-dev
-fi
+case "$TARGET_MODEL" in
+    rd16)
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd16-qsdk
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd16-qsdk-singbox
+        ;;
+    all)
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk-singbox
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk-dev
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd16-qsdk
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd16-qsdk-singbox
+        ;;
+    *)
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk-singbox
+        enable TARGET_DEVICE_ipq53xx_ipq53xx_32_DEVICE_xiaomi-rd15-qsdk-dev
+        ;;
+esac
 disable USE_SECCOMP
 disable USE_FS_ACL_ATTR
 disable KERNEL_SECCOMP
@@ -80,6 +91,71 @@ enable PACKAGE_podkop m
 enable PACKAGE_ruantiblock m
 enable PACKAGE_ruantiblock-mod-lua m
 
+# Busybox customization
+enable BUSYBOX_CUSTOM
+enable BUSYBOX_CONFIG_ARPING
+enable BUSYBOX_CONFIG_ASH_HELP
+enable BUSYBOX_CONFIG_ASH_IDLE_TIMEOUT
+enable BUSYBOX_CONFIG_ASH_SLEEP
+enable BUSYBOX_CONFIG_BASE64
+enable BUSYBOX_CONFIG_BUNZIP2
+enable BUSYBOX_CONFIG_DEVMEM
+enable BUSYBOX_CONFIG_FEATURE_FTPD_WRITE
+enable BUSYBOX_CONFIG_FEATURE_GETOPT_LONG
+enable BUSYBOX_CONFIG_FEATURE_PS_ADDITIONAL_COLUMNS
+enable BUSYBOX_CONFIG_FEATURE_PS_LONG
+enable BUSYBOX_CONFIG_FEATURE_PS_TIME
+enable BUSYBOX_CONFIG_FEATURE_RUN_PARTS_FANCY
+enable BUSYBOX_CONFIG_FEATURE_RUN_PARTS_LONG_OPTIONS
+enable BUSYBOX_CONFIG_FEATURE_SHOW_THREADS
+enable BUSYBOX_CONFIG_FEATURE_SH_MATH_BASE
+enable BUSYBOX_CONFIG_FEATURE_SH_READ_FRAC
+enable BUSYBOX_CONFIG_FEATURE_STAT_FILESYSTEM
+enable BUSYBOX_CONFIG_FEATURE_STAT_FORMAT
+enable BUSYBOX_CONFIG_FEATURE_SUID
+enable BUSYBOX_CONFIG_FEATURE_SUID_CONFIG
+enable BUSYBOX_CONFIG_FEATURE_TELNETD_STANDALONE
+enable BUSYBOX_CONFIG_FEATURE_TFTP_BLOCKSIZE
+enable BUSYBOX_CONFIG_FEATURE_TFTP_GET
+enable BUSYBOX_CONFIG_FEATURE_TFTP_PUT
+enable BUSYBOX_CONFIG_FEATURE_TOPMEM
+enable BUSYBOX_CONFIG_FEATURE_TOP_SMP_CPU
+enable BUSYBOX_CONFIG_FEATURE_TOP_SMP_PROCESS
+enable BUSYBOX_CONFIG_FEATURE_UDHCPC_ARPING
+enable BUSYBOX_CONFIG_FEATURE_WGET_AUTHENTICATION
+enable BUSYBOX_CONFIG_FEATURE_WGET_HTTPS
+enable BUSYBOX_CONFIG_FEATURE_WGET_LONG_OPTIONS
+enable BUSYBOX_CONFIG_FEATURE_WGET_STATUSBAR
+enable BUSYBOX_CONFIG_FEATURE_WGET_TIMEOUT
+enable BUSYBOX_CONFIG_FTPD
+enable BUSYBOX_CONFIG_FTPGET
+enable BUSYBOX_CONFIG_FTPPUT
+enable BUSYBOX_CONFIG_GETOPT
+enable BUSYBOX_CONFIG_HOSTID
+enable BUSYBOX_CONFIG_INETD
+enable BUSYBOX_CONFIG_IPCS
+enable BUSYBOX_CONFIG_LOGIN_SESSION_AS_CHILD
+enable BUSYBOX_CONFIG_LSOF
+enable BUSYBOX_CONFIG_MKFS_EXT2
+enable BUSYBOX_CONFIG_MKFS_VFAT
+enable BUSYBOX_CONFIG_MPSTAT
+enable BUSYBOX_CONFIG_PIE
+enable BUSYBOX_CONFIG_PSTREE
+enable BUSYBOX_CONFIG_RENICE
+enable BUSYBOX_CONFIG_RUN_PARTS
+enable BUSYBOX_CONFIG_STAT
+enable BUSYBOX_CONFIG_TELNET
+enable BUSYBOX_CONFIG_TELNETD
+enable BUSYBOX_CONFIG_TFTP
+enable BUSYBOX_CONFIG_TFTPD
+enable BUSYBOX_CONFIG_TIMEOUT
+enable BUSYBOX_CONFIG_UNXZ
+enable BUSYBOX_CONFIG_USLEEP
+enable BUSYBOX_CONFIG_VCONFIG
+enable BUSYBOX_CONFIG_WATCH
+enable BUSYBOX_CONFIG_WGET
+enable BUSYBOX_CONFIG_XZ
+
 # Minimal profile for sing-box (exclude heavy Go subsystems: WireGuard, Tailscale, Tor, gRPC, ACME, V2Ray API, DHCP, gVisor)
 disable SINGBOX_WITH_ACME
 disable SINGBOX_WITH_DHCP
@@ -99,10 +175,5 @@ disable FEED_ruantiblock
 disable FEED_zapret2
 
 make defconfig
-
-# Clean base-files package and cached rootfs templates for the newly configured subtarget
-make package/base-files/clean
-rm -rf build_dir/target-*/root.orig-* build_dir/target-*/root-*
-rm -f staging_dir/target-*/stamp/.package_*
 
 echo "Configuration successfully prepared."

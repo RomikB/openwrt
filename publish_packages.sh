@@ -2,7 +2,7 @@
 # ==============================================================================
 # Script: publish_packages.sh
 # Purpose: Collect custom packages and kernel modules, generate signed opkg
-#          repository for GitHub Pages (releases/24.10-SNAPSHOT/targets/ipq53xx/rd15/packages).
+#          repository for GitHub Pages (releases/24.10-SNAPSHOT/targets/ipq53xx/ipq53xx_32/packages).
 # ==============================================================================
 
 set -euo pipefail
@@ -10,12 +10,12 @@ set -euo pipefail
 # 1. Parameter check
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <path_to_github_pages_repo> [subtarget]"
-    echo "Example: $0 /home/romikb/romikb.github.io rd15"
+    echo "Example: $0 /home/romikb/romikb.github.io ipq53xx_32"
     exit 1
 fi
 
 GHPAGES_ROOT="$1"
-SUBTARGET="${2:-rd15}"
+SUBTARGET="${2:-ipq53xx_32}"
 TOPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REL_PATH="releases/24.10-SNAPSHOT/targets/ipq53xx/${SUBTARGET}/packages"
 DEST_DIR="${GHPAGES_ROOT}/${REL_PATH}"

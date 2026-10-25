@@ -21,7 +21,7 @@ from pathlib import Path
 TOPDIR = Path(__file__).resolve().parent.parent
 VENDOR_FEED = TOPDIR / "vendor_feed"
 BUILD_DIR = TOPDIR / "build_dir" / "target-arm_cortex-a7+neon-vfpv4_musl_eabi"
-KERNEL_BUILD_DIR = BUILD_DIR / "linux-ipq53xx_rd15" / "linux-5.4.213"
+KERNEL_BUILD_DIR = BUILD_DIR / "linux-ipq53xx_ipq53xx_32" / "linux-5.4.213"
 VMLINUX = KERNEL_BUILD_DIR / "vmlinux"
 SYMVERS = KERNEL_BUILD_DIR / "Module.symvers"
 
@@ -321,7 +321,7 @@ def main():
             if sym == "portmap_get_by_vid":
                 f.write("- **Назначение**: Глобальный указатель функции обратного вызова для Motorcomm YT9215S свитча (`yt_switch.ko`).\n")
                 f.write("- **Поведение**: При загрузке драйвер свитча присваивает `portmap_get_by_vid = _732`, при выгрузке обнуляет `portmap_get_by_vid = NULL`.\n")
-                f.write("- **Решение**: Добавить экспорт глобального указателя в ядро Linux 5.4 (`target/linux/ipq53xx/rd15/patches-5.4/`): `int (*portmap_get_by_vid)(...); EXPORT_SYMBOL(portmap_get_by_vid);`.\n")
+                f.write("- **Решение**: Добавить экспорт глобального указателя в ядро Linux 5.4 (`target/linux/ipq53xx/ipq53xx_32/patches-5.4/`): `int (*portmap_get_by_vid)(...); EXPORT_SYMBOL(portmap_get_by_vid);`.\n")
             elif sym in ("miwifi_ct_acct_hook", "xqnss_ip_account_ecm_nss_hook"):
                 f.write("- **Назначение**: Фирменные счетчики аккаунтинга трафика Xiaomi (`miwifi-skb-mark` / Conntrack stats).\n")
                 f.write("- **Поведение**: Опциональные вызовы учета трафика внутри `ecm.ko`.\n")

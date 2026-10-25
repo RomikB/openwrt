@@ -11,16 +11,16 @@
 #   ./upload_ubi_rd15.sh bin/.../image.ubi            # Specify explicit image path
 #
 
-BIN_DIR="bin/targets/ipq53xx/rd15"
+BIN_DIR="bin/targets/ipq53xx/ipq53xx_32"
 DEFAULT_HOST="192.168.11.36"
 
 HOST="$DEFAULT_HOST"
 FILE=""
 
 # Standard image definitions
-QSDK_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-squashfs-factory.ubi"
-QSDK_SINGBOX_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-singbox-squashfs-factory.ubi"
-QSDK_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-rd15-xiaomi-rd15-qsdk-dev-squashfs-factory.ubi"
+QSDK_BASE_IMG="$BIN_DIR/openwrt-ipq53xx-ipq53xx_32-xiaomi-rd15-qsdk-squashfs-factory.ubi"
+QSDK_SINGBOX_IMG="$BIN_DIR/openwrt-ipq53xx-ipq53xx_32-xiaomi-rd15-qsdk-singbox-squashfs-factory.ubi"
+QSDK_DEV_IMG="$BIN_DIR/openwrt-ipq53xx-ipq53xx_32-xiaomi-rd15-qsdk-dev-squashfs-factory.ubi"
 
 resolve_flavor() {
     case "$1" in

@@ -17,12 +17,12 @@
   * Точки доступа (AP): специализированный `qca-hostapd` с нативным контрольным сокетом `/var/run/hostapd/<ifname>`.
   * Клиенты (STA): `wpa_supplicant` с контрольным сокетом `/var/run/wpa_supplicant/<ifname>`.
 * **Управление и скрипты платформы**:
-  * [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) — драйвер интеграции с OpenWrt `netifd` (двухэтапная инициализация `wlanconfig` + `iw`, поддержка `11be`, `11ax`, `11ac`, `11n`, аппаратный тюнинг радиомодулей).
-  * [qcawifi_modes.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/qcawifi_modes.sh) — модуль преобразования поколений и режимов (EHT/HE/VHT/HT, расчет центральных частот `seg0_idx` и суффиксов `PLUS`/`MINUS`).
-  * [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh) — динамический генератор конфигурации AP из UCI (`ieee80211be`, `send_probe_response=0`, `eht_oper_*`, `puncture_bitmap`).
-  * [wpa_supplicant_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/wpa_supplicant_config.sh) — генератор конфигурации STA из UCI.
-  * [wifi](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/sbin/wifi) — утилита CLI контроля подсистемы (`wifi reload`, `wifi status`).
-  * `/sbin/wifi-stock-test` — тестовый стенд валидации стокового стека (пакет `rd15-dev-mode` в профиле `xiaomi-rd15-qsdk-dev`, лог 171 вызова в [docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)).
+  * [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) — драйвер интеграции с OpenWrt `netifd` (двухэтапная инициализация `wlanconfig` + `iw`, поддержка `11be`, `11ax`, `11ac`, `11n`, аппаратный тюнинг радиомодулей).
+  * [qcawifi_modes.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/wifi/qcawifi_modes.sh) — модуль преобразования поколений и режимов (EHT/HE/VHT/HT, расчет центральных частот `seg0_idx` и суффиксов `PLUS`/`MINUS`).
+  * [hostapd_config.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/wifi/hostapd_config.sh) — динамический генератор конфигурации AP из UCI (`ieee80211be`, `send_probe_response=0`, `eht_oper_*`, `puncture_bitmap`).
+  * [wpa_supplicant_config.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/wifi/wpa_supplicant_config.sh) — генератор конфигурации STA из UCI.
+  * [wifi](../target/linux/ipq53xx/ipq53xx_32/base-files/sbin/wifi) — утилита CLI контроля подсистемы (`wifi reload`, `wifi status`).
+  * `/sbin/wifi-stock-test` — тестовый стенд валидации стокового стека (пакет `rd15-dev-mode` в профиле `xiaomi-rd15-qsdk-dev`, лог 171 вызова в [docs/stock_wifi_driver_trace.md](stock_wifi_driver_trace.md)).
 
 ---
 
@@ -51,7 +51,7 @@
 ## 3. Детальное описание реализованных режимов
 
 ### 3.1. Основная сеть (AP Mode)
-* **Горячее применение параметров**: При изменении пароля, типа шифрования или скрытия SSID скрипт [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) выполняет переконфигурацию через сокет `hostapd_cli reload_config` (~50 мс), не перезагружая радиомодуль и не прерывая связь.
+* **Горячее применение параметров**: При изменении пароля, типа шифрования или скрытия SSID скрипт [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) выполняет переконфигурацию через сокет `hostapd_cli reload_config` (~50 мс), не перезагружая радиомодуль и не прерывая связь.
 * **Смена SSID**: При изменении имени сети выполняется полный перезапуск экземпляра AP для корректной регистрации нового beacon SSID в ядре (`wlan_cfg80211_start_ap`).
 * **Двухэтапная инициализация VAP (QSDK 12.4)**: Внедрено создание интерфейсов строго по формуле стока: сначала `wlanconfig "$ifname" create wlandev "$wlandev" wlanmode "$pmode" -cfg80211` (выделение структур VAP в `umac.ko`), затем `iw phy "$phy" interface add "$ifname" type "$wlanmode"`.
 * **Аппаратный оффлоад ответов Probe Response**: Параметр `send_probe_response=0` в `hostapd_config.sh` передаёт генерацию Probe Response микрокоду Qualcomm Firmware, обеспечивая безошибочное определение ширины полосы (80/160 МГц) всеми клиентскими сканерами.
@@ -100,7 +100,7 @@
   * В отличие от чистого 4-address WDS, требующего поддержки на обоих концах и вызывающего коллизии FDB при случайных петлях, режим Qualcomm ExtAP (`extap=1`) организует прозрачный L2-мост на базе аппаратного MAC Address Translation (MAT) и 3-адресных радиокадров 802.11.
   * Для вышестоящей точки доступа (любой вендор/модель) роутер-клиент выглядит как одиночный стандартный Wi-Fi клиент, но при этом передает весь L2-трафик подключенных к нему устройств без NAT.
 * **Автоматическая активация**:
-  * В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) режим ExtAP активируется автоматически, если интерфейс STA (`mode 'sta'` или `mode 'sta-wds'`) привязан к локальной сети (`network 'lan'`), либо включена опция `wds '1'` или `extap '1'`.
+  * В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) режим ExtAP активируется автоматически, если интерфейс STA (`mode 'sta'` или `mode 'sta-wds'`) привязан к локальной сети (`network 'lan'`), либо включена опция `wds '1'` или `extap '1'`.
   * Драйвер выполняет:
     1. Перевод VAP в режим 4-address в ядре (`iw dev <ifname> set 4addr on`) для разрешения включения в Linux-мост `br-lan`.
     2. Включение аппаратного модуля ExtAP: `cfg80211tool <ifname> extap 1`.
@@ -137,18 +137,18 @@
   ```text
   [0:E:CMN_MLME] psoc:1 vdev:0: Scan is in progress, return
   ```
-* **Решение**: В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) добавлен блок автоматической очистки неактивных VAP: если конфиг интерфейса удалён или выключен, скрипт принудительно завершает процессы `wpa_supplicant`/`hostapd` и удаляет VAP из ядра, освобождая планировщик радиомодуля.
+* **Решение**: В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) добавлен блок автоматической очистки неактивных VAP: если конфиг интерфейса удалён или выключен, скрипт принудительно завершает процессы `wpa_supplicant`/`hostapd` и удаляет VAP из ядра, освобождая планировщик радиомодуля.
 
 ### 4.3. Потеря маршрута по умолчанию при отключении STA (Проблема интерфейсов WISP)
 * **Симптом**: При удалении STA через LuCI пропадал доступ в интернет у всех клиентов (включая LAN и Guest).
 * **Первопричина**: При подключении к WISP через LuCI создаётся интерфейс в `network` (по умолчанию `wwan`, либо пользовательское имя: `wisp`, `sta` и т.д.) с протоколом DHCP и метрикой по умолчанию `0`. После удаления беспроводного интерфейса эта секция оставалась в `network` в состоянии ошибки `NO_DEVICE`. При перезагрузке сети `netifd` снимал дефолтный маршрут с кабельного `wan` (`eth0.1`).
 * **Универсальное архитектурное решение**:
-  1. **Приоритет кабельного WAN**: В [network](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/etc/config/network) кабельному интерфейсу `wan` жестко задана метрика: `option metric '10'`.
-  2. **Автоматическое назначение метрики клиентам WISP**: В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) для любого активного STA-интерфейса (с любым именем, заданным пользователем) автоматически прописывается `metric 20`, если метрика не была задана вручную. Благодаря этому маршрут кабельного WAN (`metric 10`) и маршрут беспроводного клиента (`metric 20`) сосуществуют в ядре без коллизий.
+  1. **Приоритет кабельного WAN**: В [network](../target/linux/ipq53xx/ipq53xx_32/base-files/etc/config/network) кабельному интерфейсу `wan` жестко задана метрика: `option metric '10'`.
+  2. **Автоматическое назначение метрики клиентам WISP**: В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) для любого активного STA-интерфейса (с любым именем, заданным пользователем) автоматически прописывается `metric 20`, если метрика не была задана вручную. Благодаря этому маршрут кабельного WAN (`metric 10`) и маршрут беспроводного клиента (`metric 20`) сосуществуют в ядре без коллизий.
 ### 4.4. Зависание 4-стороннего хэндшейка WPA2 (MIC Mismatch из-за смещения LAA MAC)
 * **Симптом**: При попытке подключения STA-моста к точке доступа статус в `wpa_cli` циклично сбрасывался из `4WAY_HANDSHAKE` в `WRONG_KEY` / `CONN_FAILED`, несмотря на абсолютно верный пароль. В логах AP точка доступа отправляла сообщение 1/4, клиент отвечал 2/4, но AP игнорировала ответ и повторяла 1/4 до таймаута.
 * **Первопричина**: В прошивке чипа Qualcomm QCN6432 аппаратный VAP клиента создается с адресом LAA (инвертирован бит 1 первого байта: `b0 ^ 0x06`), сохраняя остальные байты исходного адреса чипа (`56:4f:3b:eb:47:9f`). Скрипт платформы пытался искусственно развести адреса, добавляя `+3` к последнему байту (`...:a2`). Процесс `wpa_supplicant` вычислял проверочный код целостности (MIC) с программным адресом `...:a2`, а радиомодуль передавал кадры в эфир с реальным аппаратным адресом `...:9f`. В результате AP на основе реального MAC не могла верифицировать MIC и отбрасывала сообщение 2/4 как искаженное.
-* **Решение**: В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) убрано смещение `+3`. Программный и аппаратный MAC-адреса стали идентичны (`56:4f:3b:eb:47:9f`), и 4-way handshake завершается мгновенно со статусом `wpa_state=COMPLETED`.
+* **Решение**: В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) убрано смещение `+3`. Программный и аппаратный MAC-адреса стали идентичны (`56:4f:3b:eb:47:9f`), и 4-way handshake завершается мгновенно со статусом `wpa_state=COMPLETED`.
 
 ### 4.5. Зависание и самопроизвольное переподключение удалённого STA-интерфейса (`-EBUSY` в мосту)
 * **Симптом**: При удалении или отключении секции STA в LuCI клиентский интерфейс продолжал самопроизвольно подключаться к внешней сети.
@@ -164,8 +164,8 @@
   1. По умолчанию `hostapd` формирует ответы на зондирование (Probe Response) в пространстве пользователя (`send_probe_response=1`). Демон `hostapd 2.11` для стандарта 802.11be генерировал Probe Response без корректных EHT/VHT дескрипторов полосы, отдавая клиентам базовую ширину 20 МГц.
   2. При создании VAP через `iw` без предварительного `wlanconfig create ... -cfg80211` закрытый драйвер `umac.ko` пропускал выделение аппаратных структур VAP.
 * **Решение**:
-  1. В [hostapd_config.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/wifi/hostapd_config.sh) включен аппаратный оффлоад: `send_probe_response=0`. Микрокод Qualcomm Firmware генерирует Probe Response аппаратно на канальной скорости на базе регистров кремния (`mode 11AEHT80` / `160`).
-  2. В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) внедрено двухэтапное создание VAP (`wlanconfig` + `iw`).
+  1. В [hostapd_config.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/wifi/hostapd_config.sh) включен аппаратный оффлоад: `send_probe_response=0`. Микрокод Qualcomm Firmware генерирует Probe Response аппаратно на канальной скорости на базе регистров кремния (`mode 11AEHT80` / `160`).
+  2. В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) внедрено двухэтапное создание VAP (`wlanconfig` + `iw`).
   3. Для 2.4 ГГц добавлен суффикс направления (`11GEHT40PLUS`) и блокировка сброса полосы (`disablecoext 1`).
   4. После старта демона передаются параметры стока `ap_bridge 1`, `vhtstscap 3`, `dyn_bw_rts 1`.
 * **Результат**: Wi-Fi Analyzer и клиентские устройства стабильно и безошибочно фиксируют реальную ширину полосы 80 МГц и 160 МГц.
@@ -182,7 +182,7 @@
   2. Стандартная фильтрация `tr -d ' \t\r\n'` не удаляла `\x04`, из-за чего проверка `[ "$cur_country" != "$country" ]` (`"CN\x04" != "CN"`) всегда была истинной.
   3. В результате при каждом применении настроек выполнялся `/usr/sbin/cfg80211tool wifi1 setCountry CN`, который в ядре Qualcomm переинициализирует регуляторный домен, принудительно переводит VAP в `mlme_ext_vap_down` и сбрасывает аппаратную таблицу DFS pre-CAC, отправляя 5 ГГц (160 МГц) в 60-секундный молчаливый CAC.
 * **Решение**:
-  1. В [mac80211.sh](file:///home/romikb/openwrt/target/linux/ipq53xx/rd15/base-files/lib/netifd/wireless/mac80211.sh) значение из `getCountry` очищается от любых неалфавитных байтов: `tr -cd 'A-Za-z0-9' | cut -c1-2 | tr 'a-z' 'A-Z'`.
+  1. В [mac80211.sh](../target/linux/ipq53xx/ipq53xx_32/base-files/lib/netifd/wireless/mac80211.sh) значение из `getCountry` очищается от любых неалфавитных байтов: `tr -cd 'A-Za-z0-9' | cut -c1-2 | tr 'a-z' 'A-Z'`.
   2. Физическая инициализация радиомодуля защищена статусным файлом `/var/run/mac80211-${wlandev}.init`. При совпадении кода страны повторный вызов `setCountry` и тяжелых ioctl-тюнингов предотвращается.
   3. В `mac80211_apply_txpower` реализовано прямое применение целочисленных dBm (`iw dev <ifname> set txpower fixed <dBm>`) с ограничением аппаратными лимитами (29 dBm для `radio0`, 28 dBm для `radio1`).
   4. При выборе опции «По умолчанию» (`auto`) принудительно записывается аппаратный максимум (29 dBm / 28 dBm) с последующим переключением в `auto`.
@@ -194,7 +194,7 @@
 
 ### 5.1. Каналы 12–13 на 2.4 ГГц (Self-Managed US)
 * Прошивка чипа Qualcomm IPQ5312 жестко работает в регуляторном домене `US: DFS-FCC`, физически исключая каналы 12 и 13 из списка разрешенных частот.
-* Подробное исследование и пути решения зафиксированы в архивном документе [docs/archive/channel_12_13_regulatory.md](file:///home/romikb/openwrt/docs/archive/channel_12_13_regulatory.md).
+* Подробное исследование и пути решения зафиксированы в архивном документе [docs/archive/channel_12_13_regulatory.md](archive/channel_12_13_regulatory.md).
 
 ### 5.2. Радарные каналы DFS (52–64, 100–144) и обязательный таймер молчания CAC
 * На частотах 52–144, а также при включении полосы 160 МГц на каналах 36–48 (так как верхние 80 МГц полосы 36–64 попадают в диапазон 52–64), чип аппаратно обязан выполнять **Channel Availability Check (CAC)** в течение 60 секунд.
@@ -252,7 +252,7 @@
 
 ### 6.7. Ширина канала 80 / 160 МГц в режиме 802.11be и отображение в клиентских сканерах
 * **Статус**: ✅ **Полностью решено**.
-* **Решение**: Проблема устранена благодаря перехвату стоковой последовательности команд ([docs/stock_wifi_driver_trace.md](file:///home/romikb/openwrt/docs/stock_wifi_driver_trace.md)), внедрению `send_probe_response=0` (аппаратный оффлоад ответов на зондирование в прошивку) и двухэтапному созданию VAP в `mac80211.sh`. Клиентские сканеры и Wi-Fi Analyzer стабильно подтверждают отображение полос 80 МГц и 160 МГц.
+* **Решение**: Проблема устранена благодаря перехвату стоковой последовательности команд ([docs/stock_wifi_driver_trace.md](stock_wifi_driver_trace.md)), внедрению `send_probe_response=0` (аппаратный оффлоад ответов на зондирование в прошивку) и двухэтапному созданию VAP в `mac80211.sh`. Клиентские сканеры и Wi-Fi Analyzer стабильно подтверждают отображение полос 80 МГц и 160 МГц.
 
 ---
 
@@ -260,11 +260,11 @@
 
 Для работы над будущими задачами бэклога (WDS, Mesh, MLO, регулирование) в архив вынесены следующие специализированные исследования:
 * **Комплексный анализ стокового Wi-Fi, Wi-Fi 7 MLO, режим моста (ExtAP) и Mesh**:
-  $\to$ [docs/archive/stock_wifi_bridge_mlo_and_mesh_analysis.md](file:///home/romikb/openwrt/docs/archive/stock_wifi_bridge_mlo_and_mesh_analysis.md)
+  $\to$ [docs/archive/stock_wifi_bridge_mlo_and_mesh_analysis.md](archive/stock_wifi_bridge_mlo_and_mesh_analysis.md)
 * **Регуляторный домен, калибровки мощности BDF 0:ART и каналы 12–13**:
-  $\to$ [docs/archive/channel_12_13_regulatory.md](file:///home/romikb/openwrt/docs/archive/channel_12_13_regulatory.md)
+  $\to$ [docs/archive/channel_12_13_regulatory.md](archive/channel_12_13_regulatory.md)
 * **Аудит ядра QSDK 12.4, вермаджик и модули PPE/ECM/SSDK**:
-  $\to$ [docs/kernel_and_vendor_feed.md](file:///home/romikb/openwrt/docs/kernel_and_vendor_feed.md) и [docs/archive/qsdk_audit_notes.md](file:///home/romikb/openwrt/docs/archive/qsdk_audit_notes.md)
+  $\to$ [docs/kernel_and_vendor_feed.md](kernel_and_vendor_feed.md) и [docs/archive/qsdk_audit_notes.md](archive/qsdk_audit_notes.md)
 
 
 
