@@ -116,21 +116,27 @@ ensure_vap_netdev() {
 	[ -n "$macaddr" ] && ip link set "$ifname" address "$macaddr" 2>/dev/null || true
 
 	if [ -x /usr/sbin/cfg80211tool ]; then
-		[ -n "$target_mode" ] && /usr/sbin/cfg80211tool "$ifname" mode "$target_mode" 2>/dev/null || true
-		[ -n "$channel" ] && /usr/sbin/cfg80211tool "$ifname" channel "$channel" 0 0 0 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" hide_ssid 0 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" countryie 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" en_6g_sec_comp 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" uapsd 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" stafwd 0 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" vhtmubfer 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" he_mubfer 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" he_ulmumimo 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" set_eht_mu_bfmr 3 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" set_eht_ulmumimo 3 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$ifname" hlos_tidoverride 0 2>/dev/null || true
-		[ "$wlandev" = "wifi0" ] && /usr/sbin/cfg80211tool "$ifname" disablecoext 1 2>/dev/null || true
-		/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
+		if [ "$pmode" = "ap" ]; then
+			[ -n "$target_mode" ] && /usr/sbin/cfg80211tool "$ifname" mode "$target_mode" 2>/dev/null || true
+			[ -n "$channel" ] && /usr/sbin/cfg80211tool "$ifname" channel "$channel" 0 0 0 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" hide_ssid 0 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" countryie 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" en_6g_sec_comp 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" uapsd 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" stafwd 0 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" vhtmubfer 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" he_mubfer 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" he_ulmumimo 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" set_eht_mu_bfmr 3 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" set_eht_ulmumimo 3 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" hlos_tidoverride 0 2>/dev/null || true
+			[ "$wlandev" = "wifi0" ] && /usr/sbin/cfg80211tool "$ifname" disablecoext 1 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$wlandev" CSwOpts 0x31 2>/dev/null || true
+		else
+			# STA mode: do not force AP channel/coext/CSwOpts
+			/usr/sbin/cfg80211tool "$ifname" stafwd 0 2>/dev/null || true
+			/usr/sbin/cfg80211tool "$ifname" uapsd 1 2>/dev/null || true
+		fi
 	fi
 }
 
@@ -450,6 +456,14 @@ mac80211_setup_vif() {
 			fi
 		fi
 		restart_supplicant_instance "$ifname" "$br" "$extap"
+		if [ -n "$network" ] && [ "$network" != "lan" ] && uci -q get "network.${network}" >/dev/null; then
+			local cur_dev=$(uci -q get "network.${network}.device")
+			if [ "$cur_dev" != "$ifname" ]; then
+				uci -q set "network.${network}.device=$ifname"
+				uci commit network
+				ubus call network reload 2>/dev/null || true
+			fi
+		fi
 	else
 		local br="$network_bridge"
 		if [ -z "$br" ]; then

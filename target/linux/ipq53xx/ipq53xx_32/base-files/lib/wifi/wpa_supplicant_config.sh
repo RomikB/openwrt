@@ -41,8 +41,7 @@ generate_supplicant_conf() {
 	[ -z "$key" ] && config_get key "$iface" sae_password ""
 	config_get bssid "$iface" bssid ""
 	local channel scan_freq
-	config_get channel "$dev" channel ""
-	[ -z "$channel" ] && config_get channel "$iface" channel ""
+	config_get channel "$iface" channel ""
 	if [ -n "$channel" ] && [ "$channel" != "auto" ] && [ "$channel" -gt 0 ] 2>/dev/null; then
 		if [ "$channel" -le 14 ]; then
 			scan_freq=$(( 2407 + channel * 5 ))
