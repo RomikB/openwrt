@@ -1,0 +1,258 @@
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -13063,15 +13063,8 @@ static int nl80211_vendor_check_policy(c
+ 				       struct nlattr *attr,
+ 				       struct netlink_ext_ack *extack)
+ {
+-	if (vcmd->policy == VENDOR_CMD_RAW_DATA) {
+-		if (attr->nla_type & NLA_F_NESTED) {
+-			NL_SET_ERR_MSG_ATTR(extack, attr,
+-					    "unexpected nested data");
+-			return -EINVAL;
+-		}
+-
++	if (vcmd->policy == VENDOR_CMD_RAW_DATA)
+ 		return 0;
+-	}
+ 
+ 	if (!(attr->nla_type & NLA_F_NESTED)) {
+ 		NL_SET_ERR_MSG_ATTR(extack, attr, "expected nested data");
+@@ -15524,7 +15517,8 @@ void nl80211_send_connect_result(struct
+ 	unsigned int link;
+ 	size_t link_info_size = 0;
+ 	const u8 *connected_addr = cr->valid_links ?
+-				   cr->ap_mld_addr : cr->links[0].bssid;
++				   cr->ap_mld_addr :
++				   (cr->links[0].bssid ? cr->links[0].bssid : cr->bssid);
+ 	if (cr->valid_links) {
+ 		for_each_valid_link(cr, link) {
+ 			/* Nested attribute header */
+--- a/net/wireless/sme.c
++++ b/net/wireless/sme.c
+@@ -710,6 +710,17 @@ void __cfg80211_connect_result(struct ne
+ 		    wdev->iftype != NL80211_IFTYPE_P2P_CLIENT)) {
+ 		return;
+ 	}
++	if (!cr->valid_links) {
++		if (cr->bssid && !cr->links[0].bssid)
++			cr->links[0].bssid = cr->bssid;
++		if (cr->links[0].bssid && !cr->bssid)
++			cr->bssid = cr->links[0].bssid;
++		if (cr->bss && !cr->links[0].bss)
++			cr->links[0].bss = cr->bss;
++		if (cr->links[0].bss && !cr->bss)
++			cr->bss = cr->links[0].bss;
++	}
++
+ 	if (cr->valid_links) {
+ 		if (WARN_ON(!cr->ap_mld_addr)) {
+ 			return;
+@@ -723,7 +734,8 @@ void __cfg80211_connect_result(struct ne
+ 	}
+ 	nl80211_send_connect_result(wiphy_to_rdev(wdev->wiphy), dev, cr,
+ 				    GFP_KERNEL);
+-	connected_addr = cr->valid_links ? cr->ap_mld_addr : cr->links[0].bssid;
++	connected_addr = cr->valid_links ? cr->ap_mld_addr :
++			 (cr->links[0].bssid ? cr->links[0].bssid : cr->bssid);
+ 
+ #ifdef CONFIG_CFG80211_WEXT
+ 	if (wextev && !cr->valid_links) {
+@@ -753,26 +765,50 @@ void __cfg80211_connect_result(struct ne
+ #endif
+ 
+ 	if (cr->status == WLAN_STATUS_SUCCESS) {
+-		for_each_valid_link(cr, link) {
+-			if (WARN_ON_ONCE(!cr->links[link].bss)) {
+-				break;
++		if (!cr->valid_links) {
++			if (!cr->bss) {
++				const u8 *bssid = cr->bssid ? cr->bssid : cr->links[0].bssid;
++				if (bssid) {
++					cr->bss = cfg80211_get_bss(wdev->wiphy, NULL,
++								   bssid,
++								   wdev->ssid,
++								   wdev->ssid_len,
++								   wdev->conn_bss_type,
++								   IEEE80211_PRIVACY_ANY);
++					if (cr->bss)
++						cfg80211_hold_bss(bss_from_pub(cr->bss));
++					else
++						bss_not_found = true;
++				} else {
++					bss_not_found = true;
++				}
+ 			}
+-		}
+-		for_each_valid_link(cr, link) {
+-			if (cr->links[link].bss)
+-				continue;
+-			cr->links[link].bss =
+-				cfg80211_get_bss(wdev->wiphy, NULL,
+-						 cr->links[link].bssid,
+-						 wdev->ssid,
+-						 wdev->ssid_len,
+-						 wdev->conn_bss_type,
+-						 IEEE80211_PRIVACY_ANY);
+-			if (!cr->links[link].bss) {
+-				bss_not_found = true;
+-				break;
++			if (cr->bss)
++				cr->links[0].bss = cr->bss;
++		} else {
++			for_each_valid_link(cr, link) {
++				if (WARN_ON_ONCE(!cr->links[link].bss)) {
++					break;
++				}
++			}
++			for_each_valid_link(cr, link) {
++				if (cr->links[link].bss)
++					continue;
++				cr->links[link].bss =
++					cfg80211_get_bss(wdev->wiphy, NULL,
++							 cr->links[link].bssid,
++							 wdev->ssid,
++							 wdev->ssid_len,
++							 wdev->conn_bss_type,
++							 IEEE80211_PRIVACY_ANY);
++				if (!cr->links[link].bss) {
++					bss_not_found = true;
++					break;
++				}
++				cfg80211_hold_bss(bss_from_pub(cr->links[link].bss));
+ 			}
+-			cfg80211_hold_bss(bss_from_pub(cr->links[link].bss));
++			if (!cr->bss && cr->links[0].bss)
++				cr->bss = cr->links[0].bss;
+ 		}
+ 	}
+ 	if (wdev->current_bss) {
+@@ -791,7 +827,7 @@ void __cfg80211_connect_result(struct ne
+ 		return;
+ 	}
+ 
+-	if (bss_not_found) {
++	if (bss_not_found || !cr->bss) {
+ 		cfg80211_connect_result_release_bsses(wdev, cr);
+ 		return;
+ 	}
+@@ -820,8 +856,9 @@ void __cfg80211_connect_result(struct ne
+ 	 * - country_ie + 2, the start of the country ie data, and
+ 	 * - and country_ie[1] which is the IE length
+ 	 */
+-	regulatory_hint_country_ie(wdev->wiphy, cr->bss->channel->band,
+-				   country_ie + 2, country_ie[1]);
++	if (cr->bss->channel)
++		regulatory_hint_country_ie(wdev->wiphy, cr->bss->channel->band,
++					   country_ie + 2, country_ie[1]);
+ 	kfree(country_ie);
+ }
+ 
+@@ -946,34 +983,53 @@ void cfg80211_connect_done(struct net_de
+ 	struct cfg80211_event *ev;
+ 	unsigned long flags;
+ 	u8 *next;
+-	size_t link_info_size = 0;
+-	unsigned int link;
+ 
+-	for_each_valid_link(params, link) {
+-		cfg80211_update_link_bss(wdev, &params->links[link].bss);
+-		link_info_size += params->links[link].bssid ? ETH_ALEN : 0;
+-		link_info_size += params->links[link].addr ? ETH_ALEN : 0;
++	/*
++	 * umac.ko passes a legacy 56-byte struct cfg80211_connect_resp_params
++	 * allocated on its stack. Do NOT read any fields past offset 55
++	 * (such as ap_mld_addr, valid_links, or links[]) from params!
++	 */
++	if (params->bss) {
++		struct cfg80211_internal_bss *ibss = bss_from_pub(params->bss);
++
++		if (list_empty(&ibss->list)) {
++			struct cfg80211_bss *found = NULL, *tmp = params->bss;
++
++			found = cfg80211_get_bss(wdev->wiphy, NULL,
++						 params->bss->bssid,
++						 wdev->ssid, wdev->ssid_len,
++						 wdev->conn_bss_type,
++						 IEEE80211_PRIVACY_ANY);
++			if (found) {
++				params->bss = found;
++			} else {
++				cfg80211_bss_update(rdev, ibss, false,
++						    ibss->ts);
++			}
++
++			cfg80211_put_bss(wdev->wiphy, tmp);
++		}
+ 	}
+ 
+-	ev = kzalloc(sizeof(*ev) + (params->ap_mld_addr ? ETH_ALEN : 0) +
++	ev = kzalloc(sizeof(*ev) + (params->bssid ? ETH_ALEN : 0) +
+ 		     params->req_ie_len + params->resp_ie_len +
+ 		     params->fils.kek_len + params->fils.pmk_len +
+-		     (params->fils.pmkid ? WLAN_PMKID_LEN : 0) + link_info_size, 
++		     (params->fils.pmkid ? WLAN_PMKID_LEN : 0),
+ 		     gfp);
+ 	if (!ev) {
+-		for_each_valid_link(params, link)
+-			cfg80211_put_bss(wdev->wiphy,
+-				params->links[link].bss);
++		if (params->bss)
++			cfg80211_put_bss(wdev->wiphy, params->bss);
+ 		return;
+ 	}
+ 
+ 	ev->type = EVENT_CONNECT_RESULT;
+ 	next = ((u8 *)ev) + sizeof(*ev);
+-	if (params->ap_mld_addr) {
+-		ev->cr.ap_mld_addr = next;
+-		memcpy((void *)ev->cr.ap_mld_addr, params->ap_mld_addr,
+-			ETH_ALEN);
++
++	if (params->bssid) {
++		ev->cr.bssid = next;
++		memcpy((void *)ev->cr.bssid, params->bssid, ETH_ALEN);
+ 		next += ETH_ALEN;
++		ev->cr.links[0].bssid = ev->cr.bssid;
+ 	}
+ 	if (params->req_ie_len) {
+ 		ev->cr.req_ie = next;
+@@ -1009,33 +1065,16 @@ void cfg80211_connect_done(struct net_de
+ 		       WLAN_PMKID_LEN);
+ 		next += WLAN_PMKID_LEN;
+ 	}
+-	ev->cr.valid_links = params->valid_links;
+-	for_each_valid_link(params, link) {
+-
+-		if (params->links[link].bss)
+-		ev->cr.links[link].bss = params->links[link].bss;
+-
+-		if (params->links[link].addr) {
+-			ev->cr.links[link].addr = next;
+-			memcpy((void *)ev->cr.links[link].addr,
+-			       params->links[link].addr,
+-			       ETH_ALEN);
+-			next += ETH_ALEN;
+-		}
+-		if (params->links[link].bssid) {
+-			ev->cr.links[link].bssid = next;
+-			memcpy((void *)ev->cr.links[link].bssid,
+-			       params->links[link].bssid,
+-			       ETH_ALEN);
+-			next += ETH_ALEN;
+-		}
+-	}
+ 	ev->cr.fils.update_erp_next_seq_num = params->fils.update_erp_next_seq_num;
+ 	if (params->fils.update_erp_next_seq_num)
+ 		ev->cr.fils.erp_next_seq_num = params->fils.erp_next_seq_num;
+-	if (params->bss)
++	if (params->bss) {
+ 		cfg80211_hold_bss(bss_from_pub(params->bss));
+-	ev->cr.bss = params->bss;
++		ev->cr.bss = params->bss;
++		ev->cr.links[0].bss = params->bss;
++	}
++	ev->cr.valid_links = 0;
++	ev->cr.ap_mld_addr = NULL;
+ 	ev->cr.status = params->status;
+ 	ev->cr.timeout_reason = params->timeout_reason;
+ 
